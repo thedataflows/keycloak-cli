@@ -1,0 +1,575 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Minimal Keycloak-like Admin API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/admin/realms": {
+      "get": {
+        "operationId": "getRealms",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RealmRepresentation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postRealms",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealmRepresentation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getRealm",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealmRepresentation"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putRealm",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealmRepresentation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteRealm",
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/users": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getUsers",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "max",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserRepresentation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postUsers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRepresentation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/users/{user-id}": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user-id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRepresentation"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRepresentation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUser",
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/clients": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getClients",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postClients",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/clients/{client-uuid}": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "client-uuid",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getClient",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putClient",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteClient",
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/users/{user-id}/organizations": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "user-id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getUserOrganizations",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationRepresentation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postUserOrganizations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OrganizationRepresentation"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUserOrganizations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OrganizationRepresentation"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/admin/realms/{realm}/organizations": {
+      "parameters": [
+        {
+          "name": "realm",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getOrganizations",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationRepresentation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postOrganizations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationRepresentation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RealmRepresentation": {
+        "type": "object",
+        "required": ["realm"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "readOnly": true
+          },
+          "realm": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "UserRepresentation": {
+        "type": "object",
+        "required": ["username"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "readOnly": true
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "createdTimestamp": {
+            "type": "integer",
+            "readOnly": true
+          }
+        }
+      },
+      "ClientDTO": {
+        "type": "object",
+        "required": ["clientId"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "readOnly": true
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OrganizationRepresentation": {
+        "type": "object",
+        "required": ["alias"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "readOnly": true
+          },
+          "alias": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

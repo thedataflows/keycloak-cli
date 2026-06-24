@@ -1,0 +1,18 @@
+{
+  "paths": {
+    "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites/clients/{client-uuid2}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "client-uuid2",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

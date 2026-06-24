@@ -1,0 +1,16 @@
+[tools]
+## https://go.dev/doc/devel/release
+go = '1.26'
+## https://github.com/goreleaser/goreleaser/releases
+"goreleaser" = '2'
+## https://github.com/golangci/golangci-lint/releases
+"golangci-lint" = '2'
+
+## https://github.com/oapi-codegen/oapi-codegen/releases
+"oapi-codegen" = '2'
+
+## https://github.com/ducaale/xh/releases
+"xh" = 'latest'
+
+## https://github.com/JohannesKaufmann/html-to-markdown/releases
+"github:JohannesKaufmann/html-to-markdown" = "latest"

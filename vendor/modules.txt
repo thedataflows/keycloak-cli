@@ -1,0 +1,115 @@
+# github.com/alecthomas/kong v1.15.0
+## explicit; go 1.20
+github.com/alecthomas/kong
+# github.com/alecthomas/kong-yaml v0.2.0
+## explicit; go 1.18
+github.com/alecthomas/kong-yaml
+# github.com/bahlo/generic-list-go v0.2.0
+## explicit; go 1.18
+github.com/bahlo/generic-list-go
+# github.com/buger/jsonparser v1.2.0
+## explicit; go 1.13
+github.com/buger/jsonparser
+# github.com/davecgh/go-spew v1.1.1
+## explicit
+github.com/davecgh/go-spew/spew
+# github.com/goccy/go-yaml v1.19.2
+## explicit; go 1.21.0
+github.com/goccy/go-yaml
+github.com/goccy/go-yaml/ast
+github.com/goccy/go-yaml/internal/errors
+github.com/goccy/go-yaml/internal/format
+github.com/goccy/go-yaml/lexer
+github.com/goccy/go-yaml/parser
+github.com/goccy/go-yaml/printer
+github.com/goccy/go-yaml/scanner
+github.com/goccy/go-yaml/token
+# github.com/golang-jwt/jwt/v5 v5.3.1
+## explicit; go 1.21
+github.com/golang-jwt/jwt/v5
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
+# github.com/kr/text v0.2.0
+## explicit
+# github.com/mattn/go-colorable v0.1.15
+## explicit; go 1.18
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.22
+## explicit; go 1.21
+github.com/mattn/go-isatty
+# github.com/pb33f/jsonpath v0.8.2
+## explicit; go 1.24
+github.com/pb33f/jsonpath/pkg/jsonpath
+github.com/pb33f/jsonpath/pkg/jsonpath/config
+github.com/pb33f/jsonpath/pkg/jsonpath/token
+# github.com/pb33f/libopenapi v0.38.3
+## explicit; go 1.25.7
+github.com/pb33f/libopenapi
+github.com/pb33f/libopenapi/datamodel
+github.com/pb33f/libopenapi/datamodel/high
+github.com/pb33f/libopenapi/datamodel/high/arazzo
+github.com/pb33f/libopenapi/datamodel/high/base
+github.com/pb33f/libopenapi/datamodel/high/nodes
+github.com/pb33f/libopenapi/datamodel/high/overlay
+github.com/pb33f/libopenapi/datamodel/high/v2
+github.com/pb33f/libopenapi/datamodel/high/v3
+github.com/pb33f/libopenapi/datamodel/low
+github.com/pb33f/libopenapi/datamodel/low/arazzo
+github.com/pb33f/libopenapi/datamodel/low/base
+github.com/pb33f/libopenapi/datamodel/low/overlay
+github.com/pb33f/libopenapi/datamodel/low/v2
+github.com/pb33f/libopenapi/datamodel/low/v3
+github.com/pb33f/libopenapi/index
+github.com/pb33f/libopenapi/json
+github.com/pb33f/libopenapi/orderedmap
+github.com/pb33f/libopenapi/overlay
+github.com/pb33f/libopenapi/utils
+github.com/pb33f/libopenapi/what-changed
+github.com/pb33f/libopenapi/what-changed/model
+# github.com/pb33f/ordered-map/v2 v2.3.1
+## explicit; go 1.24
+github.com/pb33f/ordered-map/v2
+# github.com/pelletier/go-toml/v2 v2.4.2
+## explicit; go 1.21.0
+github.com/pelletier/go-toml/v2
+github.com/pelletier/go-toml/v2/internal/parserbridge
+github.com/pelletier/go-toml/v2/internal/tracker
+github.com/pelletier/go-toml/v2/unstable
+# github.com/pmezard/go-difflib v1.0.0
+## explicit
+github.com/pmezard/go-difflib/difflib
+# github.com/rogpeppe/go-internal v1.15.0
+## explicit; go 1.25
+# github.com/rs/zerolog v1.35.1
+## explicit; go 1.23
+github.com/rs/zerolog
+github.com/rs/zerolog/internal/cbor
+github.com/rs/zerolog/internal/json
+github.com/rs/zerolog/log
+# github.com/stretchr/testify v1.11.1
+## explicit; go 1.17
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/assert/yaml
+github.com/stretchr/testify/require
+# go.yaml.in/yaml/v4 v4.0.0-rc.6
+## explicit; go 1.18
+go.yaml.in/yaml/v4
+go.yaml.in/yaml/v4/internal/libyaml
+go.yaml.in/yaml/v4/plugin/limit
+# golang.org/x/oauth2 v0.36.0
+## explicit; go 1.25.0
+golang.org/x/oauth2
+golang.org/x/oauth2/internal
+# golang.org/x/sync v0.21.0
+## explicit; go 1.25.0
+golang.org/x/sync/singleflight
+# golang.org/x/sys v0.46.0
+## explicit; go 1.25.0
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+## explicit; go 1.11
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3

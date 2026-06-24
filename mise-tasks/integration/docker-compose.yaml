@@ -1,0 +1,72 @@
+
+configs:
+  test-http:
+    content: |
+      ERROR=0
+      _TEST_OUTPUT="$${_TEST_OUTPUT:-HTTP/1.1 200 OK}"
+      exec 3<>/dev/tcp/localhost/$${_TEST_PORT}
+      echo -e "GET $${_TEST_PATH} HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n" >&3; timeout 1 cat <&3 | grep -m 1 "$$_TEST_OUTPUT"
+      ERROR=$$?
+      exec 3<&-
+      exec 3>&-
+      exit $$ERROR
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      keycloak-network:
+        ipv4_address: 172.29.0.2
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_LOG_LEVEL: INFO,org.keycloak.services:DEBUG,org.keycloak.services.scheduled:WARN
+      JAVA_OPTS_APPEND: -Duser.timezone=Europe/Bucharest
+      KC_FEATURES: workflows
+      KC_SPI_EVENTS_LISTENER_WORKFLOW_EVENT_LISTENER_STEP_RUNNER_TASK_INTERVAL: 30000
+      _TEST_PORT: 9000
+      _TEST_PATH: /health/ready
+      # _TEST_OUTPUT: HTTP/1.1 302 Found
+    depends_on:
+      - postgres
+    command: start-dev
+    networks:
+      keycloak-network:
+        ipv4_address: 172.29.0.3
+    configs:
+      - source: test-http
+        target: /test-http
+        mode: 0755
+    healthcheck:
+      test: ["CMD", "bash", "-c", "/test-http"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  keycloak-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24
+
+volumes:
+  postgres_data:
