@@ -116,3 +116,8 @@ func kindFromStatus(statusCode int) ErrorKind {
 	}
 	return ErrorTransport
 }
+
+func isNotFound(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e != nil && e.Kind == ErrorNotFound
+}
