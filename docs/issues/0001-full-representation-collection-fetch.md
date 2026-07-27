@@ -49,39 +49,41 @@ have to do the same. This issue removes the need for that workaround.
 
 ### Root cause
 
-1. `FetchQuery` ([`pkg/admin/fetch.go:16`](../../pkg/admin/fetch.go)) has no
-   field to request a full representation. Its fields are `Realm`,
-   `Resources`, `Search`, `Max`, `Parent`, `IncludeRelationships`, `Depth`,
-   `Filter`.
-2. `buildQueryParams` ([`pkg/admin/fetch.go:237`](../../pkg/admin/fetch.go))
-   only ever emits `search` and `max`, and short-circuits to `nil` when both
-   are unset.
-3. Every collection fetch therefore uses Keycloak's brief default.
+1. `FetchQuery` ([`pkg/admin/fetch.go:16`](../../pkg/admin/fetch.go)) had no
+   field to request a full representation.
+2. `buildQueryParams` ([`pkg/admin/fetch.go:294`](../../pkg/admin/fetch.go))
+   emitted only `search`, `max` and `exact`.
+3. Every collection fetch therefore used Keycloak's brief default.
 
-The plumbing already exists end to end; only the value is missing:
+For **top-level** collections the plumbing already existed end to end; only the
+value was missing:
 
-```
+```text
 Service.Fetch
   -> buildQueryParams(query)                                   // <-- add briefRepresentation here
   -> fetchResourceCollection(ctx, resource, scope, realm, params...)
   -> specClient.FetchResources(ctx, resource, scope, params...)
-  -> mergeQueryParams + url.Values encode                      // pkg/admin/internal/client.go:105
+  -> mergeQueryParams + url.Values encode                      // pkg/admin/internal/client.go
 ```
 
-A new param produced by `buildQueryParams` reaches the HTTP request with no
-other layer changes.
+### Correction to the original upstream request
 
-### Corrections to the original upstream request
+The request described `FetchQuery` and `buildQueryParams` **accurately**,
+including the `ExactMatch` field and the `exact` parameter added by `611b7fd`,
+and its proposed `buildQueryParams` body matched the real one. Its only
+inaccurate claim was the last line of the section above:
 
-The request was written against a vendored copy and asserts two things that
-are **not** true of this repository:
+> A new param produced by `buildQueryParams` reaches the HTTP request with no
+> other layer changes.
 
-- There is no `ExactMatch` field on `FetchQuery` and no `exact` query
-  parameter anywhere in the codebase. Do not "preserve" it — either leave it
-  out or add it as separate work.
-- `buildQueryParams` returns early (`nil`) when `Search` and `Max` are both
-  unset, so the new flag must be part of that guard or the guard must be
-  dropped.
+That holds for top-level collections but **not** for depth-expanded children.
+`fetchNestedResourceCollection`
+([`pkg/admin/fetch.go:450`](../../pkg/admin/fetch.go)) neither accepted nor
+forwarded query params, so nested collections stayed brief. That matters more
+than it sounds: org-scoped groups are reachable *only* through the nested path
+`/organizations/{org-id}/groups` and are invisible to the realm-wide group list,
+so without this the primary downstream consumer gained nothing. See the scope
+extension below.
 
 ### Validation layers are already safe
 
@@ -119,13 +121,13 @@ request validation does not reject them, emit unconditionally and mark it with
 a `ponytail:` comment naming the gate as the upgrade path.
 
 Wire a `--full-representation` flag through `FetchCmd`
-([`cmd/fetch.go:44`](../../cmd/fetch.go)) so the capability is reachable from
+([`cmd/fetch.go:46`](../../cmd/fetch.go)) so the capability is reachable from
 the CLI, not only the library API.
 
 ## Acceptance Criteria
 
 - [x] `FetchQuery.FullRepresentation` exists and is documented with a doc comment.
-- [x] `buildQueryParams` emits `briefRepresentation=false` when the field is set, including when `Search` and `Max` are both unset.
+- [x] `buildQueryParams` emits `briefRepresentation=false` when the field is set, alongside `search`, `max` and `exact`, and nothing when no option is set.
 - [x] Table-driven unit test over `buildQueryParams` covers the flag alone and combined with `Search` and `Max`, and asserts the key is absent when the flag is unset. (`pkg/admin/fetch_internal_test.go`)
 - [x] A transport test asserts the outgoing request URL contains `briefRepresentation=false`, confirming the param survives `FetchResources` → URL. (`pkg/admin/fetch_test.go`)
 - [x] `Fetch(FetchQuery{Resources: "organization", FullRepresentation: true})` returns organizations whose `Data["attributes"]` is populated when the org has attributes.
@@ -134,7 +136,7 @@ the CLI, not only the library API.
 - [x] `cmd fetch` exposes `--full-representation`.
 - [x] `go vet ./...` clean.
 - [x] Structural child collections receive the flag: `fetch organization --depth 1 --full-representation` returns org-scoped groups with `attributes` populated.
-- [x] `search` and `max` do not leak into nested collection requests (asserted at transport level).
+- [x] `search`, `max` and `exact` do not leak into nested collection requests (asserted at transport level).
 
 ## Scope extension: nested (depth-expanded) collections
 
@@ -156,7 +158,7 @@ downstream consumer. Scope was therefore extended to cover structural children:
 - Relationship inclusion (`IncludeRelationships`) — already handled by an existing `FetchQuery` field.
 - The org-scoped subgroup hierarchy and org-group membership — see [ISSUE 0002](0002-org-scoped-groups.md).
 - Single-resource (non-collection) GET paths; brief representation only affects list/search endpoints.
-- Adding an `exact` / `ExactMatch` query option.
+- The `exact` / `ExactMatch` query option, which already exists (added by `611b7fd`).
 - Pagination (`first`) and the `q` attribute-query parameter.
 
 ## Notes

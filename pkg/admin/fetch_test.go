@@ -661,7 +661,7 @@ func TestFetchFullRepresentationReachesNestedCollections(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"squad": []interface{}{"core"}}, group.Data["attributes"])
 }
 
-func TestFetchNestedCollectionsDoNotInheritSearchAndMax(t *testing.T) {
+func TestFetchNestedCollectionsDoNotInheritScopingParams(t *testing.T) {
 	queries := map[string][]string{}
 	server := nestedQueryCapture(t, queries)
 	defer server.Close()
@@ -673,6 +673,7 @@ func TestFetchNestedCollectionsDoNotInheritSearchAndMax(t *testing.T) {
 		Depth:              1,
 		Search:             "acme",
 		Max:                5,
+		ExactMatch:         true,
 		FullRepresentation: true,
 	})
 	require.NoError(t, err)
@@ -684,6 +685,7 @@ func TestFetchNestedCollectionsDoNotInheritSearchAndMax(t *testing.T) {
 	assert.Equal(t, "false", values.Get("briefRepresentation"))
 	assert.False(t, values.Has("search"), "search must not leak into nested collections")
 	assert.False(t, values.Has("max"), "max must not leak into nested collections")
+	assert.False(t, values.Has("exact"), "exact must not leak into nested collections")
 }
 
 func TestFetchWithoutFullRepresentationSendsNoNestedQuery(t *testing.T) {
