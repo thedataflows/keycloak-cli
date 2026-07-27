@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alecthomas/kong"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -81,6 +83,38 @@ func TestIsDirTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, isDirTarget(tt.path))
+		})
+	}
+}
+
+func TestFetchCmdFullRepresentationFlag(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{
+			name: "flag absent keeps brief representation",
+			args: []string{"fetch", "group"},
+			want: false,
+		},
+		{
+			name: "flag requests full representation",
+			args: []string{"fetch", "--full-representation", "group"},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cli CLI
+			parser, err := kong.New(&cli, kong.Name("keycloak-cli"), kong.Exit(func(int) {}))
+			require.NoError(t, err)
+
+			_, err = parser.Parse(tt.args)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want, cli.Fetch.FullRepresentation)
 		})
 	}
 }

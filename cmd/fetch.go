@@ -14,20 +14,21 @@ import (
 
 // FetchCmd gets objects
 type FetchCmd struct {
-	Long          bool     `short:"l" help:"Show detailed information about objects" default:"false"`
-	Format        string   `short:"f" default:"table" enum:"table,json,yaml,toml" help:"Output format"`
-	Output        string   `short:"o" help:"Output file or directory for fetched resources (ends with / for directory)"`
-	Force         bool     `help:"Force overwrite of output file if it exists" default:"false"`
-	ExcludeFields []string `short:"e" help:"Comma-separated list of fields to exclude from output" default:"containerId"`
-	Realm         string   `short:"r" help:"Realm to scope the resource fetch to. If not provided, all realms will be used."`
-	Resources     string   `arg:"" optional:"" help:"Comma-separated resource types to fetch (default: realm,user,client,group,role)" default:"realm,user,client,group,role"`
-	Filter        string   `arg:"" optional:"" name:"filter" help:"Filter fetched resources by exact name or id (case-insensitive)"`
-	Search        string   `short:"s" help:"Search parameter for filtering resources"`
-	Max           int      `help:"Maximum number of results to return"`
-	Depth         int      `help:"Fetch child resources up to N levels deep" default:"1"`
-	Parent        string   `short:"p" help:"Parent resource identifier for nested resources (e.g. authentication flow alias for executions)"`
-	Relationships bool     `help:"Fetch supported relationship state in addition to resources" default:"false"`
-	Canonicalize  bool     `help:"Strip server-managed fields and write a clean manifest suitable for re-apply" default:"false"`
+	Long               bool     `short:"l" help:"Show detailed information about objects" default:"false"`
+	Format             string   `short:"f" default:"table" enum:"table,json,yaml,toml" help:"Output format"`
+	Output             string   `short:"o" help:"Output file or directory for fetched resources (ends with / for directory)"`
+	Force              bool     `help:"Force overwrite of output file if it exists" default:"false"`
+	ExcludeFields      []string `short:"e" help:"Comma-separated list of fields to exclude from output" default:"containerId"`
+	Realm              string   `short:"r" help:"Realm to scope the resource fetch to. If not provided, all realms will be used."`
+	Resources          string   `arg:"" optional:"" help:"Comma-separated resource types to fetch (default: realm,user,client,group,role)" default:"realm,user,client,group,role"`
+	Filter             string   `arg:"" optional:"" name:"filter" help:"Filter fetched resources by exact name or id (case-insensitive)"`
+	Search             string   `short:"s" help:"Search parameter for filtering resources"`
+	Max                int      `help:"Maximum number of results to return"`
+	Depth              int      `help:"Fetch child resources up to N levels deep" default:"1"`
+	Parent             string   `short:"p" help:"Parent resource identifier for nested resources (e.g. authentication flow alias for executions)"`
+	Relationships      bool     `help:"Fetch supported relationship state in addition to resources" default:"false"`
+	FullRepresentation bool     `help:"Request Keycloak's complete representation on collection fetches (briefRepresentation=false), so attributes are returned for users, groups and organizations" default:"false"`
+	Canonicalize       bool     `help:"Strip server-managed fields and write a clean manifest suitable for re-apply" default:"false"`
 }
 
 func (c *FetchCmd) Run(ctx *kong.Context, cli *CLI) error {
@@ -51,6 +52,7 @@ func (c *FetchCmd) Run(ctx *kong.Context, cli *CLI) error {
 		Depth:                c.Depth,
 		Parent:               c.Parent,
 		IncludeRelationships: c.Relationships,
+		FullRepresentation:   c.FullRepresentation,
 	})
 	if err != nil {
 		return err

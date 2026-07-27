@@ -23,6 +23,12 @@ type FetchQuery struct {
 	Depth                int
 	Filter               string
 	ExactMatch           bool
+	// FullRepresentation requests Keycloak's complete resource representation on
+	// collection fetches by sending briefRepresentation=false. Keycloak's list
+	// endpoints for users, groups and organizations otherwise return a brief
+	// representation that omits the attributes map. The false default preserves
+	// the existing brief behavior.
+	FullRepresentation bool
 }
 
 type FetchReport struct {
@@ -155,7 +161,7 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 	if query.Depth > 0 && len(realmNames) > 0 {
 		var depthResources []manifest.Resource
 		var depthFailures []FetchFailure
-		depthResources, childTypes, depthFailures = s.fetchDepthLevels(ctx, query.Depth, realmNames, seeds)
+		depthResources, childTypes, depthFailures = s.fetchDepthLevels(ctx, query.Depth, realmNames, seeds, buildNestedQueryParams(query))
 		results = append(results, depthResources...)
 		failures = append(failures, depthFailures...)
 	}
@@ -296,10 +302,30 @@ func buildQueryParams(query FetchQuery) []map[string]string {
 	if query.ExactMatch {
 		params["exact"] = "true"
 	}
+	// ponytail: emitted for every collection endpoint, not just the users, groups
+	// and organizations operations that declare it. Keycloak ignores unrecognized
+	// query parameters and validateOperationInput only checks spec-declared ones,
+	// so this is inert elsewhere. Upgrade path: gate on the resolved operation's
+	// parameter list, which is available in RuntimeClient.FetchResources.
+	if query.FullRepresentation {
+		params["briefRepresentation"] = "false"
+	}
+
 	if len(params) == 0 {
 		return nil
 	}
+
 	return []map[string]string{params}
+}
+
+// buildNestedQueryParams returns the query params that apply to structural child
+// collections. Only the representation flag propagates: search and max scope the
+// requested resources, and forwarding them would silently filter children too.
+func buildNestedQueryParams(query FetchQuery) []map[string]string {
+	if !query.FullRepresentation {
+		return nil
+	}
+	return []map[string]string{{"briefRepresentation": "false"}}
 }
 
 func realmNamesFromResources(realms []manifest.Resource) []string {
@@ -343,7 +369,7 @@ func requestedResources(resourceList string) ([]string, bool) {
 	return resources, includeRelationships
 }
 
-func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []string, seeds []manifest.Resource) ([]manifest.Resource, map[string]struct{}, []FetchFailure) {
+func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []string, seeds []manifest.Resource, nestedParams []map[string]string) ([]manifest.Resource, map[string]struct{}, []FetchFailure) {
 	downward, err := s.Spec().BuildDownwardGraph()
 	if err != nil {
 		return nil, nil, []FetchFailure{{Resource: "depth-graph", Err: err}}
@@ -373,7 +399,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 		for _, parent := range frontier {
 			children := downward[parent.Type]
 			for _, child := range children {
-				fetched, fetchErr := s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent)
+				fetched, fetchErr := s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent, nestedParams...)
 				if fetchErr != nil {
 					failures = append(failures, fetchFailure(child.ChildType, parent.Type+":"+parent.Identifier(), fetchErr))
 					continue
@@ -421,7 +447,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 	return results, childTypes, failures
 }
 
-func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, path, parentType string, parent manifest.Resource) ([]manifest.Resource, error) {
+func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, path, parentType string, parent manifest.Resource, params ...map[string]string) ([]manifest.Resource, error) {
 	contract := catalog.OperationContract{Path: path, Method: http.MethodGet}
 	scope, err := s.Spec().Resolver().PathParams(parent, contract)
 	if err != nil {
@@ -431,7 +457,7 @@ func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, 
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 
-	fetched, err := s.specClient.FetchPathCollection(operationCtx, path, scope)
+	fetched, err := s.specClient.FetchPathCollection(operationCtx, path, scope, params...)
 	if err != nil {
 		return nil, classifyError(err, 0, "fetch", childType)
 	}

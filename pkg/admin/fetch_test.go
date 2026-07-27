@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -548,4 +549,157 @@ func TestFetchExactMatchEmitsExactQueryParam(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchFullRepresentationSendsBriefRepresentationFalse(t *testing.T) {
+	groupQueries := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/demo/groups":
+			groupQueries = append(groupQueries, r.URL.RawQuery)
+			writeJSON(t, w, []map[string]interface{}{{
+				"id":         "group-1",
+				"name":       "engineering",
+				"attributes": map[string]interface{}{"costCenter": []interface{}{"cc-42"}},
+			}})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	service := newServiceForTest(t, server.URL)
+	report, err := service.Fetch(context.Background(), admin.FetchQuery{
+		Realm:              "demo",
+		Resources:          "group",
+		Depth:              0,
+		FullRepresentation: true,
+	})
+	require.NoError(t, err)
+
+	require.Len(t, groupQueries, 1)
+	values, err := url.ParseQuery(groupQueries[0])
+	require.NoError(t, err)
+	assert.Equal(t, "false", values.Get("briefRepresentation"))
+
+	require.Len(t, report.Resources, 1)
+	assert.Equal(t, map[string]interface{}{"costCenter": []interface{}{"cc-42"}}, report.Resources[0].Data["attributes"])
+}
+
+func TestFetchWithoutFullRepresentationOmitsBriefRepresentation(t *testing.T) {
+	groupQueries := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/demo/groups":
+			groupQueries = append(groupQueries, r.URL.RawQuery)
+			writeJSON(t, w, []map[string]interface{}{{"id": "group-1", "name": "engineering"}})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	service := newServiceForTest(t, server.URL)
+	_, err := service.Fetch(context.Background(), admin.FetchQuery{Realm: "demo", Resources: "group", Depth: 0})
+	require.NoError(t, err)
+
+	require.Len(t, groupQueries, 1)
+	values, err := url.ParseQuery(groupQueries[0])
+	require.NoError(t, err)
+	assert.False(t, values.Has("briefRepresentation"))
+}
+
+// nestedQueryCapture serves an organization plus its org-scoped groups and records
+// the raw query string of every request, keyed by path.
+func nestedQueryCapture(t *testing.T, queries map[string][]string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queries[r.URL.Path] = append(queries[r.URL.Path], r.URL.RawQuery)
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/demo/organizations":
+			writeJSON(t, w, []map[string]interface{}{{"id": "org-1", "alias": "acme", "name": "acme"}})
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/demo/organizations/org-1/groups":
+			writeJSON(t, w, []map[string]interface{}{{
+				"id":         "group-1",
+				"name":       "acme-engineering",
+				"attributes": map[string]interface{}{"squad": []interface{}{"core"}},
+			}})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func TestFetchFullRepresentationReachesNestedCollections(t *testing.T) {
+	queries := map[string][]string{}
+	server := nestedQueryCapture(t, queries)
+	defer server.Close()
+
+	service := newServiceForTest(t, server.URL)
+	report, err := service.Fetch(context.Background(), admin.FetchQuery{
+		Realm:              "demo",
+		Resources:          "organization",
+		Depth:              1,
+		FullRepresentation: true,
+	})
+	require.NoError(t, err)
+
+	nested := queries["/admin/realms/demo/organizations/org-1/groups"]
+	require.Len(t, nested, 1)
+	values, err := url.ParseQuery(nested[0])
+	require.NoError(t, err)
+	assert.Equal(t, "false", values.Get("briefRepresentation"))
+
+	var group *manifest.Resource
+	for i := range report.Resources {
+		if report.Resources[i].Type == "group" {
+			group = &report.Resources[i]
+		}
+	}
+	require.NotNil(t, group, "expected the org-scoped group in the report")
+	assert.Equal(t, "organization", group.ParentType)
+	assert.Equal(t, map[string]interface{}{"squad": []interface{}{"core"}}, group.Data["attributes"])
+}
+
+func TestFetchNestedCollectionsDoNotInheritSearchAndMax(t *testing.T) {
+	queries := map[string][]string{}
+	server := nestedQueryCapture(t, queries)
+	defer server.Close()
+
+	service := newServiceForTest(t, server.URL)
+	_, err := service.Fetch(context.Background(), admin.FetchQuery{
+		Realm:              "demo",
+		Resources:          "organization",
+		Depth:              1,
+		Search:             "acme",
+		Max:                5,
+		FullRepresentation: true,
+	})
+	require.NoError(t, err)
+
+	nested := queries["/admin/realms/demo/organizations/org-1/groups"]
+	require.Len(t, nested, 1)
+	values, err := url.ParseQuery(nested[0])
+	require.NoError(t, err)
+	assert.Equal(t, "false", values.Get("briefRepresentation"))
+	assert.False(t, values.Has("search"), "search must not leak into nested collections")
+	assert.False(t, values.Has("max"), "max must not leak into nested collections")
+}
+
+func TestFetchWithoutFullRepresentationSendsNoNestedQuery(t *testing.T) {
+	queries := map[string][]string{}
+	server := nestedQueryCapture(t, queries)
+	defer server.Close()
+
+	service := newServiceForTest(t, server.URL)
+	_, err := service.Fetch(context.Background(), admin.FetchQuery{
+		Realm:     "demo",
+		Resources: "organization",
+		Depth:     1,
+	})
+	require.NoError(t, err)
+
+	nested := queries["/admin/realms/demo/organizations/org-1/groups"]
+	require.Len(t, nested, 1)
+	assert.Empty(t, nested[0], "nested request must be unchanged when the flag is unset")
 }
