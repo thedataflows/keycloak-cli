@@ -9,13 +9,13 @@ timestamp: 2026-07-27T00:00:00Z
 # ISSUE 0002: Org-scoped groups
 
 - **Type**: feature
-- **Status**: in-progress
+- **Status**: done
 - **Priority**: medium
 - **Labels**: [admin, catalog, groups, organizations, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0001](0001-full-representation-collection-fetch.md) (its nested-collection extension closed Gap 1 below)
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: none
+- **Closing commits**: `8685d50` (regression tests + Gap 1 via nested collections), `5cacbd4` (nested `exact` assertion); released in `v1.2.0`
 
 ## Summary
 
@@ -127,7 +127,7 @@ create).
 - [x] Org-scoped subgroups (Gap 2) either traverse correctly via `/organizations/{org-id}/groups/{group-id}/children`, or are explicitly scoped out with the two-path-param limitation documented — **scoped out**, see the decision above.
 - [x] Org-group membership (Gap 3) either registered as a relationship kind, or explicitly scoped out with a documented reason — **scoped out**, see the decision above.
 - [x] `go vet ./...` clean.
-- [ ] Library version bumped and tagged for release.
+- [x] Library version bumped and tagged for release (`v1.2.0`). The version is injected from the tag by GoReleaser (`main.version`), so the tag *is* the bump — there is no in-repo version file.
 
 ## Out of Scope
 

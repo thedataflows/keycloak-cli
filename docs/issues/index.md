@@ -10,11 +10,12 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## In Progress
 
-* [ISSUE 0002](0002-org-scoped-groups.md) - Org-scoped groups as a parent-scoped resource; subgroup hierarchy and membership deferred
+*No issues in progress.*
 
 ## Done
 
 * [ISSUE 0001](0001-full-representation-collection-fetch.md) - Full-representation collection fetch (`briefRepresentation=false`) so `attributes` are returned
+* [ISSUE 0002](0002-org-scoped-groups.md) - Org-scoped groups as a parent-scoped resource; subgroup hierarchy and membership deferred
 
 ## Conventions
 
