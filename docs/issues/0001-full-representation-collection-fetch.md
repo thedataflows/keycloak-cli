@@ -9,13 +9,13 @@ timestamp: 2026-07-27T00:00:00Z
 # ISSUE 0001: Full-representation collection fetch
 
 - **Type**: feature
-- **Status**: in-progress
+- **Status**: done
 - **Priority**: high
 - **Labels**: [admin, fetch, enhancement]
 - **Assignee**: none
-- **Related**: none
+- **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (its Gap 1 closed with this issue's nested-collection extension)
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/admin/internal/client.go`](../../pkg/admin/internal/client.go), [`cmd/fetch.go`](../../cmd/fetch.go)
-- **Closing commits**: none
+- **Closing commits**: `8685d50` (implementation), `5cacbd4` (baseline corrections)
 
 ## Summary
 

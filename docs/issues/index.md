@@ -6,14 +6,15 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## Open
 
-* [ISSUE 0001](0001-full-representation-collection-fetch.md) - Full-representation collection fetch (`briefRepresentation=false`) so `attributes` are returned
-* [ISSUE 0002](0002-org-scoped-groups.md) - Org-scoped groups as a parent-scoped resource; subgroup hierarchy and membership deferred
+*No open issues.*
 
 ## In Progress
 
-*No issues in progress.*
+* [ISSUE 0002](0002-org-scoped-groups.md) - Org-scoped groups as a parent-scoped resource; subgroup hierarchy and membership deferred
 
 ## Done
+
+* [ISSUE 0001](0001-full-representation-collection-fetch.md) - Full-representation collection fetch (`briefRepresentation=false`) so `attributes` are returned
 
 ## Conventions
 
