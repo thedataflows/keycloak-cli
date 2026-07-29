@@ -287,6 +287,19 @@ func (s *service) fetchScopedChildren(ctx context.Context, childType, path strin
 		}
 	}
 
+	// Key a non-same-type child (e.g. an org group's members, which are users) to
+	// its immediate parent by that parent's own id. A same-type child (a nested
+	// group) is deliberately excluded: the field would collide with the child's own
+	// {group-id} placeholder on the next recursion and re-fetch the parent's
+	// children (ISSUE 0005 Gap 3 / ISSUE 0006).
+	if childType != parent.Type {
+		for field, value := range s.Spec().Resolver().ParentReferenceFields(path, parent.Type, parent) {
+			if _, ok := inheritedVals[field]; !ok {
+				inheritedVals[field] = value
+			}
+		}
+	}
+
 	resources := make([]manifest.Resource, len(raw))
 	for i, item := range raw {
 		for field, value := range inheritedVals {
