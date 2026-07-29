@@ -206,27 +206,21 @@ func (s *Spec) ScopedChildCollection(parentType, parentParentType, childType str
 	}
 	scoped := parentParentType != "" && parentParentType != parentType
 
-	for _, post := range contract.AllOperations[http.MethodPost] {
-		if !isCollectionEndpoint(post.Path) {
-			continue
-		}
-		getPath := findCollectionGetPath(contract.AllOperations[http.MethodGet], post.Path)
-		if getPath == "" {
-			continue
-		}
+	// match applies the placeholder-chain rule to one GET collection path: the
+	// trailing parent placeholder must be the parent's own type; a scoped parent
+	// additionally requires the placeholder before it to be the grandparent type,
+	// and inherits the leading (grandparent-chain) fields.
+	match := func(getPath string) (string, []string, bool) {
 		if _, ok := collectionPaths[getPath]; !ok {
-			continue
+			return "", nil, false
 		}
 		chain := parentPlaceholderChain(getPath, placeholderMap)
-		if len(chain) == 0 {
-			continue
-		}
-		if chain[len(chain)-1].ptype != parentType {
-			continue // immediate container must be the parent's own type
+		if len(chain) == 0 || chain[len(chain)-1].ptype != parentType {
+			return "", nil, false
 		}
 		if scoped {
 			if len(chain) < 2 || chain[len(chain)-2].ptype != parentParentType {
-				continue
+				return "", nil, false
 			}
 			inherited := make([]string, 0, len(chain)-1)
 			for _, p := range chain[:len(chain)-1] {
@@ -235,9 +229,35 @@ func (s *Spec) ScopedChildCollection(parentType, parentParentType, childType str
 			return getPath, inherited, true
 		}
 		if len(chain) != 1 {
-			continue // single-parent path only
+			return "", nil, false
 		}
 		return getPath, nil, true
+	}
+
+	// Prefer POST-created structural children (writable), mirroring BuildDownwardGraph.
+	for _, post := range contract.AllOperations[http.MethodPost] {
+		if !isCollectionEndpoint(post.Path) {
+			continue
+		}
+		getPath := findCollectionGetPath(contract.AllOperations[http.MethodGet], post.Path)
+		if getPath == "" {
+			continue
+		}
+		if p, inh, ok := match(getPath); ok {
+			return p, inh, ok
+		}
+	}
+	// Fall back to a read-only collection: a GET collection with no POST create,
+	// such as an organization group's members. This keeps the read channel able to
+	// reach GET-only scoped collections without touching the write-oriented
+	// relationship model (ISSUE 0007).
+	for _, get := range contract.AllOperations[http.MethodGet] {
+		if !isCollectionEndpoint(get.Path) {
+			continue
+		}
+		if p, inh, ok := match(get.Path); ok {
+			return p, inh, ok
+		}
 	}
 	return "", nil, false
 }

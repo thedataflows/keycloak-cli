@@ -30,6 +30,10 @@ func TestScopedChildCollection(t *testing.T) {
 			"/admin/realms/{realm}/groups/{group-id}/children", nil},
 		{"org group", "group", "organization", "group",
 			"/admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/children", []string{"orgId"}},
+		// GET-only read collection (org group members has no POST): the selector
+		// must still resolve it so the read channel can reach it (ISSUE 0007).
+		{"org group members", "group", "organization", "member",
+			"/admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/members", []string{"orgId"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
