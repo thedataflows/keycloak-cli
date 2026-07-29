@@ -15,7 +15,7 @@ timestamp: 2026-07-29T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) (the containment sibling — fixed org group *reads* to arbitrary depth via FetchChildren; this is the same gap for *membership*), [ISSUE 0002](0002-org-scoped-groups.md), [ISSUE 0005](0005-same-type-parent-binding.md), downstream consumer: iga-dash `syncengine/docs/issues/0026-org-group-membership-and-child-groups.md` (G1) and the nested-membership fixtures in its seeder
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go)
-- **Closing commits**: `3222fb0` (GET-only selector), `4642746` (FetchChildren members), `6e570a3` (depth exposure + read-only apply). Verified live. `v1.5.0` tag pending.
+- **Closing commits**: `3222fb0` (GET-only selector), `4642746` (FetchChildren members), `6e570a3` (depth exposure + read-only apply). Verified live. Released in `v1.5.0`.
 
 ## Summary
 
@@ -73,7 +73,7 @@ Either (implementer picks one, records the reasoning):
 - [x] Works at arbitrary depth, bounded only by the caller — `FetchChildren` selects the members path at every level via the scoped selector; also surfaced through `fetch --depth`
 - [x] Top-level org-group membership and realm-group membership are unchanged — no regression (relationship pass untouched; the 125-edge baseline is unchanged; realm membership still reads user-side)
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) — **pending: `v1.5.0` tag not yet pushed**
+- [x] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) — released in `v1.5.0`
 
 ## Out of Scope
 
