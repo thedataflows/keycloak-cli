@@ -48,12 +48,26 @@ type ApplyResult struct {
 
 func (s *service) Apply(ctx context.Context, resources []manifest.Resource, relationships []manifest.RelationshipOperation, options ApplyOptions) (ApplyReport, error) {
 	realmFinalization := make([]manifest.Resource, 0)
+	// "member" is a read-only artifact of an org-group members read (ISSUE 0007):
+	// the members endpoint is GET-only, so there is no write path. Filter such
+	// resources out of validation and apply entirely and record each as skipped —
+	// otherwise ValidateManifest mis-resolves them to the org-level members POST
+	// and rejects the body. (Org-level membership is written via the
+	// organization-member relationship, not as a member resource.)
+	readOnlyResources := make([]manifest.Resource, 0)
+	applyResources := make([]manifest.Resource, 0, len(resources))
 	for i := range resources {
+		resources[i].Data = sanitizeResourceData(resources[i].Type, resources[i].Data)
+		if resources[i].Type == "member" {
+			readOnlyResources = append(readOnlyResources, resources[i])
+			continue
+		}
 		if resources[i].Type == "realm" && realmHasDeferredConfig(resources[i].Data) {
 			realmFinalization = append(realmFinalization, resources[i])
 		}
-		resources[i].Data = sanitizeResourceData(resources[i].Type, resources[i].Data)
+		applyResources = append(applyResources, resources[i])
 	}
+	resources = applyResources
 	validationResources := make([]manifest.Resource, len(resources))
 	for i, r := range resources {
 		validationResources[i] = manifest.StripVolatileFields(r)
@@ -70,6 +84,15 @@ func (s *service) Apply(ctx context.Context, resources []manifest.Resource, rela
 	sorted := manifest.SortResources(resources, priorityMap)
 	report := ApplyReport{
 		Results: make([]ApplyResult, 0, len(sorted)+len(relationships)+len(realmFinalization)),
+	}
+	for _, r := range readOnlyResources {
+		report.Results = append(report.Results, ApplyResult{
+			Resource: r.Type,
+			Realm:    r.Realm,
+			Name:     s.resourceDisplayName(r),
+			Action:   "skipped",
+			Status:   http.StatusOK,
+		})
 	}
 	idMap := make(map[string]string)
 	resourceIndex := buildResourceIdentityIndex(sorted)

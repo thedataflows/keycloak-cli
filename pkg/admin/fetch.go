@@ -525,28 +525,17 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 			// the realm children path Keycloak rejects for org groups, and keeps the
 			// org scope marker so descent continues past one level (ISSUE 0006).
 			scoped := parent.ParentType != "" && parent.ParentType != parent.Type
-			for _, child := range children {
-				var (
-					fetched  []manifest.Resource
-					fetchErr error
-				)
-				if scoped {
-					path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, child.ChildType)
-					if !ok {
-						continue
-					}
-					fetched, fetchErr = s.fetchScopedChildren(ctx, child.ChildType, path, parent, inherited, nestedParams...)
-				} else {
-					fetched, fetchErr = s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent, nestedParams...)
-				}
+
+			// collect appends fetched children, deduped. The fetch helpers already
+			// tag Realm and ParentType (parent.Type for the structural case, the org
+			// scope for the scoped case); do not overwrite, or a scoped child would
+			// lose its organization marker and the next level would resolve to the
+			// realm children path.
+			collect := func(childType string, fetched []manifest.Resource, fetchErr error) {
 				if fetchErr != nil {
-					failures = append(failures, fetchFailure(child.ChildType, parent.Type+":"+parent.Identifier(), fetchErr))
-					continue
+					failures = append(failures, fetchFailure(childType, parent.Type+":"+parent.Identifier(), fetchErr))
+					return
 				}
-				// The fetch helpers already tag Realm and ParentType (parent.Type for
-				// the structural case, the org scope for the scoped case); do not
-				// overwrite, or a scoped child would lose its organization marker and
-				// the next level would resolve to the realm children path.
 				for i := range fetched {
 					key := resourceKey(fetched[i])
 					if _, ok := seen[key]; ok {
@@ -554,6 +543,31 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 					}
 					seen[key] = struct{}{}
 					levelResources = append(levelResources, fetched[i])
+				}
+			}
+
+			for _, child := range children {
+				if scoped {
+					path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, child.ChildType)
+					if !ok {
+						continue
+					}
+					fetched, fetchErr := s.fetchScopedChildren(ctx, child.ChildType, path, parent, inherited, nestedParams...)
+					collect(child.ChildType, fetched, fetchErr)
+				} else {
+					fetched, fetchErr := s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent, nestedParams...)
+					collect(child.ChildType, fetched, fetchErr)
+				}
+			}
+
+			// An org group also owns a GET-only members collection that is not a
+			// structural child (no POST), so it is absent from the downward graph.
+			// Surface it here so `fetch organization --depth N` reads members at every
+			// level, each keyed to its group (ISSUE 0007).
+			if scoped {
+				if path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, "member"); ok {
+					fetched, fetchErr := s.fetchScopedChildren(ctx, "member", path, parent, inherited, nestedParams...)
+					collect("member", fetched, fetchErr)
 				}
 			}
 		}
@@ -636,7 +650,16 @@ func indexResourcesByTypeRealm(resources []manifest.Resource) map[string]map[str
 }
 
 func resourceKey(r manifest.Resource) string {
-	return strings.Join([]string{r.Type, r.Realm, r.Identifier()}, "|")
+	key := strings.Join([]string{r.Type, r.Realm, r.Identifier()}, "|")
+	// A member is a membership edge, not a unique resource: the same user can
+	// belong to several org groups, so key it by its group too, otherwise depth
+	// dedup would collapse a user's memberships to one (ISSUE 0007).
+	if r.Type == "member" {
+		if gid, ok := r.Data["groupId"].(string); ok && gid != "" {
+			key += "|" + gid
+		}
+	}
+	return key
 }
 
 func filterResources(resources []manifest.Resource, filter string) []manifest.Resource {
