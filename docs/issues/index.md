@@ -6,7 +6,7 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## Open
 
-*No open issues.*
+* [ISSUE 0007](0007-org-group-membership-deep-nesting.md) - Organization-group membership is unreadable below the top level: the member read's parent index is the flat `/organizations/{org-id}/groups`, so members of nested org groups never surface (the membership sibling of ISSUE 0006)
 
 ## In Progress
 
