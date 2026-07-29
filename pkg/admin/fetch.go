@@ -505,15 +505,36 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 
 		for _, parent := range frontier {
 			children := downward[parent.Type]
+			// An org-scoped parent (its ParentType is a distinct grandparent type,
+			// e.g. a group under an organization) descends through the scoped child
+			// collection — the same mechanism FetchChildren uses — so the traversal
+			// follows /organizations/{org-id}/groups/{group-id}/children instead of
+			// the realm children path Keycloak rejects for org groups, and keeps the
+			// org scope marker so descent continues past one level (ISSUE 0006).
+			scoped := parent.ParentType != "" && parent.ParentType != parent.Type
 			for _, child := range children {
-				fetched, fetchErr := s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent, nestedParams...)
+				var (
+					fetched  []manifest.Resource
+					fetchErr error
+				)
+				if scoped {
+					path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, child.ChildType)
+					if !ok {
+						continue
+					}
+					fetched, fetchErr = s.fetchScopedChildren(ctx, child.ChildType, path, parent, inherited, nestedParams...)
+				} else {
+					fetched, fetchErr = s.fetchNestedResourceCollection(ctx, child.ChildType, child.Path, parent.Type, parent, nestedParams...)
+				}
 				if fetchErr != nil {
 					failures = append(failures, fetchFailure(child.ChildType, parent.Type+":"+parent.Identifier(), fetchErr))
 					continue
 				}
+				// The fetch helpers already tag Realm and ParentType (parent.Type for
+				// the structural case, the org scope for the scoped case); do not
+				// overwrite, or a scoped child would lose its organization marker and
+				// the next level would resolve to the realm children path.
 				for i := range fetched {
-					fetched[i].Realm = parent.Realm
-					fetched[i].ParentType = parent.Type
 					key := resourceKey(fetched[i])
 					if _, ok := seen[key]; ok {
 						continue
