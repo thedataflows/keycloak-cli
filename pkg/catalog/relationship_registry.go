@@ -347,6 +347,15 @@ func defaultRelationshipKinds() []RelationshipKind {
 		{"/clients/{client-uuid}/scope-mappings/realm", "client-realm-scope-mapping", "client", "role", "{realm}/clients/{client-uuid}/scope-mappings/realm", "POST", "", "", true, "", ""},
 		{"/clients/{client-uuid}/scope-mappings/clients/{client}", "client-client-scope-mapping", "client", "role", "{realm}/clients/{client-uuid}/scope-mappings/clients/{client}", "POST", "", "", true, "", ""},
 		{"/organizations/{org-id}/members", "organization-member", "organization", "user", "{realm}/organizations/{org-id}/members", "POST", "", "id", false, "{realm}/organizations/{org-id}/members/{member-id}", "member-id"},
+		// Organization group membership (group<->user). {org-id} is a path scope,
+		// not an edge endpoint; the edge legs are group and user. The write/delete
+		// address the single member path /.../members/{userId} (PUT/DELETE);
+		// the collection GET is read-only (ISSUE 0007/0008).
+		{"/organizations/{org-id}/groups/{group-id}/members", "organization-group-member", "group", "user", "{realm}/organizations/{org-id}/groups/{group-id}/members/{userId}", "PUT", "id", "", false, "", ""},
+		// Organization group containment (group<->group). No item param / payload
+		// field, so the fetched child item is handed back whole (a child group is an
+		// entity, not a bare edge) — ISSUE 0006/0008.
+		{"/organizations/{org-id}/groups/{group-id}/children", "organization-group-child", "group", "group", "{realm}/organizations/{org-id}/groups/{group-id}/children", "POST", "", "", false, "", ""},
 		{"/organizations/{org-id}/identity-providers", "organization-identity-provider", "organization", "identityprovider", "{realm}/organizations/{org-id}/identity-providers", "POST", "", "alias", false, "{realm}/organizations/{org-id}/identity-providers/{alias}", "alias"},
 		{"/default-groups", "default-group-membership", "realm", "group", "{realm}/default-groups/{groupId}", "PUT", "id", "", false, "", ""},
 		{"/default-default-client-scopes", "realm-default-client-scope", "realm", "clientscope", "{realm}/default-default-client-scopes/{clientScopeId}", "PUT", "id", "", false, "", ""},

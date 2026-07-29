@@ -19,6 +19,7 @@ var fallbackPlaceholderToResourceType = map[string]string{
 	"group-id":        "group",
 	"groupId":         "group",
 	"user-id":         "user",
+	"userId":          "user",
 	"alias":           "identityprovider",
 	"provider":        "identityprovider",
 	"role-name":       "role",

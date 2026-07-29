@@ -828,6 +828,10 @@ func defaultRelationshipParamTypes(kind string) map[string]string {
 		return map[string]string{"user-id": "user", "provider": "identityprovider"}
 	case "organization-member", "organization-identity-provider":
 		return map[string]string{"org-id": "organization"}
+	case "organization-group-member":
+		return map[string]string{"org-id": "organization", "group-id": "group", "userId": "user"}
+	case "organization-group-child":
+		return map[string]string{"org-id": "organization", "group-id": "group"}
 	default:
 		return nil
 	}
