@@ -6,7 +6,8 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## Open
 
-*No open issues.*
+* [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) - Parent-scoped collection fetch on the public `admin.Service` (one child collection of one parent, without the `Depth` fan-out)
+* [ISSUE 0004](0004-client-role-mapping-kinds-never-match-spec-path.md) - Client-scoped role-mapping kinds never match the spec path (`{client}` vs `{client-id}`), so their edges are silently never fetched
 
 ## In Progress
 
