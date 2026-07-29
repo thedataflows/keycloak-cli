@@ -9,13 +9,13 @@ timestamp: 2026-07-29T00:00:00Z
 # ISSUE 0005: Same-type parent binding on the resource channel (nested groups)
 
 - **Type**: feature
-- **Status**: open
+- **Status**: done
 - **Priority**: medium
 - **Labels**: [catalog, resolver, groups, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (deferred subgroup hierarchy; that gap is the two-*parent* case, this is the same-*type* single-parent case), [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (sibling parent-scoping work), downstream consumer: iga-dash `syncengine/docs/issues/0027-realm-group-subgroups-are-never-synced.md`
 - **Related code**: [`pkg/catalog/resolver.go`](../../pkg/catalog/resolver.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: none
+- **Closing commits**: `db1ed41` (option 1 + Gap 3 + update-body strip, verified live). `v1.3.0` tag pending.
 
 ## Summary
 
@@ -98,13 +98,13 @@ Today syncengine cannot use the resource channel for this and hand-builds a rela
 
 ## Acceptance Criteria
 
-- [ ] A `group` with `ParentType: "group"` creates via `POST /groups/{group-id}/children` with the parent id resolved from the parent binding and **stripped** from the request body (no `groupId` field on the wire) — proven by a test that validates the request body against the embedded spec, not only a fake `Apply`
-- [ ] Update and delete of a nested group resolve to `/groups/{group-id}` addressing the group **by its own id**, never the parent's, even when a parent id is present in the resource's `Data` (Gap 3) — guarded by a test, because the failure mode is destructive
-- [ ] The structural read is unchanged: `group → /groups/{group-id}/children` is still in `BuildDownwardGraph`, and a `Depth: 1` group fetch still returns subgroups with `ParentType: "group"`, `description` and `attributes` intact — the fix must not register the path as a relationship kind
-- [ ] Resolver behaviour pinned by tests, mirroring `pkg/catalog/org_scoped_groups_test.go`: `("group", "group", POST, collection)` → `/groups/{group-id}/children` with `group-id` treated as a parent reference (rendered, stripped); `("group", "", …)` still → `/groups` and `/groups/{group-id}` (no contamination)
-- [ ] Realm-group, org-scoped-group and client-scoped-role behaviour unchanged — no regression from narrowing/removing the type guard (record what every other same-type nesting in the spec resolves to, rather than assuming there are none)
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together or the workspace build breaks
+- [x] A `group` with `ParentType: "group"` creates via `POST /groups/{group-id}/children` with the parent id resolved from the parent binding and **stripped** from the request body (no `groupId` field on the wire) — `TestApplyNestedRealmGroupStripsParentBindingFromBody` validates the body against the embedded spec; verified live (create `201`)
+- [x] Update and delete of a nested group resolve to `/groups/{group-id}` addressing the group **by its own id**, never the parent's, even when a parent id is present in the resource's `Data` (Gap 3) — guarded by `TestNestedGroupUpdateDeleteAddressOwnID` and the apply tests; verified live (update `204`, parent intact)
+- [x] The structural read is unchanged: `group → /groups/{group-id}/children` is still in `BuildDownwardGraph` (`TestNestedGroupReadEdgeUnchanged`); the fix does not register the path as a relationship kind
+- [x] Resolver behaviour pinned by tests: `("group", "group", POST, collection)` → `/groups/{group-id}/children` with `group-id` a rendered-and-stripped parent reference; `("group", "", …)` still → `/groups` and `/groups/{group-id}` (`same_type_parent_test.go`)
+- [x] Realm-group, org-scoped-group and client-scoped-role behaviour unchanged — no regression; every same-type nesting in the spec is recorded by `TestSameTypeParentNestingsAreRecorded` (only the realm children path is resource-channel reachable)
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -117,3 +117,19 @@ Today syncengine cannot use the resource channel for this and hand-builds a rela
 - **Why a fake test is not enough.** The downstream consumer's first live push failed exactly here while every fake-backed unit test passed — a fake `Apply` validates no body. Both children write paths in iga-dash now have a spec-validation test over the exact operation on the wire; that is the pattern to copy.
 - The realm children path and the single-group path sharing the `{group-id}` token (Gap 3) is the sharpest hazard: a fix that is correct for create but sloppy about update/delete precedence is worse than the current hardcode, because it can delete a parent subtree. Lead with that test.
 - The org-scoped children path (`/organizations/{org-id}/groups/{group-id}/children`) is *not* covered by this issue and would still need the two-parent model — but note that its parent placeholders are `organization` + `group`, so the same-type guard does not bite there the way it does on the realm path.
+
+### Implementation notes (resolved)
+
+- **Chose option 1** (narrow the type guard), the smallest change: dropped the `parentType == resourceType` clause in `ParentReferenceFieldNames` and rely on the existing `skipPrimary` position guard to protect the resource's own id. Recorded every same-type nesting in the 26.6.2 spec (`TestSameTypeParentNestingsAreRecorded`): only `group → /groups/{group-id}/children` is reachable via the resource channel; the two-parent org children path and the `client → registration-access-token` sub-action are not resolved by any canonical create, so the narrowing does not regress them.
+- **Gap 3 was worse than the issue framed it — it also bites *create*.** The create-time existence probe (`resolveExistingResource` → single GET) resolves `{group-id}` with no own id yet; before the fix it fell through to the camel `groupId` (the parent) and would probe — then update — the parent. The fix makes the self placeholder on a single-resource path resolve **only** from the resource's own identifier (or an exact-kebab field), never the camel/parent-binding form. This covers update, delete, and the create probe. Exact-kebab overrides (`data["user-id"]`) still win, and the "primary is always present" contract is preserved.
+- **Live testing found a second body leak the create-only view missed.** On the
+  single-resource PUT the parent placeholder `{group-id}` *is* the self id, so
+  `groupId` is invisible to the single contract and leaked into the update body —
+  a live update failed `400 Unrecognized field "groupId"` (the parent stayed
+  intact, so Gap 3's path precedence held; only the body was wrong). Fixed in
+  `sanitizeResourcePayload`: when `ParentType` is set, also strip the
+  *nested-create* contract's parent-reference fields on every write, since the
+  binding is a property of the create endpoint, not the method. Guarded by
+  `TestApplyNestedRealmGroupUpdateAddressesChildAndStripsParentBinding`.
+- Tests: resolver pins + Gap 3 destructive-path guard (`same_type_parent_test.go`), the nesting record (`same_type_parent_internal_test.go`), and end-to-end applies that validate the create *and* update bodies against the embedded spec — `groupId` absent on the wire — and assert no write ever touches the parent (`apply_nested_group_test.go`).
+- **Verified live** against Keycloak 26.6.3 (realm `claude-0005-test`, throwaway): create `201`, idempotent update `204`, parent group intact after the child update, child re-parented attributes applied. Full create→update cycle through the resource channel with no hand-built relationship operation.

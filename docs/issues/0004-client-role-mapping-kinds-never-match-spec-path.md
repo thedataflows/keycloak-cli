@@ -9,13 +9,13 @@ timestamp: 2026-07-28T00:00:00Z
 # ISSUE 0004: Client-scoped role-mapping kinds never match the spec path ({client} vs {client-id})
 
 - **Type**: bug
-- **Status**: open
+- **Status**: done
 - **Priority**: high
 - **Labels**: [catalog, relationships, bug]
 - **Assignee**: none
 - **Related**: [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (same consumer, different gap), downstream consumer: iga-dash `syncengine/docs/issues/0022-client-roles-never-synced-to-target-realm.md`
 - **Related code**: [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go), [`pkg/catalog/relationship_patterns.go`](../../pkg/catalog/relationship_patterns.go)
-- **Closing commits**: none
+- **Closing commits**: `db1ed41` (fix + tests, verified live). `v1.3.0` tag pending.
 
 ## Summary
 
@@ -73,14 +73,14 @@ An unclassified relationship path is indistinguishable from "this realm has no s
 
 ## Acceptance Criteria
 
-- [ ] The four `{client}` registry paths match the loaded spec, so `Registry.ByPath` resolves them (rename to `{client-id}`, or normalise client placeholder aliases in `normalizeReadPath` — the alias route also covers a future spec that renames the segment again)
-- [ ] A `--relationships` fetch of a realm where a user and a group each hold a client role returns `user-client-role-mapping` and `group-client-role-mapping` edges, with the owning client in `PathParams` and the role in the bulk payload
-- [ ] `client-scope-client-role-mapping` and `client-client-scope-mapping` resolve too, or are explicitly scoped out with a reason
-- [ ] Apply round-trips the recovered edges: link and unlink against `/users/{user-id}/role-mappings/clients/{client-id}` (bulk POST / DELETE)
-- [ ] A test asserts every registry `ReadPath` resolves against the embedded spec, so a placeholder that exists in no spec path fails the suite instead of silently disabling a kind — this is the criterion that prevents the next instance of this bug
-- [ ] Realm-role mappings and the currently-working kinds are unchanged (no regression in the 123-edge baseline above, plus the newly recovered edges)
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release so iga-dash can bump. Reminder: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, root `go work vendor`) and all three must be regenerated together
+- [x] The `{client}` registry paths match the loaded spec, so `Registry.ByPath` resolves them — the guardrail test proved only the two role-mapping kinds actually mismatched; renamed those to `{client-id}` (the two scope-mapping kinds already matched)
+- [x] A `--relationships` fetch of a realm where a user and a group each hold a client role returns `user-client-role-mapping` and `group-client-role-mapping` edges, with the owning client in `PathParams` and the role in the bulk payload — verified live on `sync-source`
+- [x] `client-scope-client-role-mapping` and `client-client-scope-mapping` resolve too — they already used the spec's `{client}` placeholder and were never broken (recorded by the guardrail test)
+- [x] Apply round-trips the recovered edges: link and unlink against `/users/{user-id}/role-mappings/clients/{client-id}` (bulk POST / DELETE) — `TestClientRoleMappingApplyRoundTripsAgainstSpec`
+- [x] A test asserts every registry `ReadPath` resolves against the embedded spec, so a placeholder that exists in no spec path fails the suite instead of silently disabling a kind (`TestEveryRegistryReadPathResolvesAgainstSpec`)
+- [x] Realm-role mappings and the currently-working kinds are unchanged (no regression; live baseline moved from 123 to 125 = the 2 newly recovered edges)
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release so iga-dash can bump. Reminder: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, root `go work vendor`) and all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -92,3 +92,10 @@ An unclassified relationship path is indistinguishable from "this realm has no s
 
 - Suggested fix shape, if the alias route is taken: teach `normalizeReadPath` a placeholder-alias table (`client-id` → `client`, applied to both the registry key and the incoming spec path) rather than editing four string literals. The registry then keeps one canonical placeholder name per resource while tolerating spec renames — which is what bit here.
 - Worth checking the same class of mismatch across the whole registry as part of the fix: the acceptance criterion above (assert every `ReadPath` resolves against the spec) will surface any other silently-dead kind in one run.
+
+### Implementation notes (resolved)
+
+- **Scope was narrower than stated.** The guardrail test (`TestEveryRegistryReadPathResolvesAgainstSpec`) proved only **two** of the four kinds actually mismatch: `user-client-role-mapping` and `group-client-role-mapping` use `{client-id}` in the 26.6.2 spec. The two scope-mapping kinds (`client-scope-client-role-mapping`, `client-client-scope-mapping`) use `{client}` in the spec too, so they already resolved — their absence from the live sample was simply an empty realm, not a dead kind. Fixed by renaming the two role-mapping `ReadPath`/`WriteTemplate` literals to `{client-id}` (the rename route, not the alias table — it keeps the registry spec-accurate like the rest of the placeholders and the guardrail test is the real safety net against future renames).
+- Supporting changes: added `client-id → client` to `fallbackPlaceholderToResourceType` and `client-id` to `paramNameByResourceType["client"]` (admin) so the `(parent × client)` fetch iteration renders the param; added the two kinds to `defaultRelationshipParamTypes` and the role-payload round-trip switch in `manifest` for cross-realm parity with the sibling client-role kinds.
+- Tests: guardrail (`relationship_registry_test.go`), discovery (`TestClientRoleMappingKindsDiscovered`), apply spec-validation of link/unlink (`TestClientRoleMappingApplyRoundTripsAgainstSpec`).
+- **Verified live** against the running Keycloak 26.6.3, realm `sync-source`: `fetch user,role,client,group --relationships` now returns `user-client-role-mapping` and `group-client-role-mapping` edges (total 125 = the prior 123 baseline + the 2 recovered edges), each with the owning client rendered into the `{client-id}` path segment.

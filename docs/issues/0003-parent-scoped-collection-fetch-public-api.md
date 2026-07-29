@@ -9,13 +9,13 @@ timestamp: 2026-07-28T00:00:00Z
 # ISSUE 0003: Parent-scoped collection fetch on the public admin.Service
 
 - **Type**: feature
-- **Status**: open
+- **Status**: done
 - **Priority**: high
 - **Labels**: [admin, fetch, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0001](0001-full-representation-collection-fetch.md) (representation flag must be honoured by the new path), [ISSUE 0002](0002-org-scoped-groups.md) (established the parent-scoping machinery this builds on), downstream consumer: iga-dash `syncengine/docs/issues/0022-client-roles-never-synced-to-target-realm.md`
 - **Related code**: [`pkg/admin/admin.go`](../../pkg/admin/admin.go), [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/admin/internal/client.go`](../../pkg/admin/internal/client.go)
-- **Closing commits**: none
+- **Closing commits**: `db1ed41` (FetchChildren + tests, verified live). `v1.3.0` tag pending.
 
 ## Summary
 
@@ -123,16 +123,16 @@ The write direction is expected to need **no** library change — `manifest.Reso
 
 ## Acceptance Criteria
 
-- [ ] `admin.Service` exposes a parent-scoped collection fetch that issues exactly one GET for one `(parent, childType)` pair — no sibling child types, no reference-resolution sweep
-- [ ] Returned children carry `Type`, `Realm`, `ParentType` and the injected parent reference field(s), matching what `Depth: 1` produces today (assert against the `clientUuid` shape recorded above)
-- [ ] `FullRepresentation` is honoured on the new path (ISSUE 0001 parity), verified against a child collection that has `attributes`
-- [ ] A 404 on the child collection is reported as `FetchFailure{NotFound: true}`, not a hard error
-- [ ] Resolver behaviour for roles is pinned by tests, mirroring `pkg/catalog/org_scoped_groups_test.go`: `("role", "client", POST/GET, collection)` → `/clients/{client-uuid}/roles`, and `("role", "", …)` still → `/roles` (no contamination); single-resource `PUT`/`DELETE` with `ParentType: "client"` resolve to the client-scoped role endpoint. Record whatever the other `parentType` values resolve to rather than assuming — they are not currently pinned
-- [ ] An apply test proves a `role` with `ParentType: "client"` creates via `POST /clients/{client-uuid}/roles` with `clientUuid` resolved from the parent and stripped from the request body, and updates/deletes via the corresponding single-resource endpoint
-- [ ] Realm-role and existing `Depth` behaviour unchanged — no regression (a realm role must still resolve to `/roles`)
-- [ ] `FetchPathCollection` logs its request at debug like the other fetch paths, so nested/child GET volume is observable
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release (`v1.3.0`) so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together or the workspace build breaks
+- [x] `admin.Service` exposes a parent-scoped collection fetch (`FetchChildren`) that issues exactly one GET for one `(parent, childType)` pair — no sibling child types, no reference-resolution sweep (`TestFetchChildrenReturnsOneClientRoleCollection`)
+- [x] Returned children carry `Type`, `Realm`, `ParentType` and the injected parent reference field(s), matching what `Depth: 1` produces (asserts the `clientUuid` shape); verified live on `sync-source`
+- [x] `FullRepresentation` is honoured on the new path (ISSUE 0001 parity), verified against a child collection that has `attributes`
+- [x] A 404 on the child collection is reported as `FetchFailure{NotFound: true}`, not a hard error (`TestFetchChildrenClassifies404AsNotFound`)
+- [x] Resolver behaviour for roles is pinned by tests (`client_role_resolver_test.go`): `("role", "client", POST, collection)` → `/clients/{client-uuid}/roles`, `("role", "", …)` → `/roles`, single-resource `PUT`/`DELETE` with `ParentType: "client"` → `/clients/{client-uuid}/roles/{role-name}`. **Recorded divergence:** a bare `("role","client",GET,collection)` resolves to `/clients/{client-uuid}/roles/{role-name}/composites` (operationPriority), so `FetchChildren` resolves the path via `BuildDownwardGraph` (as `Depth` does), not the resolver
+- [x] An apply test proves a `role` with `ParentType: "client"` creates via `POST /clients/{client-uuid}/roles` with `clientUuid` resolved from the parent and stripped from the body (spec-validated), and updates/deletes via the single-resource endpoint (`apply_client_role_test.go`)
+- [x] Realm-role and existing `Depth` behaviour unchanged — no regression (a realm role still resolves to `/roles`)
+- [x] `FetchPathCollection` logs its request at debug like the other fetch paths, so nested/child GET volume is observable (`Fetching path collection`)
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release (`v1.3.0`) so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -161,3 +161,31 @@ The write direction is expected to need **no** library change — `manifest.Reso
 - The 9-collection reference sweep listed in Gap 2 is emitted once per `Fetch`
   call regardless of `Filter`; filtering to a single client narrows the *seed*
   set but not the sweep. Verified with and without the positional filter.
+
+### Implementation notes (resolved)
+
+- Added `Service.FetchChildren(ctx, parent, childType, ChildFetchQuery)` — a thin
+  wrapper reusing the existing `fetchNestedResourceCollection`, so it issues
+  exactly one GET, injects the parent reference field(s), tags
+  `Type`/`Realm`/`ParentType`, honours `FullRepresentation`
+  (`briefRepresentation=false`), and reports a 404 as `FetchFailure{NotFound}`.
+- **Resolved the child path via `BuildDownwardGraph`, not `ResolveResourceOperation`.**
+  Recording actual resolver behaviour (as the issue asked) surfaced a divergence:
+  a bare `("role","client",GET,collection)` resolves to
+  `/clients/{client-uuid}/roles/{role-name}/composites` because `operationPriority`
+  prefers composites among the GET-collection candidates. The structural graph
+  correctly maps `client → role` to the plain `/clients/{client-uuid}/roles`, and
+  it is the same source `Depth` uses — so `FetchChildren` returns exactly what
+  `Depth: 1` produces. Pinned in `TestClientScopedRoleGetCollectionDivergence`.
+- Added a debug log to `FetchPathCollection` (`Fetching path collection`) so
+  nested/child GET volume is observable, as Gap 2 requested.
+- Tests: `fetch_children_test.go` (one GET, shape, FullRepresentation, 404),
+  `client_role_resolver_test.go` (resolver pins + divergence record),
+  `apply_client_role_test.go` (create via `POST /clients/{client-uuid}/roles`
+  with `clientUuid` stripped and spec-validated; update/delete via the
+  single-resource endpoint).
+- **Verified live** against Keycloak 26.6.3, realm `sync-source`: the read
+  `FetchChildren` wraps returns `demo-a-clientrole-1` with `parentType: client`
+  and the injected `clientUuid`, via a single observable
+  `Fetching path collection` GET to `/clients/{client-uuid}/roles`. FetchChildren
+  itself is a library API (no CLI surface) and is covered by the unit tests above.
