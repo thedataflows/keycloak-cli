@@ -128,3 +128,13 @@ Whichever lands, note the terminator: org groups expose **no `subGroupCount`** a
   `FetchChildren` recursion from `demo-a-orggroup-1` reached `demo-a-orgchild-1`
   (depth 1) then `demo-a-orggrandchild-1` (depth 2), terminating at depth 3 — the
   grandchild the repro above shows as unreachable at any `Depth`.
+- **Follow-up: the `Depth` traversal now descends org hierarchies too** (so the
+  capability is reachable from the CLI's `fetch --depth`, not only the
+  library-level `FetchChildren`). `fetchDepthLevels` routes an org-scoped parent
+  through the same scoped selection + `fetchScopedChildren`, preserving the
+  `ParentType: organization` marker and `orgId` down the tree, so descent
+  continues past one level instead of 400ing on the realm children path. Verified
+  live: `fetch organization demo-a-org-1 --realm sync-source --depth 3` returns
+  `demo-a-orggrandchild-1`. Pinned by `TestFetchDepthDescendsOrgGroupHierarchy`.
+  (Original repro table above predates this — it reflects the override-based
+  `Depth` behaviour, which this change supersedes for org groups.)
