@@ -210,32 +210,24 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 // fan-out or realm-wide reference-resolution sweep. parent must carry enough
 // identity to render the nested path (typically Realm + Data["id"]).
 //
-// Returned children carry Type=childType, Realm=parent.Realm,
-// ParentType=parent.Type and the injected parent reference field(s), matching
-// what Fetch with Depth: 1 produces. A 404 on the child collection is reported as
-// a FetchFailure{NotFound: true} rather than a hard error, consistent with the
-// depth traversal, so an absent optional collection is benign for the caller.
+// Returned children carry Type=childType, Realm=parent.Realm, the parent's scope
+// in ParentType, and the parent reference field(s) needed to re-fetch or apply
+// them, matching what Fetch with Depth: 1 produces. A 404 on the child collection
+// is reported as a FetchFailure{NotFound: true} rather than a hard error,
+// consistent with the depth traversal, so an absent optional collection is
+// benign for the caller.
+//
+// The child collection path is selected by matching the parent's placeholder
+// chain (Spec.ScopedChildCollection), which reaches two-parent paths the deduped
+// downward graph collapses — an organization group's children live at
+// /organizations/{org-id}/groups/{group-id}/children. A caller recurses by
+// passing each returned child straight back in; org groups keep
+// ParentType=organization (a scope marker) at every level so descent terminates
+// only on an empty read.
 func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, childType string, query ChildFetchQuery) (FetchReport, error) {
-	// Resolve the child collection path from the structural downward graph, the
-	// same source Depth uses, so FetchChildren returns exactly what Depth: 1
-	// would for this (parent, childType). The graph distinguishes the plain child
-	// collection (/clients/{client-uuid}/roles) from same-named endpoints that the
-	// resolver's operationPriority would otherwise prefer for a bare GET — e.g.
-	// role under client also matches /clients/{client-uuid}/roles/{role-name}/composites,
-	// which is a child of role, not client.
-	graph, err := s.Spec().BuildDownwardGraph()
-	if err != nil {
-		return FetchReport{}, fmt.Errorf("build downward graph: %w", err)
-	}
-	path := ""
-	for _, child := range graph[parent.Type] {
-		if child.ChildType == childType {
-			path = child.Path
-			break
-		}
-	}
-	if path == "" {
-		return FetchReport{}, fmt.Errorf("no structural child collection %q under parent %q", childType, parent.Type)
+	path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, childType)
+	if !ok {
+		return FetchReport{}, fmt.Errorf("no child collection %q under parent %q", childType, parent.Type)
 	}
 
 	var params []map[string]string
@@ -243,7 +235,19 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 		params = []map[string]string{{"briefRepresentation": "false"}}
 	}
 
-	fetched, fetchErr := s.fetchNestedResourceCollection(ctx, childType, path, parent.Type, parent, params...)
+	// An org-scoped parent (its ParentType is a distinct grandparent type, e.g.
+	// organization) needs the grandparent chain (orgId) propagated to children and
+	// the scope marker preserved so recursion keeps selecting the org path. The
+	// single-parent case keeps the existing immediate parent-reference injection.
+	var (
+		fetched  []manifest.Resource
+		fetchErr error
+	)
+	if parent.ParentType != "" && parent.ParentType != parent.Type {
+		fetched, fetchErr = s.fetchScopedChildren(ctx, childType, path, parent, inherited, params...)
+	} else {
+		fetched, fetchErr = s.fetchNestedResourceCollection(ctx, childType, path, parent.Type, parent, params...)
+	}
 	if fetchErr != nil {
 		logFetchError(childType+" under "+parent.Type, fetchErr)
 		return FetchReport{
@@ -251,6 +255,53 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 		}, nil
 	}
 	return FetchReport{Resources: fetched}, nil
+}
+
+// fetchScopedChildren fetches a child collection under an org-scoped parent. It
+// tags children with the parent's scope (ParentType) and copies the inherited
+// grandparent-chain fields (orgId) from the parent, but deliberately injects no
+// immediate parent id: on the org children path {group-id} is a collection
+// placeholder rendered from the parent's own id, and a groupId in the child's
+// data would win via camel-case lookup and re-fetch the parent's children
+// (the ISSUE 0005 Gap 3 hazard, on a collection path). Children are identified by
+// (orgId, own id, ParentType).
+func (s *service) fetchScopedChildren(ctx context.Context, childType, path string, parent manifest.Resource, inherited []string, params ...map[string]string) ([]manifest.Resource, error) {
+	contract := catalog.OperationContract{Path: path, Method: http.MethodGet}
+	scope, err := s.Spec().Resolver().PathParams(parent, contract)
+	if err != nil {
+		return nil, err
+	}
+
+	operationCtx, cancel := s.operationContext(ctx)
+	defer cancel()
+
+	raw, err := s.specClient.FetchPathCollection(operationCtx, path, scope, params...)
+	if err != nil {
+		return nil, classifyError(err, 0, "fetch", childType)
+	}
+
+	inheritedVals := make(map[string]string, len(inherited))
+	for _, field := range inherited {
+		if v, ok := parent.Data[field].(string); ok && v != "" {
+			inheritedVals[field] = v
+		}
+	}
+
+	resources := make([]manifest.Resource, len(raw))
+	for i, item := range raw {
+		for field, value := range inheritedVals {
+			if _, ok := item[field]; !ok {
+				item[field] = value
+			}
+		}
+		resources[i] = manifest.Resource{
+			Type:       childType,
+			Realm:      parent.Realm,
+			ParentType: parent.ParentType,
+			Data:       item,
+		}
+	}
+	return resources, nil
 }
 
 func (s *service) fetchRealms(ctx context.Context, realm string) ([]manifest.Resource, error) {
