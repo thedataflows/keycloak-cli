@@ -9,13 +9,14 @@ timestamp: 2026-07-29T00:00:00Z
 # ISSUE 0006: Organization-scoped group hierarchies are unreachable below one level
 
 - **Type**: feature
-- **Status**: open
+- **Status**: done
 - **Priority**: medium
 - **Labels**: [admin, catalog, groups, organizations, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (deferred the org subgroup hierarchy — this is that gap, now with a concrete consumer and a repro), [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (the parent-scoped-fetch shape a fix likely extends), [ISSUE 0005](0005-same-type-parent-binding.md) (the realm half of deep group nesting, which is reachable and fixed), downstream consumer: iga-dash `syncengine/docs/plans/2026-07-29-nested-group-hierarchy.md` (Task 4 spike) and `syncengine/docs/issues/0027-realm-group-subgroups-are-never-synced.md`
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: none
+- **Closing commits**: `ed1034c` (scoped selector), `77eabee` (FetchChildren routing), `ab907f6` (AC3 confirmation). Verified live. `v1.4.0` tag pending.
+- **Design**: [spec](../superpowers/specs/2026-07-29-org-group-deep-nesting-design.md), [plan](../superpowers/plans/2026-07-29-org-group-deep-nesting.md)
 
 ## Summary
 
@@ -75,12 +76,12 @@ Whichever lands, note the terminator: org groups expose **no `subGroupCount`** a
 
 ## Acceptance Criteria
 
-- [ ] A grandchild under an org child (`/organizations/{org-id}/groups/{parent}/{child}/{grandchild}`) is reachable through a supported `admin.Service` API, returned with `ParentType`/parent-reference identifying its immediate parent — verified against the fixture above (two grandchildren, one per top-level org group)
-- [ ] Arbitrary depth works, not just two levels (a great-grandchild is reachable by the same mechanism), bounded only by the caller
-- [ ] The org children **create** path (`POST /organizations/{org-id}/groups/{group-id}/children` with `{group-id}` = an org *child*) is confirmed to nest under a child, not only a top-level org group — pin it with a test (the read is the blocker; confirm the write is not a second one)
-- [ ] Realm group nesting (ISSUE 0005) and one-level org groups (ISSUE 0002) are unchanged — no regression
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`; note the three vendor trees must be regenerated together (`igadash/vendor` is currently absent — `syncengine/vendor` + the root `go work vendor`)
+- [x] A grandchild under an org child is reachable through a supported `admin.Service` API (`FetchChildren`), returned tagged `ParentType: organization` (scope marker) with `orgId` propagated — **verified live** against `sync-source`: `demo-a-orggroup-1 → demo-a-orgchild-1 → demo-a-orggrandchild-1` reached with **no** relationship override registered
+- [x] Arbitrary depth works, bounded only by the caller: `FetchChildren` selects the org children path at every level and the caller recurses, terminating on an empty read (great-grandchildren reachable by the same mechanism — pinned by `TestFetchChildrenWalksOrgGroupHierarchy`)
+- [x] The org children **create** path (`POST /organizations/{org-id}/groups/{group-id}/children` with `{group-id}` = an org *child*) is confirmed to nest under a child, not only a top-level org group (`TestOrgChildrenCreateNestsUnderChild`). Full resource-channel *writes* of grandchildren remain out of scope — the read was the blocker
+- [x] Realm group nesting (ISSUE 0005) and one-level org groups (ISSUE 0002) are unchanged — no regression (selector reproduces every prior `FetchChildren` result; realm/client suites green)
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`; note the three vendor trees must be regenerated together (`igadash/vendor` is currently absent — `syncengine/vendor` + the root `go work vendor`) — **pending: `v1.4.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -101,3 +102,29 @@ Whichever lands, note the terminator: org groups expose **no `subGroupCount`** a
   ```
   Each depth returns the same two first-level children; the grandchild is absent.
 - The org children collection advertises no hierarchy signal (`subGroupCount: null`, `subGroups: []`), unlike realm groups — worth surfacing whatever `subGroupCount`/`subGroupsCount` Keycloak *does* expose on the org path so a consumer can avoid a GET on a known-leaf, but the blocker is reachability, not the terminator.
+
+### Implementation notes (resolved)
+
+- **Approach: native + caller-driven** (option 1). `FetchChildren` now selects the
+  child collection path via a placeholder-chain matcher
+  (`Spec.ScopedChildCollection`) instead of the deduped `BuildDownwardGraph`. For an
+  org-scoped parent (`Type: group`, `ParentType: organization`) it selects
+  `/organizations/{org-id}/groups/{group-id}/children`, rendering `org-id` from the
+  parent's `orgId` and `group-id` from the parent's own id. **No consumer override
+  is required** — the library reaches org hierarchies out of the box.
+- **`ParentType: "organization"` is a scope marker at every level.** Children are
+  tagged `ParentType: organization` and inherit the constant `orgId`, so a returned
+  grandchild is a valid parent for the next `FetchChildren` call — recursion to any
+  depth, terminating on an empty read. Deliberately **no** `groupId` is injected:
+  on the org children collection path a stray `groupId` would win via camel-case
+  lookup and re-fetch the *parent's* children (the ISSUE 0005 Gap 3 hazard on a
+  collection path).
+- **Bonus:** the chain matcher also removed the ISSUE 0003 composites divergence —
+  `client → role` no longer needs the `BuildDownwardGraph` workaround, because the
+  composites path's trailing placeholder is `role`, not `client`.
+- **Write (AC #3)** confirmed at the spec level only; full resource-channel writes
+  of grandchildren stay out of scope (the read was the blocker).
+- **Verified live** against Keycloak 26.6.3, realm `sync-source`, with no override:
+  `FetchChildren` recursion from `demo-a-orggroup-1` reached `demo-a-orgchild-1`
+  (depth 1) then `demo-a-orggrandchild-1` (depth 2), terminating at depth 3 — the
+  grandchild the repro above shows as unreachable at any `Depth`.
