@@ -159,6 +159,89 @@ func (s *Spec) BuildDownwardGraph() (map[string][]DownwardChild, error) {
 	return graph, nil
 }
 
+type placeholderRef struct {
+	param string
+	ptype string
+}
+
+// parentPlaceholderChain returns the ordered non-realm path placeholders of a
+// collection path with their resource types.
+func parentPlaceholderChain(path string, placeholderMap map[string]string) []placeholderRef {
+	var chain []placeholderRef
+	for _, param := range extractPathParams(path) {
+		if param == "realm" {
+			continue
+		}
+		chain = append(chain, placeholderRef{param: param, ptype: placeholderMap[param]})
+	}
+	return chain
+}
+
+// ScopedChildCollection selects the GET collection path for childType nested
+// directly under a parent whose own type is parentType and whose parent type is
+// parentParentType. It matches by placeholder chain rather than the deduped
+// downward graph, so it can reach two-parent paths the graph collapses (an
+// organization group's children). It returns the path and the camel-case
+// grandparent-chain fields the child inherits from the parent (constant down the
+// subtree). ok is false when no matching collection exists.
+func (s *Spec) ScopedChildCollection(parentType, parentParentType, childType string) (string, []string, bool) {
+	contracts, err := s.ResourceContracts()
+	if err != nil {
+		return "", nil, false
+	}
+	placeholderMap, err := s.PlaceholderToResourceType()
+	if err != nil {
+		return "", nil, false
+	}
+	for k, v := range fallbackPlaceholderToResourceType {
+		if _, ok := placeholderMap[k]; !ok {
+			placeholderMap[k] = v
+		}
+	}
+	collectionPaths := s.collectionGetPaths()
+
+	contract, ok := contracts[childType]
+	if !ok {
+		return "", nil, false
+	}
+	scoped := parentParentType != "" && parentParentType != parentType
+
+	for _, post := range contract.AllOperations[http.MethodPost] {
+		if !isCollectionEndpoint(post.Path) {
+			continue
+		}
+		getPath := findCollectionGetPath(contract.AllOperations[http.MethodGet], post.Path)
+		if getPath == "" {
+			continue
+		}
+		if _, ok := collectionPaths[getPath]; !ok {
+			continue
+		}
+		chain := parentPlaceholderChain(getPath, placeholderMap)
+		if len(chain) == 0 {
+			continue
+		}
+		if chain[len(chain)-1].ptype != parentType {
+			continue // immediate container must be the parent's own type
+		}
+		if scoped {
+			if len(chain) < 2 || chain[len(chain)-2].ptype != parentParentType {
+				continue
+			}
+			inherited := make([]string, 0, len(chain)-1)
+			for _, p := range chain[:len(chain)-1] {
+				inherited = append(inherited, kebabToCamelCase(p.param))
+			}
+			return getPath, inherited, true
+		}
+		if len(chain) != 1 {
+			continue // single-parent path only
+		}
+		return getPath, nil, true
+	}
+	return "", nil, false
+}
+
 // collectionGetPaths returns the set of GET paths that return an array response.
 func (s *Spec) collectionGetPaths() map[string]struct{} {
 	paths := make(map[string]struct{})
