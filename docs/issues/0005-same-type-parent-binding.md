@@ -15,7 +15,7 @@ timestamp: 2026-07-29T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (deferred subgroup hierarchy; that gap is the two-*parent* case, this is the same-*type* single-parent case), [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (sibling parent-scoping work), downstream consumer: iga-dash `syncengine/docs/issues/0027-realm-group-subgroups-are-never-synced.md`
 - **Related code**: [`pkg/catalog/resolver.go`](../../pkg/catalog/resolver.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: `db1ed41` (option 1 + Gap 3 + update-body strip, verified live). `v1.3.0` tag pending.
+- **Closing commits**: `db1ed41` (option 1 + Gap 3 + update-body strip, verified live). Released in `v1.3.0`.
 
 ## Summary
 
@@ -104,7 +104,7 @@ Today syncengine cannot use the resource channel for this and hand-builds a rela
 - [x] Resolver behaviour pinned by tests: `("group", "group", POST, collection)` → `/groups/{group-id}/children` with `group-id` a rendered-and-stripped parent reference; `("group", "", …)` still → `/groups` and `/groups/{group-id}` (`same_type_parent_test.go`)
 - [x] Realm-group, org-scoped-group and client-scoped-role behaviour unchanged — no regression; every same-type nesting in the spec is recorded by `TestSameTypeParentNestingsAreRecorded` (only the realm children path is resource-channel reachable)
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
+- [x] Tagged release so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — released in `v1.3.0`
 
 ## Out of Scope
 

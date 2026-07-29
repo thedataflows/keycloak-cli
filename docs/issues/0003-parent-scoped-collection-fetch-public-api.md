@@ -15,7 +15,7 @@ timestamp: 2026-07-28T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0001](0001-full-representation-collection-fetch.md) (representation flag must be honoured by the new path), [ISSUE 0002](0002-org-scoped-groups.md) (established the parent-scoping machinery this builds on), downstream consumer: iga-dash `syncengine/docs/issues/0022-client-roles-never-synced-to-target-realm.md`
 - **Related code**: [`pkg/admin/admin.go`](../../pkg/admin/admin.go), [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/admin/internal/client.go`](../../pkg/admin/internal/client.go)
-- **Closing commits**: `db1ed41` (FetchChildren + tests, verified live). `v1.3.0` tag pending.
+- **Closing commits**: `db1ed41` (FetchChildren + tests, verified live). Released in `v1.3.0`.
 
 ## Summary
 
@@ -132,7 +132,7 @@ The write direction is expected to need **no** library change — `manifest.Reso
 - [x] Realm-role and existing `Depth` behaviour unchanged — no regression (a realm role still resolves to `/roles`)
 - [x] `FetchPathCollection` logs its request at debug like the other fetch paths, so nested/child GET volume is observable (`Fetching path collection`)
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release (`v1.3.0`) so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
+- [x] Tagged release (`v1.3.0`) so iga-dash can bump `syncengine/go.mod`. Note for the consumer: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, and the root `go work vendor`) — all three must be regenerated together — released in `v1.3.0`
 
 ## Out of Scope
 

@@ -15,7 +15,7 @@ timestamp: 2026-07-28T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (same consumer, different gap), downstream consumer: iga-dash `syncengine/docs/issues/0022-client-roles-never-synced-to-target-realm.md`
 - **Related code**: [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go), [`pkg/catalog/relationship_patterns.go`](../../pkg/catalog/relationship_patterns.go)
-- **Closing commits**: `db1ed41` (fix + tests, verified live). `v1.3.0` tag pending.
+- **Closing commits**: `db1ed41` (fix + tests, verified live). Released in `v1.3.0`.
 
 ## Summary
 
@@ -80,7 +80,7 @@ An unclassified relationship path is indistinguishable from "this realm has no s
 - [x] A test asserts every registry `ReadPath` resolves against the embedded spec, so a placeholder that exists in no spec path fails the suite instead of silently disabling a kind (`TestEveryRegistryReadPathResolvesAgainstSpec`)
 - [x] Realm-role mappings and the currently-working kinds are unchanged (no regression; live baseline moved from 123 to 125 = the 2 newly recovered edges)
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release so iga-dash can bump. Reminder: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, root `go work vendor`) and all three must be regenerated together — **pending: `v1.3.0` tag not yet pushed**
+- [x] Tagged release so iga-dash can bump. Reminder: iga-dash vendors three trees (`igadash/vendor`, `syncengine/vendor`, root `go work vendor`) and all three must be regenerated together — released in `v1.3.0`
 
 ## Out of Scope
 
