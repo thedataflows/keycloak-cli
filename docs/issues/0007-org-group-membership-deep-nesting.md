@@ -21,6 +21,18 @@ timestamp: 2026-07-29T00:00:00Z
 
 An organization's groups can nest, and a user can be a member of a group at any level (`/organizations/{org-id}/groups/{group-id}/members`). The library reads members only for an organization's **top-level** groups: the traversal that fires the org-group membership read binds `{group-id}` from the flat `/organizations/{org-id}/groups` collection, which lists top-level org groups only. A member of a nested org group — a child or a grandchild — is never returned, so a consumer cannot mirror it. This is the membership sibling of [ISSUE 0006](0006-org-scoped-group-deep-nesting.md), which fixed the *containment* read (`FetchChildren`) but not the *membership* read.
 
+**Update (2026-07-29, v1.4.1) — partially resolved, one level.** v1.4.1's
+`feat(admin): depth traversal descends org group hierarchies` (ISSUE 0006 follow-up)
+also deepened the membership read: because it seeds the org relationship parent
+index with depth-fetched org children, the member read now fires for an org group's
+**direct children** too. Verified live end to end by the iga-dash consumer: a member
+of a top-level org group **and** of its child now sync; a member of a **grandchild**
+(a child of a child) still does not — the traversal descends one level, not
+arbitrarily. So the remaining gap is org membership at **depth ≥ 2** (grandchild and
+below); the acceptance criteria below still stand for that. A targeted per-group
+members fetch (proposed shape #1) would close it at any depth without relying on
+traversal depth.
+
 ## Details
 
 Verified 2026-07-29 against a live Keycloak **26.6.3** with the `26.6.2` spec (keycloak-cli **v1.4.0**), using a consumer that registers the org-group membership and child kinds and reads org groups recursively via the v1.4.0 `FetchChildren`.
