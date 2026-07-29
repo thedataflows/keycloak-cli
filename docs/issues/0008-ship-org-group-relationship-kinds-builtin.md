@@ -15,7 +15,7 @@ timestamp: 2026-07-29T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (established these kinds as the deferred org-group work), [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) + [ISSUE 0007](0007-org-group-membership-deep-nesting.md) (the reads that made these kinds fully usable are now in the library), downstream consumer: iga-dash `syncengine/connectors/keycloak/relationship-overrides.yaml` (the shim to delete)
 - **Related code**: [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: `44d082a` (both kinds built-in + guard tests, verified live). `v1.6.0` tag pending.
+- **Closing commits**: `44d082a` (both kinds built-in + guard tests, verified live). Released in `v1.6.0`.
 
 ## Summary
 
@@ -67,7 +67,7 @@ The built-ins must be present in `DefaultRegistry()` from package initialization
 - [x] A guard test asserts each kind's read/write/delete paths validate against the embedded spec (`TestBuiltinOrgGroupKinds`)
 - [x] No regression to existing built-in kinds or to org-scoped fetch/apply — full suite green; live `fetch --relationships` keeps the existing 125 edges unchanged and adds the two org-group kinds
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) and then delete `relationship-overrides.yaml` + `installRelationshipOverrides` — **pending: `v1.6.0` tag not yet pushed**
+- [x] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) and then delete `relationship-overrides.yaml` + `installRelationshipOverrides` — released in `v1.6.0`
 
 ## Out of Scope
 
