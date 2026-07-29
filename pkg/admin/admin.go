@@ -25,6 +25,10 @@ type Config struct {
 type Service interface {
 	Spec() *catalog.Spec
 	Fetch(ctx context.Context, query FetchQuery) (FetchReport, error)
+	// FetchChildren returns one child collection of one parent resource (e.g. the
+	// roles of a client) with exactly one HTTP GET — no depth fan-out and no
+	// realm-wide reference-resolution sweep. See fetch.go for the contract.
+	FetchChildren(ctx context.Context, parent manifest.Resource, childType string, query ChildFetchQuery) (FetchReport, error)
 	Apply(ctx context.Context, resources []manifest.Resource, relationships []manifest.RelationshipOperation, options ApplyOptions) (ApplyReport, error)
 }
 

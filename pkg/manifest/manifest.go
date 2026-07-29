@@ -726,7 +726,7 @@ func rewriteRelationshipPayloadForRoundTrip(kind string, payload interface{}, in
 		}
 	case "user-federated-identity":
 		return normalizeFederatedIdentityPayload(payload, index)
-	case "user-realm-role-mapping", "group-realm-role-mapping", "role-composite-mapping", "client-scope-realm-role-mapping", "client-scope-client-role-mapping", "role-scope-mapping":
+	case "user-realm-role-mapping", "group-realm-role-mapping", "user-client-role-mapping", "group-client-role-mapping", "role-composite-mapping", "client-scope-realm-role-mapping", "client-scope-client-role-mapping", "role-scope-mapping":
 		return normalizeRoleRelationshipPayload(payload, index)
 	}
 	return payload
@@ -808,6 +808,10 @@ func defaultRelationshipParamTypes(kind string) map[string]string {
 		return map[string]string{"user-id": "user"}
 	case "group-realm-role-mapping":
 		return map[string]string{"group-id": "group"}
+	case "user-client-role-mapping":
+		return map[string]string{"user-id": "user", "client-id": "client"}
+	case "group-client-role-mapping":
+		return map[string]string{"group-id": "group", "client-id": "client"}
 	case "role-composite-mapping":
 		return map[string]string{"role-id": "role"}
 	case "default-group-membership":

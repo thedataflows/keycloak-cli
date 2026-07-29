@@ -31,6 +31,14 @@ type FetchQuery struct {
 	FullRepresentation bool
 }
 
+// ChildFetchQuery configures a parent-scoped collection fetch (FetchChildren).
+type ChildFetchQuery struct {
+	// FullRepresentation requests briefRepresentation=false so children that
+	// carry an attributes map (e.g. client roles) return it, matching the
+	// representation flag on the realm-level fetch path (ISSUE 0001 parity).
+	FullRepresentation bool
+}
+
 type FetchReport struct {
 	Resources     []manifest.Resource
 	Relationships []manifest.RelationshipOperation
@@ -195,6 +203,54 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 	}
 
 	return FetchReport{Resources: results, Relationships: relationships, Failures: failures}, nil
+}
+
+// FetchChildren returns one child collection of one parent resource — e.g. the
+// roles of a single client — with exactly one HTTP GET and none of Fetch's depth
+// fan-out or realm-wide reference-resolution sweep. parent must carry enough
+// identity to render the nested path (typically Realm + Data["id"]).
+//
+// Returned children carry Type=childType, Realm=parent.Realm,
+// ParentType=parent.Type and the injected parent reference field(s), matching
+// what Fetch with Depth: 1 produces. A 404 on the child collection is reported as
+// a FetchFailure{NotFound: true} rather than a hard error, consistent with the
+// depth traversal, so an absent optional collection is benign for the caller.
+func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, childType string, query ChildFetchQuery) (FetchReport, error) {
+	// Resolve the child collection path from the structural downward graph, the
+	// same source Depth uses, so FetchChildren returns exactly what Depth: 1
+	// would for this (parent, childType). The graph distinguishes the plain child
+	// collection (/clients/{client-uuid}/roles) from same-named endpoints that the
+	// resolver's operationPriority would otherwise prefer for a bare GET — e.g.
+	// role under client also matches /clients/{client-uuid}/roles/{role-name}/composites,
+	// which is a child of role, not client.
+	graph, err := s.Spec().BuildDownwardGraph()
+	if err != nil {
+		return FetchReport{}, fmt.Errorf("build downward graph: %w", err)
+	}
+	path := ""
+	for _, child := range graph[parent.Type] {
+		if child.ChildType == childType {
+			path = child.Path
+			break
+		}
+	}
+	if path == "" {
+		return FetchReport{}, fmt.Errorf("no structural child collection %q under parent %q", childType, parent.Type)
+	}
+
+	var params []map[string]string
+	if query.FullRepresentation {
+		params = []map[string]string{{"briefRepresentation": "false"}}
+	}
+
+	fetched, fetchErr := s.fetchNestedResourceCollection(ctx, childType, path, parent.Type, parent, params...)
+	if fetchErr != nil {
+		logFetchError(childType+" under "+parent.Type, fetchErr)
+		return FetchReport{
+			Failures: []FetchFailure{fetchFailure(childType, parent.Type+":"+parent.Identifier(), fetchErr)},
+		}, nil
+	}
+	return FetchReport{Resources: fetched}, nil
 }
 
 func (s *service) fetchRealms(ctx context.Context, realm string) ([]manifest.Resource, error) {

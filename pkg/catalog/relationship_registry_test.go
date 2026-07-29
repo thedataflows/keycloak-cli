@@ -1,13 +1,41 @@
 package catalog
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestEveryRegistryReadPathResolvesAgainstSpec is the guardrail that prevents
+// ISSUE 0004 from recurring: a relationship kind whose ReadPath placeholder does
+// not exist in the loaded spec is classified by nobody, so its edges are
+// silently never fetched. Registry.ByPath is an exact lookup after
+// normalization, so a placeholder rename in the spec (e.g. {client} -> {client-id})
+// disables a kind with no error. Assert that every registered ReadPath still
+// resolves to a GET path in the embedded spec.
+func TestEveryRegistryReadPathResolvesAgainstSpec(t *testing.T) {
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	require.NoError(t, err)
+
+	specGetPaths := make(map[string]struct{})
+	spec.ForEachOperation(func(path, method string, _ *v3.Operation, _ *v3.PathItem) {
+		if method == http.MethodGet {
+			specGetPaths[normalizeReadPath(path)] = struct{}{}
+		}
+	})
+
+	for _, kind := range DefaultRegistry().Kinds() {
+		normalized := normalizeReadPath(kind.ReadPath)
+		if _, ok := specGetPaths[normalized]; !ok {
+			t.Errorf("relationship kind %q read path %q does not resolve to any GET path in the spec", kind.Name, kind.ReadPath)
+		}
+	}
+}
 
 func TestRegistryLookupByName(t *testing.T) {
 	r := NewRegistry()
@@ -163,4 +191,44 @@ func TestApplyRelationshipOverridesRequiresWriteTemplate(t *testing.T) {
 	err := ApplyRelationshipOverrides(r, []RelationshipOverride{{Name: "x", ReadPath: "/x"}})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "writeTemplate")
+}
+
+// TestClientRoleMappingKindsDiscovered pins ISSUE 0004: once the {client-id}
+// placeholder matches the spec, the two client-scoped role-mapping kinds must be
+// discovered as relationship patterns and must expose the owning client as a
+// path parameter so the (parent x client) fetch iteration can render it.
+func TestClientRoleMappingKindsDiscovered(t *testing.T) {
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	require.NoError(t, err)
+
+	patterns, err := spec.DiscoverRelationshipPatterns()
+	require.NoError(t, err)
+
+	placeholderMap, err := spec.PlaceholderToResourceType()
+	require.NoError(t, err)
+
+	byKind := make(map[string]RelationshipOperationPattern)
+	for _, p := range patterns {
+		byKind[p.Kind] = p
+	}
+
+	for _, tc := range []struct {
+		kind       string
+		parentType string
+	}{
+		{"user-client-role-mapping", "user"},
+		{"group-client-role-mapping", "group"},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			pattern, ok := byKind[tc.kind]
+			require.True(t, ok, "kind %q must be discovered from the spec", tc.kind)
+			assert.Contains(t, pattern.PathParams, "client-id",
+				"client owner must be a path parameter so the fetch can iterate it")
+
+			types, err := pattern.ParentResourceTypes(placeholderMap)
+			require.NoError(t, err)
+			assert.Contains(t, types, tc.parentType)
+			assert.Contains(t, types, "client")
+		})
+	}
 }

@@ -336,10 +336,10 @@ func defaultRelationshipKinds() []RelationshipKind {
 	}{
 		{"/users/{user-id}/groups", "user-group-membership", "user", "group", "{realm}/users/{user-id}/groups/{groupId}", "PUT", "id", "", false, "", ""},
 		{"/users/{user-id}/role-mappings/realm", "user-realm-role-mapping", "user", "role", "{realm}/users/{user-id}/role-mappings/realm", "POST", "", "", true, "", ""},
-		{"/users/{user-id}/role-mappings/clients/{client}", "user-client-role-mapping", "user", "role", "{realm}/users/{user-id}/role-mappings/clients/{client}", "POST", "", "", true, "", ""},
+		{"/users/{user-id}/role-mappings/clients/{client-id}", "user-client-role-mapping", "user", "role", "{realm}/users/{user-id}/role-mappings/clients/{client-id}", "POST", "", "", true, "", ""},
 		{"/users/{user-id}/federated-identity", "user-federated-identity", "user", "identityprovider", "{realm}/users/{user-id}/federated-identity/{provider}", "POST", "identityProvider", "", false, "", ""},
 		{"/groups/{group-id}/role-mappings/realm", "group-realm-role-mapping", "group", "role", "{realm}/groups/{group-id}/role-mappings/realm", "POST", "", "", true, "", ""},
-		{"/groups/{group-id}/role-mappings/clients/{client}", "group-client-role-mapping", "group", "role", "{realm}/groups/{group-id}/role-mappings/clients/{client}", "POST", "", "", true, "", ""},
+		{"/groups/{group-id}/role-mappings/clients/{client-id}", "group-client-role-mapping", "group", "role", "{realm}/groups/{group-id}/role-mappings/clients/{client-id}", "POST", "", "", true, "", ""},
 		{"/roles-by-id/{role-id}/composites", "role-composite-mapping", "role", "role", "{realm}/roles-by-id/{role-id}/composites", "POST", "", "", true, "", ""},
 		{"/clients/{client-uuid}/roles/{role-name}/composites", "client-role-composite", "role", "role", "{realm}/clients/{client-uuid}/roles/{role-name}/composites", "POST", "", "", true, "", ""},
 		{"/client-scopes/{client-scope-id}/scope-mappings/realm", "client-scope-realm-role-mapping", "clientscope", "role", "{realm}/client-scopes/{client-scope-id}/scope-mappings/realm", "POST", "", "", true, "", ""},

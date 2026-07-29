@@ -246,6 +246,10 @@ func (r *RuntimeClient) FetchPathCollection(ctx context.Context, path string, sc
 		fullPath += "?" + values.Encode()
 	}
 
+	// Log like FetchResources/FetchResourcesWithParent so nested/child GET volume
+	// is observable at trace/debug (ISSUE 0003 — these requests were previously
+	// silent, hiding the cost of depth traversal).
+	log.Logger.Debug().Str("pkg", "admin").Str("url", fullPath).Str("method", http.MethodGet).Msg("Fetching path collection")
 	req, err := r.newAuthRequest(ctx, http.MethodGet, fullPath, nil)
 	if err != nil {
 		return nil, err
@@ -642,6 +646,20 @@ func (r *RuntimeClient) sanitizeResourcePayload(resource *manifest.Resource, met
 		// but are not part of the child's request schema.
 		for _, field := range r.spec.Resolver().ParentReferenceFieldNames(resource.Type, contract) {
 			delete(resource.Data, field)
+		}
+		// A same-type parent binding (a group nested under a group) is invisible to
+		// the single-resource contract above: its {group-id} placeholder is the
+		// self id, so the parent field (groupId) is never listed there and would
+		// leak into an update body — Keycloak rejects "Unrecognized field groupId".
+		// The binding is a property of the nested-create endpoint, so strip the
+		// create contract's parent-reference fields on every write when a parent
+		// type is set (ISSUE 0005).
+		if resource.ParentType != "" {
+			if createContract, err := r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodPost, catalog.OperationCollection); err == nil {
+				for _, field := range r.spec.Resolver().ParentReferenceFieldNames(resource.Type, createContract) {
+					delete(resource.Data, field)
+				}
+			}
 		}
 	}
 }

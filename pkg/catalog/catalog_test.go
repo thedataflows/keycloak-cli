@@ -129,6 +129,28 @@ func TestValidateOperationRequestRejectsWrongRelationshipBody(t *testing.T) {
 	assert.Contains(t, err.Error(), "request body")
 }
 
+// TestClientRoleMappingApplyRoundTripsAgainstSpec pins the ISSUE 0004 apply
+// direction: a link (bulk POST) and unlink (bulk DELETE) on the client-scoped
+// role-mapping path must both validate against the embedded spec, which they
+// only do once the write template uses the spec's {client-id} placeholder.
+func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
+	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	require.NoError(t, err)
+
+	params := map[string]string{"realm": "demo", "user-id": "user-1", "client-id": "client-1"}
+	body := []interface{}{map[string]interface{}{"id": "role-1", "name": "demo-a-clientrole-1"}}
+
+	link, err := manifest.NewRelationshipOperation(
+		"{realm}/users/{user-id}/role-mappings/clients/{client-id}", http.MethodPost, params, body)
+	require.NoError(t, err)
+	unlink, err := manifest.NewRelationshipOperation(
+		"{realm}/users/{user-id}/role-mappings/clients/{client-id}", http.MethodDelete, params, body)
+	require.NoError(t, err)
+
+	require.NoError(t, catalog.ValidateRelationshipOperations(spec,
+		[]manifest.RelationshipOperation{link, unlink}))
+}
+
 func TestResourceContractsPreferRoleNameEndpoint(t *testing.T) {
 	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)

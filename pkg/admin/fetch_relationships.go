@@ -194,7 +194,7 @@ func (s *service) fetchRelationshipsForPattern(ctx context.Context, realm string
 }
 
 var paramNameByResourceType = map[string][]string{
-	"client":                  {"client-uuid", "client"},
+	"client":                  {"client-uuid", "client", "client-id"},
 	"clientscope":             {"client-scope-id"},
 	"group":                   {"group-id"},
 	"user":                    {"user-id"},

@@ -172,21 +172,40 @@ func (r *Resolver) PathParams(resource manifest.Resource, op OperationContract) 
 		return params, nil
 	}
 	primary := primaryIdentifierParam(op.Path)
+	// On a single-resource path (…/{primary}) the primary placeholder addresses
+	// the resource itself, so its own identifier must win over any same-named
+	// value left in Data. A nested group carries its parent's id under "groupId",
+	// which is also the camel form of the {group-id} self param; without this an
+	// update or delete of a nested child would resolve to and clobber its parent
+	// (ISSUE 0005 Gap 3, a destructive failure).
+	selfPrimary := strings.HasSuffix(op.Path, "/{"+primary+"}")
 	placeholders := extractPathParams(op.Path)
 	for _, name := range placeholders {
 		if name == "realm" {
 			continue
 		}
-		if value, ok := resolvePathParamValue(name, resource.Data, primary, resource.Identifier()); ok {
+		preferIdentifier := selfPrimary && name == primary
+		if value, ok := resolvePathParamValue(name, resource.Data, primary, resource.Identifier(), preferIdentifier); ok {
 			params[name] = value
 		}
 	}
 	return params, nil
 }
 
-func resolvePathParamValue(name string, data map[string]interface{}, primary, identifier string) (string, bool) {
+func resolvePathParamValue(name string, data map[string]interface{}, primary, identifier string, preferIdentifier bool) (string, bool) {
+	// An exact placeholder-name field is always an explicit override and wins.
 	if value, ok := data[name].(string); ok && value != "" {
 		return value, true
+	}
+	// The self placeholder on a single-resource path (…/{primary}) resolves only
+	// from the resource's own identifier — never from the camel-form field. For a
+	// nested child that field holds the PARENT's id (e.g. groupId), so consulting
+	// it would make an update, a delete, or a create's existence probe address the
+	// parent and clobber it (ISSUE 0005 Gap 3, a destructive failure). Falling
+	// through to the own identifier here also preserves the "primary is always
+	// present" contract even when the identifier is still empty on a create.
+	if preferIdentifier {
+		return identifier, true
 	}
 	camel := kebabToCamelCase(name)
 	if camel != name {
@@ -336,8 +355,13 @@ func (r *Resolver) ParentReferenceFieldNames(resourceType string, op OperationCo
 		if skipPrimary && placeholder == primary {
 			continue
 		}
-		parentType := placeholderMap[placeholder]
-		if parentType == "" || parentType == resourceType {
+		// The position guard (skipPrimary) already protects the resource's own
+		// identifier. A non-primary same-type placeholder is a same-type parent
+		// binding — a group nested under a group renders /groups/{group-id}/children
+		// — and must also be stripped from the body. So we intentionally do not
+		// skip parentType == resourceType here; that clause was broader than its
+		// intent and swallowed the parent binding (ISSUE 0005 Gap 1).
+		if placeholderMap[placeholder] == "" {
 			continue
 		}
 		fields = append(fields, kebabToCamelCase(placeholder))

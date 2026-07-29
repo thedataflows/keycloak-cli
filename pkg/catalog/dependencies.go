@@ -13,6 +13,7 @@ var fallbackPlaceholderToResourceType = map[string]string{
 	"realm":           "realm",
 	"client-uuid":     "client",
 	"client":          "client",
+	"client-id":       "client",
 	"client-scope-id": "clientscope",
 	"clientScopeId":   "clientscope",
 	"group-id":        "group",
