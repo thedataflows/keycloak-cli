@@ -15,7 +15,7 @@ timestamp: 2026-07-29T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (deferred the org subgroup hierarchy — this is that gap, now with a concrete consumer and a repro), [ISSUE 0003](0003-parent-scoped-collection-fetch-public-api.md) (the parent-scoped-fetch shape a fix likely extends), [ISSUE 0005](0005-same-type-parent-binding.md) (the realm half of deep group nesting, which is reachable and fixed), downstream consumer: iga-dash `syncengine/docs/plans/2026-07-29-nested-group-hierarchy.md` (Task 4 spike) and `syncengine/docs/issues/0027-realm-group-subgroups-are-never-synced.md`
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: `ed1034c` (scoped selector), `77eabee` (FetchChildren routing), `ab907f6` (AC3 confirmation). Verified live. `v1.4.0` tag pending.
+- **Closing commits**: `ed1034c` (scoped selector), `77eabee` (FetchChildren routing), `ab907f6` (AC3 confirmation). Verified live. Released in `v1.4.0`.
 - **Design**: [spec](../superpowers/specs/2026-07-29-org-group-deep-nesting-design.md), [plan](../superpowers/plans/2026-07-29-org-group-deep-nesting.md)
 
 ## Summary
@@ -81,7 +81,7 @@ Whichever lands, note the terminator: org groups expose **no `subGroupCount`** a
 - [x] The org children **create** path (`POST /organizations/{org-id}/groups/{group-id}/children` with `{group-id}` = an org *child*) is confirmed to nest under a child, not only a top-level org group (`TestOrgChildrenCreateNestsUnderChild`). Full resource-channel *writes* of grandchildren remain out of scope — the read was the blocker
 - [x] Realm group nesting (ISSUE 0005) and one-level org groups (ISSUE 0002) are unchanged — no regression (selector reproduces every prior `FetchChildren` result; realm/client suites green)
 - [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod`; note the three vendor trees must be regenerated together (`igadash/vendor` is currently absent — `syncengine/vendor` + the root `go work vendor`) — **pending: `v1.4.0` tag not yet pushed**
+- [x] Tagged release so iga-dash can bump `syncengine/go.mod`; note the three vendor trees must be regenerated together (`igadash/vendor` is currently absent — `syncengine/vendor` + the root `go work vendor`) — released in `v1.4.0`
 
 ## Out of Scope
 
