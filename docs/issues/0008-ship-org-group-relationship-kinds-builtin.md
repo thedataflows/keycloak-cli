@@ -9,13 +9,13 @@ timestamp: 2026-07-29T00:00:00Z
 # ISSUE 0008: Ship organization-group-member and organization-group-child as built-in relationship kinds
 
 - **Type**: feature
-- **Status**: open
+- **Status**: done
 - **Priority**: low
 - **Labels**: [catalog, groups, organizations, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0002](0002-org-scoped-groups.md) (established these kinds as the deferred org-group work), [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) + [ISSUE 0007](0007-org-group-membership-deep-nesting.md) (the reads that made these kinds fully usable are now in the library), downstream consumer: iga-dash `syncengine/connectors/keycloak/relationship-overrides.yaml` (the shim to delete)
 - **Related code**: [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: none
+- **Closing commits**: `44d082a` (both kinds built-in + guard tests, verified live). `v1.6.0` tag pending.
 
 ## Summary
 
@@ -62,12 +62,12 @@ The built-ins must be present in `DefaultRegistry()` from package initialization
 
 ## Acceptance Criteria
 
-- [ ] `organization-group-member` and `organization-group-child` are in the built-in relationship registry with exactly the definitions above (names, read/write/delete paths, methods, param types; child has no item param / payload field)
-- [ ] Both resolve via `DefaultRegistry().ByName(...)` and `ByPath(...)`, and `manifest.RelationshipParamTypes(...)` returns the param types, from package init — no `admin.New` required (so fake-backed consumer tests resolve them)
-- [ ] A guard test asserts each kind's read/write paths validate against the embedded spec (the pattern ISSUE 0005/0006 use)
-- [ ] No regression to existing built-in kinds or to org-scoped fetch/apply
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) and then delete `relationship-overrides.yaml` + `installRelationshipOverrides`
+- [x] `organization-group-member` and `organization-group-child` are in the built-in relationship registry with exactly the override definitions (names, read/write/delete paths, methods, param types; child has no item param / payload field) — `defaultRelationshipKinds()`
+- [x] Both resolve via `DefaultRegistry().ByName(...)` and `ByPath(...)`, and `manifest.RelationshipParamTypes(...)` returns the param types, from package init — no `admin.New` required (`TestBuiltinOrgGroupKinds`, `TestOrgGroupKindParamTypesFromDefault`)
+- [x] A guard test asserts each kind's read/write/delete paths validate against the embedded spec (`TestBuiltinOrgGroupKinds`)
+- [x] No regression to existing built-in kinds or to org-scoped fetch/apply — full suite green; live `fetch --relationships` keeps the existing 125 edges unchanged and adds the two org-group kinds
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) and then delete `relationship-overrides.yaml` + `installRelationshipOverrides` — **pending: `v1.6.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -78,3 +78,22 @@ The built-ins must be present in `DefaultRegistry()` from package initialization
 
 - This is purely a "promote the override to a built-in" change; the endpoints, methods, and param semantics are already proven in production by the consumer's override. Low priority — the override works fine; this just removes duplication.
 - Keep the two kinds' names stable (`organization-group-member`, `organization-group-child`) — the consumer's edge-leg skip and edge-builder key on those exact strings.
+
+### Implementation notes (resolved)
+
+- Added both entries to `defaultRelationshipKinds()` verbatim; added `userId → user`
+  to `fallbackPlaceholderToResourceType` so `inferParamTypesForTemplate` yields the
+  member kind's `{org-id, group-id, userId}` param types, and added both kinds to
+  `manifest.defaultRelationshipParamTypes` so `RelationshipParamTypes` resolves them
+  from package init without `admin.New`.
+- **Better than a no-op at the CLI:** because `fetch --relationships --depth N` runs
+  `fetchRelationshipsForResources` over the depth-discovered resources, and the depth
+  traversal (ISSUE 0006/0007) now surfaces the *nested* org groups as parents, the
+  built-in kinds make `fetch --relationships` return org-group member and child edges
+  at every depth with no override. Verified live on `sync-source`: 5
+  `organization-group-member` + 4 `organization-group-child` edges, the existing 125
+  edges unchanged, no new failures.
+- Ripple checks: the org children path is now a registered relationship read path, so
+  `BuildDownwardGraph` excludes it — harmless, because 0006/0007 select it via
+  `ScopedChildCollection` (which does not filter relationship paths), and the realm
+  children edge (unregistered) still carries the structural `group → group` descent.
