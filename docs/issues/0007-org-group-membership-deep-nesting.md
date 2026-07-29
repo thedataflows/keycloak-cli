@@ -9,13 +9,13 @@ timestamp: 2026-07-29T00:00:00Z
 # ISSUE 0007: Organization-group membership is unreadable below the top level
 
 - **Type**: feature
-- **Status**: open
+- **Status**: done
 - **Priority**: medium
 - **Labels**: [admin, catalog, groups, organizations, membership, enhancement]
 - **Assignee**: none
 - **Related**: [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) (the containment sibling — fixed org group *reads* to arbitrary depth via FetchChildren; this is the same gap for *membership*), [ISSUE 0002](0002-org-scoped-groups.md), [ISSUE 0005](0005-same-type-parent-binding.md), downstream consumer: iga-dash `syncengine/docs/issues/0026-org-group-membership-and-child-groups.md` (G1) and the nested-membership fixtures in its seeder
-- **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go), [`pkg/catalog/relationship_registry.go`](../../pkg/catalog/relationship_registry.go)
-- **Closing commits**: none
+- **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/catalog/dependencies.go`](../../pkg/catalog/dependencies.go)
+- **Closing commits**: `3222fb0` (GET-only selector), `4642746` (FetchChildren members), `6e570a3` (depth exposure + read-only apply). Verified live. `v1.5.0` tag pending.
 
 ## Summary
 
@@ -69,11 +69,11 @@ Either (implementer picks one, records the reasoning):
 
 ## Acceptance Criteria
 
-- [ ] A member of a nested org group (child and grandchild) is reachable through a supported `admin.Service` API, keyed to that group — verified against the fixture above (a member seeded on the top-level org group, its child, and its grandchild; all three read back)
-- [ ] Works at arbitrary depth, bounded only by the caller
-- [ ] Top-level org-group membership and realm-group membership are unchanged — no regression
-- [ ] `go vet ./...` clean, `go test ./...` green
-- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together)
+- [x] A member of a nested org group (child and grandchild) is reachable through a supported `admin.Service` API (`FetchChildren(orgGroup, "member")`), keyed to that group — **verified live** on `sync-source`: `demo-a-user-1` read back at `demo-a-orggroup-1` (top), `demo-a-orgchild-1` (child), and `demo-a-orggrandchild-1` (grandchild)
+- [x] Works at arbitrary depth, bounded only by the caller — `FetchChildren` selects the members path at every level via the scoped selector; also surfaced through `fetch --depth`
+- [x] Top-level org-group membership and realm-group membership are unchanged — no regression (relationship pass untouched; the 125-edge baseline is unchanged; realm membership still reads user-side)
+- [x] `go vet ./...` clean, `go test ./...` green (except a pre-existing, unrelated `pkg/output` TOML failure)
+- [ ] Tagged release so iga-dash can bump `syncengine/go.mod` (three vendor trees regenerated together) — **pending: `v1.5.0` tag not yet pushed**
 
 ## Out of Scope
 
@@ -85,3 +85,33 @@ Either (implementer picks one, records the reasoning):
 
 - Reproduction: seed `demo-a-user-1` as a member of an org top-level group, its child, and its grandchild; sync; observe only the top-level membership crossing. The downstream consumer (iga-dash) now seeds exactly this so the gap is visible on every clean stack.
 - The org group items still advertise no `subGroupCount` and an empty inline `subGroups`, so any consumer recursion here terminates on an empty read, as with ISSUE 0006.
+
+### Implementation notes (resolved)
+
+- **Chose the read channel (proposed shape 1), not the relationship pass (shape 2).**
+  The members endpoint is **GET-only** (no POST/DELETE) and returns
+  `MemberRepresentation`; org-group membership is a read view. The relationship
+  subsystem — as designed in the initial commit — is uniformly *writable* and
+  generic (no per-kind branches). Forcing a read-only, two-nested-parent read
+  through it would have required inventing read-only relationship kinds and a
+  per-shape special-case in the generic engine — against the original
+  architecture. The read channel (`ScopedChildCollection`/`FetchChildren`, the
+  ISSUE 0006 machinery) already fits a GET-only scoped collection exactly.
+- **`ScopedChildCollection` gained a GET-only fallback.** It preferred POST
+  (structural containment); now, when no POST create exists, it matches the
+  child type's GET collection by the same placeholder chain. So
+  `("group","organization","member")` → `/organizations/{org-id}/groups/{group-id}/members`.
+- **`FetchChildren(orgGroup, "member")`** returns members tagged
+  `member`/`organization` with `orgId` propagated and the immediate `groupId`
+  injected to key each member to its group — safe because a member is never
+  recursed as a group parent (the ISSUE 0005 Gap 3 collision applies only to
+  same-type nesting, so nested groups still get no `groupId`).
+- **CLI via `fetch --depth`.** The depth traversal reads each org group's members
+  and emits them as `member` resources. `resourceKey` keys a member by
+  (user, group) so the *same* user's memberships across groups are not collapsed
+  by dedup. Apply filters read-only `member` resources (no write path) and records
+  them skipped, so a `fetch → upload` round-trip does not error.
+- **Verified live** against Keycloak 26.6.3, `sync-source`, no override:
+  `fetch organization demo-a-org-1 --depth 4` returns `demo-a-user-1` as five
+  distinct membership edges across the org group tree (top-level, child, and
+  grandchild levels), where the default path read zero.
