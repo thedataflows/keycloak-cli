@@ -6,7 +6,7 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## Open
 
-*No open issues.*
+* [ISSUE 0008](0008-ship-org-group-relationship-kinds-builtin.md) - Ship `organization-group-member` / `organization-group-child` as built-in relationship kinds so consumers stop carrying an identical override shim
 
 ## In Progress
 
