@@ -6,7 +6,7 @@ they are. When an issue and an ADR disagree, the ADR wins.
 
 ## Open
 
-*No open issues.*
+* [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) - Organization-scoped group hierarchies are unreachable below one level: the org-group-child override's parent index is the flat `/organizations/{org-id}/groups`, so grandchildren never surface at any Depth
 
 ## In Progress
 
