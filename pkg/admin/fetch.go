@@ -243,7 +243,7 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 		fetched  []manifest.Resource
 		fetchErr error
 	)
-	if parent.ParentType != "" && parent.ParentType != parent.Type {
+	if isScopedParent(parent) {
 		fetched, fetchErr = s.fetchScopedChildren(ctx, childType, path, parent, inherited, params...)
 	} else {
 		fetched, fetchErr = s.fetchNestedResourceCollection(ctx, childType, path, parent.Type, parent, params...)
@@ -255,6 +255,23 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 		}, nil
 	}
 	return FetchReport{Resources: fetched}, nil
+}
+
+// isScopedParent reports whether parent must descend through the scoped
+// child-collection selector (an org-style grandparent chain, e.g. a group under
+// an organization) rather than the structural downward path. The realm is never
+// a scoping grandparent: the realm placeholder is stripped from every path's
+// placeholder chain, so ScopedChildCollection can never match a realm-rooted
+// child collection. A realm-child (identity provider, client, group, ...) must
+// therefore descend structurally — exactly as a directly-named seed does, whose
+// ParentType is empty. Without excluding "realm" here the cascade halts one
+// level below the realm, so `fetch realm --depth N` reaches identity providers
+// but not their mappers, clients but not their roles or protocol mappers, and
+// groups but not their subgroups (ISSUE 0009).
+func isScopedParent(parent manifest.Resource) bool {
+	return parent.ParentType != "" &&
+		parent.ParentType != parent.Type &&
+		parent.ParentType != "realm"
 }
 
 // fetchScopedChildren fetches a child collection under an org-scoped parent. It
@@ -524,7 +541,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 			// follows /organizations/{org-id}/groups/{group-id}/children instead of
 			// the realm children path Keycloak rejects for org groups, and keeps the
 			// org scope marker so descent continues past one level (ISSUE 0006).
-			scoped := parent.ParentType != "" && parent.ParentType != parent.Type
+			scoped := isScopedParent(parent)
 
 			// collect appends fetched children, deduped. The fetch helpers already
 			// tag Realm and ParentType (parent.Type for the structural case, the org
