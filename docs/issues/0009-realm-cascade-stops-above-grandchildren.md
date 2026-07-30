@@ -15,7 +15,7 @@ timestamp: 2026-07-30T00:00:00Z
 - **Assignee**: none
 - **Related**: [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) (introduced the org-scoped descent branch this bug over-triggers), [ISSUE 0007](0007-org-group-membership-deep-nesting.md)
 - **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go)
-- **Closing commits**: `6573386` (isScopedParent guard + realm-cascade regression tests). Verified live on `demo123`.
+- **Closing commits**: `6573386` (isScopedParent guard + realm-cascade regression tests). Verified live on `demo123`. Released in `v1.6.1`.
 
 ## Summary
 
