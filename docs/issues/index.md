@@ -22,6 +22,7 @@ they are. When an issue and an ADR disagree, the ADR wins.
 * [ISSUE 0006](0006-org-scoped-group-deep-nesting.md) - Organization-scoped group hierarchies reachable at arbitrary depth via `FetchChildren` (scoped child-collection selection), no consumer override needed
 * [ISSUE 0007](0007-org-group-membership-deep-nesting.md) - Organization-group membership readable at any depth via the scoped members read (`FetchChildren`/`fetch --depth`), keyed to each group, read-only on apply
 * [ISSUE 0008](0008-ship-org-group-relationship-kinds-builtin.md) - `organization-group-member` / `organization-group-child` shipped as built-in relationship kinds so consumers can delete their override shim
+* [ISSUE 0009](0009-realm-cascade-stops-above-grandchildren.md) - Realm-rooted depth traversal reaches grandchildren (identity-provider mappers, client roles, protocol mappers, nested groups); realm-children no longer misclassified as org-scoped parents
 
 ## Conventions
 
