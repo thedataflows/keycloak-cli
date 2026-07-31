@@ -8,12 +8,37 @@ tags: [issue, bug, organization, attributes, apply]
 # ISSUE 0010: organization apply does not persist attributes
 
 - **Type**: bug
-- **Status**: open
+- **Status**: done
 - **Priority**: high
-- **Labels**: [organization, attributes, apply, data-loss]
+- **Labels**: [organization, attributes, apply, fetch, data-loss]
 - **Assignee**: none
-- **Related**: none
-- **Related code**: [`pkg/admin/apply.go`](../../pkg/admin/apply.go), [`pkg/models/models.gen.go`](../../pkg/models/models.gen.go)
+- **Related**: [ISSUE 0001](0001-full-representation-collection-fetch.md) (added the `--full-representation` flag this bug shows was insufficient for organizations)
+- **Related code**: [`pkg/admin/fetch.go`](../../pkg/admin/fetch.go), [`pkg/admin/apply.go`](../../pkg/admin/apply.go)
+- **Closing commits**: organization fetch forces full representation (`alwaysFullRepresentation`/`forceFullRepresentation`) + apply/fetch attribute regression tests. Released in `v1.6.2`.
+
+## Resolution
+
+The reported root cause — the **apply** path dropping organization attributes —
+**does not reproduce**. The write path marshals the raw `resource.Data` map
+directly (`pkg/admin/internal/client.go`, unchanged since `v1.6.1`), no typed
+`OrganizationRepresentation` round-trip is involved, `sanitizeResourceData`
+strips attributes only for `client`, and the OpenAPI schema declares
+`attributes` so validation accepts it. Regression tests capturing the actual
+HTTP body confirm attributes reach Keycloak on both create (`POST`) and update
+(`PUT`).
+
+The real drop is on the **read** side. Keycloak's organizations list returns a
+brief representation that omits the `attributes` map unless
+`briefRepresentation=false` is sent, and that was gated behind the opt-in
+`--full-representation` flag (default off). So a `fetch organization` →
+`apply` round-trip silently lost attributes even though `apply` itself is
+correct — matching the observed "attributes end up null in the target" symptom.
+
+**Fix:** organization collection fetches now always request the full
+representation (`alwaysFullRepresentation`/`forceFullRepresentation` in
+`pkg/admin/fetch.go`), independent of `--full-representation`. Organizations are
+few and their attributes are pure data, so the cost is negligible; users and
+groups stay flag-gated because their lists can be large.
 
 ## Summary
 
@@ -66,10 +91,14 @@ organization resource definition in `pkg/catalog`).
 
 ## Acceptance Criteria
 
-- [ ] Applying an organization with an `attributes` map persists those
-      attributes to Keycloak (create and update paths).
-- [ ] Reading the organization back returns the applied attributes.
-- [ ] A test covers organization apply with attributes (create + update).
+- [x] Applying an organization with an `attributes` map persists those
+      attributes to Keycloak (create and update paths). *(Already worked;
+      verified by regression tests, not a code change.)*
+- [x] Reading the organization back returns the applied attributes. *(Fixed:
+      org fetch now always requests the full representation.)*
+- [x] A test covers organization apply with attributes (create + update).
+      *(`pkg/admin/apply_org_attributes_test.go`; read side covered by
+      `pkg/admin/fetch_org_attributes_test.go`.)*
 
 ## Out of Scope
 

@@ -148,8 +148,12 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 			continue
 		}
 
+		resourceParams := queryParams
+		if alwaysFullRepresentation(resource) {
+			resourceParams = forceFullRepresentation(queryParams)
+		}
 		for _, realm := range realmNames {
-			fetched, fetchErr := s.fetchRealmScopedResources(ctx, resource, realm, queryParams)
+			fetched, fetchErr := s.fetchRealmScopedResources(ctx, resource, realm, resourceParams)
 			if fetchErr != nil {
 				logFetchError(resource+" for realm "+realm, fetchErr)
 				failures = append(failures, fetchFailure(resource, realm, fetchErr))
@@ -453,6 +457,31 @@ func buildQueryParams(query FetchQuery) []map[string]string {
 	}
 
 	return []map[string]string{params}
+}
+
+// alwaysFullRepresentation reports whether a realm-scoped collection must be
+// fetched with briefRepresentation=false regardless of the --full-representation
+// flag. Keycloak's organizations list returns a brief representation that omits
+// the attributes map by default, so an export→apply round-trip silently drops
+// org attributes unless the full representation is requested (ISSUE 0010).
+// Organizations are few and their attributes are pure data, so the cost of
+// always requesting the full form is negligible. Users and groups stay
+// flag-gated because their lists can be large.
+func alwaysFullRepresentation(resource string) bool {
+	return resource == "organization"
+}
+
+// forceFullRepresentation returns params with briefRepresentation=false forced
+// on, preserving any other query params (search, max, exact) already present.
+func forceFullRepresentation(params []map[string]string) []map[string]string {
+	merged := map[string]string{}
+	for _, p := range params {
+		for k, v := range p {
+			merged[k] = v
+		}
+	}
+	merged["briefRepresentation"] = "false"
+	return []map[string]string{merged}
 }
 
 // buildNestedQueryParams returns the query params that apply to structural child
