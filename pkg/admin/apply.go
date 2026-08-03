@@ -471,11 +471,14 @@ func remapResourceDataIDs(data map[string]interface{}, idMap map[string]string) 
 	return data
 }
 
-// sanitizeResourceData recursively removes nil values and empty maps from
-// resource payloads before validation and upload. Keycloak frequently returns
-// null for optional fields, but its own Admin API rejects those same nulls on
-// create/update. It also strips a few copy-incompatible client attributes whose
-// values depend on the target realm's session timeouts.
+// sanitizeResourceData recursively removes nil values and maps that become empty
+// after nil-stripping from resource payloads before validation and upload.
+// Keycloak frequently returns null for optional fields, but its own Admin API
+// rejects those same nulls on create/update. A collection that is explicitly
+// empty in the input ({} or []) is preserved and sent, so a caller can clear
+// that collection on the target rather than have it silently omitted (ISSUE
+// 0011). It also strips a few copy-incompatible client attributes whose values
+// depend on the target realm's session timeouts.
 func sanitizeResourceData(resourceType string, data map[string]interface{}) map[string]interface{} {
 	if data == nil {
 		return nil
@@ -492,7 +495,7 @@ func sanitizeResourceData(resourceType string, data map[string]interface{}) map[
 			continue
 		}
 		sanitized := sanitizeValue(value)
-		if isEmptyValue(sanitized) {
+		if isEmptyValue(sanitized) && !isExplicitEmptyCollection(value) {
 			continue
 		}
 		cleaned[key] = sanitized
@@ -519,7 +522,7 @@ func sanitizeMap(data map[string]interface{}) map[string]interface{} {
 	cleaned := make(map[string]interface{}, len(data))
 	for key, value := range data {
 		sanitized := sanitizeValue(value)
-		if isEmptyValue(sanitized) {
+		if isEmptyValue(sanitized) && !isExplicitEmptyCollection(value) {
 			continue
 		}
 		cleaned[key] = sanitized
@@ -607,6 +610,21 @@ func isEmptyValue(value interface{}) bool {
 	}
 	switch typed := value.(type) {
 	case map[string]interface{}:
+		return len(typed) == 0
+	default:
+		return false
+	}
+}
+
+// isExplicitEmptyCollection reports whether value is already an empty map or
+// slice in the input (before any nil-stripping). Such a value expresses intent
+// to clear the field on the target and must be preserved and sent, unlike a map
+// that only becomes empty because all of its entries were nil (ISSUE 0011).
+func isExplicitEmptyCollection(value interface{}) bool {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		return len(typed) == 0
+	case []interface{}:
 		return len(typed) == 0
 	default:
 		return false

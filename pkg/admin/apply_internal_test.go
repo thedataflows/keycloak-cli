@@ -37,10 +37,21 @@ func TestSanitizeResourceDataStripsNilAndEmptyMaps(t *testing.T) {
 			want: map[string]interface{}{"clientId": "my-app"},
 		},
 		{
-			name: "empty map removed",
+			name: "explicit empty map preserved (ISSUE 0011 clear intent)",
 			data: map[string]interface{}{
 				"clientId":   "my-app",
 				"attributes": map[string]interface{}{},
+			},
+			want: map[string]interface{}{
+				"clientId":   "my-app",
+				"attributes": map[string]interface{}{},
+			},
+		},
+		{
+			name: "map collapsed to empty by nil-stripping removed",
+			data: map[string]interface{}{
+				"clientId":   "my-app",
+				"attributes": map[string]interface{}{"stale": nil},
 			},
 			want: map[string]interface{}{"clientId": "my-app"},
 		},

@@ -8,13 +8,40 @@ tags: [issue, bug, apply, attributes, group, collection, data-loss]
 # ISSUE 0011: apply does not clear a collection field (an explicit empty is not removed on the target)
 
 - **Type**: bug
-- **Status**: open
+- **Status**: done
 - **Priority**: medium
 - **Labels**: [apply, attributes, group, collection]
 - **Assignee**: none
 - **Related**: [ISSUE 0010](0010-organization-apply-drops-attributes.md) (attributes not persisting — read side; this is the write-side removal/clear case)
 - **Related code**: [`pkg/admin/apply.go`](../../pkg/admin/apply.go), [`pkg/admin/internal/client.go`](../../pkg/admin/internal/client.go)
-- **Closing commits**: none
+- **Closing commits**: `sanitizeResourceData` preserves explicit-empty collections (`isExplicitEmptyCollection`) + group clear regression tests.
+
+## Resolution
+
+Confirmed as the **empty-value omission** hypothesis, not the create-on-existing
+route. `sanitizeResourceData` (`pkg/admin/apply.go`) ran once over every
+resource at the top of `Apply` and dropped any value that sanitized to an empty
+map via `isEmptyValue`. An explicit `"attributes": {}` was therefore stripped
+before the request body was ever built, so both the create (`POST`) and update
+(`PUT`) paths sent a body that omitted the collection — and Keycloak preserves a
+collection it is not sent, so the previous values survived and the leg never
+converged. Empty **lists** (`[]`) already survived, because `isEmptyValue` only
+flags empty maps.
+
+**Fix:** `sanitizeResourceData` and `sanitizeMap` now keep a collection that was
+**explicitly empty in the input** (`isExplicitEmptyCollection` — an already-empty
+`{}` or `[]`), while still dropping a map that only *becomes* empty after
+nil-stripping (e.g. `{"stale": null}`) and still dropping plain nulls. This
+distinguishes "the caller wants to clear this field" from "Keycloak returned a
+null-only object we must not send." The write path already marshals the raw
+`resource.Data` directly (`pkg/admin/internal/client.go`), so once the empty map
+survives sanitization it reaches Keycloak unchanged on both paths.
+
+Regression tests capture the actual HTTP body and assert the collection is
+**sent** as `{}` (not omitted) and the resource ends up cleared, on both create
+and update: `pkg/admin/apply_clear_collection_test.go`. The
+`sanitizeResourceData` unit contract for explicit-empty vs collapsed-empty maps
+is in `pkg/admin/apply_internal_test.go`.
 
 ## Summary
 
@@ -61,13 +88,15 @@ does not send a request that Keycloak treats as "clear this collection."
 
 ## Acceptance Criteria
 
-- [ ] Applying a resource whose `Data` carries an explicit-empty collection
+- [x] Applying a resource whose `Data` carries an explicit-empty collection
       (`{}` for a map, `[]` for a list) clears that collection on the target,
-      for both the create and update paths.
-- [ ] A regression test captures the actual HTTP request body for an
+      for both the create and update paths. *(Fixed: `sanitizeResourceData`
+      preserves explicitly-empty collections via `isExplicitEmptyCollection`.)*
+- [x] A regression test captures the actual HTTP request body for an
       explicit-empty-collection apply and asserts the collection is **sent**
       (as `{}`/`[]`, not omitted) and that the resource ends up with the
-      collection cleared.
+      collection cleared. *(`pkg/admin/apply_clear_collection_test.go` — group
+      create + update; unit contract in `pkg/admin/apply_internal_test.go`.)*
 
 ## Out of Scope
 

@@ -24,7 +24,7 @@ they are. When an issue and an ADR disagree, the ADR wins.
 * [ISSUE 0008](0008-ship-org-group-relationship-kinds-builtin.md) - `organization-group-member` / `organization-group-child` shipped as built-in relationship kinds so consumers can delete their override shim
 * [ISSUE 0009](0009-realm-cascade-stops-above-grandchildren.md) - Realm-rooted depth traversal reaches grandchildren (identity-provider mappers, client roles, protocol mappers, nested groups); realm-children no longer misclassified as org-scoped parents
 * [ISSUE 0010](0010-organization-apply-drops-attributes.md) - organization attributes dropped on a fetch→apply round-trip: apply was already correct; the drop was on the read side (org list returned brief representation), fixed by always requesting full representation for organizations
-* [ISSUE 0011](0011-apply-does-not-clear-a-collection-field.md) - apply does not clear a collection field: an explicit-empty collection (attributes {}) meant to remove it is not cleared on the target, though a direct full-representation PUT clears it; write-side removal case, distinct from 0010's persist case, observed for groups
+* [ISSUE 0011](0011-apply-does-not-clear-a-collection-field.md) - apply does not clear a collection field: an explicit-empty collection (attributes {}) meant to remove it is not cleared on the target, though a direct full-representation PUT clears it; write-side removal case, distinct from 0010's persist case, observed for groups; fixed by `sanitizeResourceData` preserving explicitly-empty collections (`isExplicitEmptyCollection`) instead of stripping them before the request body is built
 
 ## Conventions
 
