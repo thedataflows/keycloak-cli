@@ -14,7 +14,7 @@ tags: [issue, bug, apply, attributes, group, collection, data-loss]
 - **Assignee**: none
 - **Related**: [ISSUE 0010](0010-organization-apply-drops-attributes.md) (attributes not persisting — read side; this is the write-side removal/clear case)
 - **Related code**: [`pkg/admin/apply.go`](../../pkg/admin/apply.go), [`pkg/admin/internal/client.go`](../../pkg/admin/internal/client.go)
-- **Closing commits**: `sanitizeResourceData` preserves explicit-empty collections (`isExplicitEmptyCollection`) + group clear regression tests.
+- **Closing commits**: `c65f8b0` (`sanitizeResourceData` preserves explicit-empty collections via `isExplicitEmptyCollection` + group clear regression tests). Released in `v1.6.3`.
 
 ## Resolution
 
