@@ -83,8 +83,11 @@ func WritePayload(writer io.Writer, payload interface{}, format string) error {
 
 func WriteApplyResults(writer io.Writer, results []admin.ApplyResult, format string) error {
 	switch format {
-	case "json", "yaml", "toml":
+	case "json", "yaml":
 		return WritePayload(writer, results, format)
+	case "toml":
+		// TOML documents are key/value roots; a root-level array cannot be encoded.
+		return WriteTOML(writer, map[string]interface{}{"results": results})
 	case "table", "":
 		return writeApplyResultsTable(writer, results)
 	default:
