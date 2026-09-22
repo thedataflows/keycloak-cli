@@ -26,6 +26,12 @@ type RuntimeConfig struct {
 	BaseURL  string
 	SpecPath string
 	Timeout  time.Duration
+	// Spec optionally supplies a pre-loaded spec, overriding SpecPath. Side-car
+	// overrides (relationship/field/built-in YAML files) are only loaded from
+	// SpecPath, so they are skipped when a pre-built spec is injected.
+	Spec *Spec
+	// HTTP optionally overrides the HTTP client used for Keycloak requests.
+	HTTP *http.Client
 }
 
 type TokenProvider interface {
@@ -47,26 +53,35 @@ func NewRuntimeClient(config RuntimeConfig, tokens TokenProvider) (*RuntimeClien
 		return nil, fmt.Errorf("base URL is required")
 	}
 
-	spec, err := NewSpec(config.SpecPath)
-	if err != nil {
-		return nil, fmt.Errorf("load spec: %w", err)
+	spec := config.Spec
+	if spec == nil {
+		var err error
+		spec, err = NewSpec(config.SpecPath)
+		if err != nil {
+			return nil, fmt.Errorf("load spec: %w", err)
+		}
+
+		if err := InstallDefaultRegistry(config.SpecPath); err != nil {
+			return nil, fmt.Errorf("load relationship overrides: %w", err)
+		}
+
+		if err := InstallDefaultFieldOverrides(config.SpecPath); err != nil {
+			return nil, fmt.Errorf("load field overrides: %w", err)
+		}
+
+		if err := InstallDefaultBuiltInResources(config.SpecPath); err != nil {
+			return nil, fmt.Errorf("load built-in resources: %w", err)
+		}
 	}
 
-	if err := InstallDefaultRegistry(config.SpecPath); err != nil {
-		return nil, fmt.Errorf("load relationship overrides: %w", err)
-	}
-
-	if err := InstallDefaultFieldOverrides(config.SpecPath); err != nil {
-		return nil, fmt.Errorf("load field overrides: %w", err)
-	}
-
-	if err := InstallDefaultBuiltInResources(config.SpecPath); err != nil {
-		return nil, fmt.Errorf("load built-in resources: %w", err)
+	httpClient := config.HTTP
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: config.Timeout}
 	}
 
 	client := &RuntimeClient{
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		httpClient: &http.Client{Timeout: config.Timeout},
+		httpClient: httpClient,
 		spec:       spec,
 	}
 
