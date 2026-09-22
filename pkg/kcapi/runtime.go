@@ -604,27 +604,90 @@ func (r *RuntimeClient) buildPathWithOperation(path string, operation *v3.Operat
 		return path
 	}
 
-	result := path
-	for key, value := range scope {
-		result = strings.ReplaceAll(result, "{"+key+"}", url.PathEscape(value))
-	}
-
+	values := make(map[string]string, len(scope))
+	maps.Copy(values, scope)
 	if operation != nil && operation.Parameters != nil {
 		for _, parameter := range operation.Parameters {
 			if parameter == nil || parameter.In != "path" {
 				continue
 			}
-			placeholder := "{" + parameter.Name + "}"
-			if !strings.Contains(result, placeholder) {
-				continue
-			}
 			if value, exists := scope[parameter.Name]; exists {
-				result = strings.ReplaceAll(result, placeholder, url.PathEscape(value))
+				values[parameter.Name] = value
 			}
 		}
 	}
 
+	// Lenient by contract: manifest flows validate the request right after
+	// building the path, so unfilled placeholders are surfaced there instead
+	// of here. The partial result is kept for that error message.
+	result, _ := instantiatePath(path, values)
 	return result
+}
+
+// pathPlaceholderNames returns the distinct {name} placeholders of a path
+// template in order of first appearance.
+func pathPlaceholderNames(template string) []string {
+	var names []string
+	seen := make(map[string]struct{})
+	for {
+		open := strings.Index(template, "{")
+		if open < 0 {
+			return names
+		}
+		rest := template[open+1:]
+		close := strings.Index(rest, "}")
+		if close < 0 {
+			return names
+		}
+		name := rest[:close]
+		template = rest[close+1:]
+		if name == "" {
+			continue
+		}
+		if _, dup := seen[name]; dup {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+}
+
+// instantiatePath replaces every {name} placeholder of the template with the
+// URL-path-escaped value from values. It is the single substitution
+// implementation shared by the manifest runtime flows (via
+// buildPathWithOperation) and Invoke. A placeholder with no entry in values
+// is left in place and reported; the returned string still carries every
+// substitution made so far.
+func instantiatePath(template string, values map[string]string) (string, error) {
+	var missing []string
+	result := template
+	for _, name := range pathPlaceholderNames(template) {
+		value, exists := values[name]
+		if !exists {
+			missing = append(missing, name)
+			continue
+		}
+		result = strings.ReplaceAll(result, "{"+name+"}", url.PathEscape(value))
+	}
+	if len(missing) > 0 {
+		return result, fmt.Errorf("unfilled path placeholder(s): %s", strings.Join(missing, ", "))
+	}
+	return result, nil
+}
+
+// BaseURL returns the trimmed base URL every request path is joined against.
+func (r *RuntimeClient) BaseURL() string {
+	return r.baseURL
+}
+
+// Authorize stamps the request with the current access token from the
+// configured token provider. It is the auth half of newAuthRequest, exposed
+// for callers that build requests themselves.
+func (r *RuntimeClient) Authorize(ctx context.Context, req *http.Request) error {
+	if r == nil || r.authEditor == nil {
+		return nil
+	}
+	return r.authEditor(ctx, req)
 }
 
 func (r *RuntimeClient) sanitizeResourcePayload(resource *Resource, method string, contract OperationContract) {
@@ -690,10 +753,8 @@ func (r *RuntimeClient) newAuthRequest(ctx context.Context, method, rawURL strin
 	if err != nil {
 		return nil, err
 	}
-	if r.authEditor != nil {
-		if err := r.authEditor(ctx, req); err != nil {
-			return nil, err
-		}
+	if err := r.Authorize(ctx, req); err != nil {
+		return nil, err
 	}
 	return req, nil
 }

@@ -127,6 +127,35 @@ func (s *Spec) ValidateOperationRequest(path, method string, input RequestValida
 	return validateOperationInput(contract, input)
 }
 
+// ValidateCall checks a pending Invoke call against the operation contract at
+// path+method without sending anything: every path placeholder of the
+// template must be present and non-empty in the call's Params (Realm fills
+// {realm} when the params do not carry it), required query params must be
+// present, and a body, when set, must match the operation's request schema.
+// It is the exported validation half of Client.Invoke, reusable on its own.
+func ValidateCall(spec *Spec, path, method string, call Call) error {
+	if spec == nil {
+		return fmt.Errorf("spec not initialized")
+	}
+	contract, err := spec.OperationContract(path, method)
+	if err != nil {
+		return err
+	}
+
+	values := callParamValues(call)
+	for _, name := range pathPlaceholderNames(path) {
+		if value, ok := values[name]; !ok || value == "" {
+			return fmt.Errorf("missing required path parameter %s", name)
+		}
+	}
+
+	return validateOperationInput(contract, RequestValidation{
+		PathParams:  values,
+		QueryParams: callQueryParams(path, call),
+		Body:        call.Body,
+	})
+}
+
 func (s *Spec) ValidateOperationResponse(path, method string, body interface{}) error {
 	contract, err := s.OperationContract(path, method)
 	if err != nil {
