@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -93,6 +94,13 @@ func logFetchError(label string, err error) {
 		evt = log.Logger.Debug().Str("pkg", "admin").Err(err)
 	}
 	evt.Msgf("fetch %s", label)
+}
+
+// isNotFound reports whether err is a typed kcapi error of KindNotFound,
+// meaning an optional resource is absent rather than genuinely broken.
+func isNotFound(err error) bool {
+	var e *kcapi.Error
+	return errors.As(err, &e) && e != nil && e.Kind == kcapi.KindNotFound
 }
 
 func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, error) {

@@ -1,4 +1,4 @@
-package internal
+package kcapi
 
 import (
 	"net/http"
@@ -7,24 +7,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	client := &RuntimeClient{spec: spec}
 
 	tests := []struct {
 		name     string
-		resource manifest.Resource
-		contract kcapi.OperationContract
+		resource Resource
+		contract OperationContract
 		want     map[string]interface{}
 	}{
 		{
 			name: "role under client strips realm and clientUuid",
-			resource: manifest.Resource{
+			resource: Resource{
 				Type:       "role",
 				Realm:      "demo",
 				ParentType: "client",
@@ -34,14 +32,14 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 					"clientUuid": "target-client-uuid",
 				},
 			},
-			contract: kcapi.OperationContract{Path: "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", Method: http.MethodPost},
+			contract: OperationContract{Path: "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"name": "admin",
 			},
 		},
 		{
 			name: "protocolmapper under client scope strips clientScopeId",
-			resource: manifest.Resource{
+			resource: Resource{
 				Type:       "protocolmapper",
 				Realm:      "demo",
 				ParentType: "clientscope",
@@ -51,7 +49,7 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 					"protocol":      "openid-connect",
 				},
 			},
-			contract: kcapi.OperationContract{Path: "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}", Method: http.MethodPost},
+			contract: OperationContract{Path: "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"name":     "email",
 				"protocol": "openid-connect",
@@ -59,12 +57,12 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 		},
 		{
 			name: "realm keeps realm field",
-			resource: manifest.Resource{
+			resource: Resource{
 				Type:  "realm",
 				Realm: "demo",
 				Data:  map[string]interface{}{"realm": "demo", "enabled": true},
 			},
-			contract: kcapi.OperationContract{Path: "/admin/realms", Method: http.MethodPost},
+			contract: OperationContract{Path: "/admin/realms", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"realm":   "demo",
 				"enabled": true,

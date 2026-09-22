@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	admininternal "github.com/thedataflows/keycloak-cli/pkg/admin/internal"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -39,11 +38,11 @@ type ApplyResult struct {
 	Error     string `json:"error,omitempty"`
 	CreatedID string `json:"createdId,omitempty"`
 
-	// typedErr holds the structured *Error counterpart of Error so callers can
-	// use errors.As on the value returned by Apply. Unexported because the
-	// public surface is Error (string) plus the typed error surfaced through
-	// Apply's return value.
-	typedErr *Error
+	// typedErr holds the structured *kcapi.Error counterpart of Error so
+	// callers can use errors.As on the value returned by Apply. Unexported
+	// because the public surface is Error (string) plus the typed error
+	// surfaced through Apply's return value.
+	typedErr *kcapi.Error
 }
 
 func (s *service) Apply(ctx context.Context, resources []manifest.Resource, relationships []manifest.RelationshipOperation, options ApplyOptions) (ApplyReport, error) {
@@ -292,7 +291,7 @@ func (s *service) applyRelationships(ctx context.Context, relationships []manife
 			result.Action = "failed"
 			result.Status = status
 			result.Error = classified.Error()
-			if ae, ok := classified.(*Error); ok {
+			if ae, ok := classified.(*kcapi.Error); ok {
 				result.typedErr = ae
 			}
 		}
@@ -647,7 +646,7 @@ func (s *service) newResourceResult(resource manifest.Resource, action string, s
 	}
 	if err != nil {
 		result.Error = err.Error()
-		if ae, ok := err.(*Error); ok {
+		if ae, ok := err.(*kcapi.Error); ok {
 			result.typedErr = ae
 		}
 	}
@@ -672,13 +671,49 @@ func (s *service) applyDelete(ctx context.Context, resource manifest.Resource, h
 	return s.newResourceResult(resource, "failed", status, classifyError(err, status, "delete", resource.Type), "")
 }
 
+// classifyError stamps the operation context ("<operation> <resource>") onto a
+// failed call. Kind classification lives in kcapi (classifyError/kindFromStatus
+// are unexported there): failures from the runtime client arrive as
+// *kcapi.Error already classified, so their kind, status and body are carried
+// over as-is; anything else did not reach the wire — the runtime client
+// returns a zero status for those — and is a network/transport failure.
+func classifyError(err error, statusCode int, operation, resource string) error {
+	if err == nil {
+		return nil
+	}
+	op := operation
+	if resource != "" {
+		if op != "" {
+			op += " " + resource
+		} else {
+			op = resource
+		}
+	}
+	var httpErr *kcapi.Error
+	if errors.As(err, &httpErr) {
+		return &kcapi.Error{
+			Kind:   httpErr.Kind,
+			Op:     op,
+			Status: httpErr.Status,
+			Body:   httpErr.Body,
+			Err:    err,
+		}
+	}
+	return &kcapi.Error{
+		Kind:   kcapi.KindNetwork,
+		Op:     op,
+		Status: statusCode,
+		Err:    err,
+	}
+}
+
 func isOrganizationDisabledError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var httpErr *admininternal.HTTPError
+	var httpErr *kcapi.Error
 	if errors.As(err, &httpErr) {
-		return httpErr.StatusCode == http.StatusBadRequest && strings.Contains(httpErr.Body, "Organizations not enabled")
+		return httpErr.Status == http.StatusBadRequest && strings.Contains(httpErr.Body, "Organizations not enabled")
 	}
 	return false
 }

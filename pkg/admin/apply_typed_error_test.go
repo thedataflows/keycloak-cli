@@ -11,22 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/thedataflows/keycloak-cli/pkg/admin"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // TestApplyReturnsTypedError verifies that when Apply fails without
-// ContinueOnError, the returned error unwraps to *admin.Error via errors.As.
+// ContinueOnError, the returned error unwraps to *kcapi.Error via errors.As.
 // This is what the syncengine migration relies on to distinguish conflict
 // (retry) from validation (fail) errors.
 func TestApplyReturnsTypedError(t *testing.T) {
 	tests := []struct {
 		name       string
 		status     int
-		wantKind   admin.ErrorKind
+		wantKind   kcapi.ErrorKind
 		wantStatus int
 	}{
-		{name: "validation failure 400", status: http.StatusBadRequest, wantKind: admin.ErrorValidation, wantStatus: http.StatusBadRequest},
-		{name: "unauthorized 401", status: http.StatusUnauthorized, wantKind: admin.ErrorUnauthorized, wantStatus: http.StatusUnauthorized},
+		{name: "validation failure 400", status: http.StatusBadRequest, wantKind: kcapi.KindValidation, wantStatus: http.StatusBadRequest},
+		{name: "unauthorized 401", status: http.StatusUnauthorized, wantKind: kcapi.KindAuth, wantStatus: http.StatusUnauthorized},
 	}
 
 	for _, tc := range tests {
@@ -51,10 +52,10 @@ func TestApplyReturnsTypedError(t *testing.T) {
 			}}, nil, admin.ApplyOptions{})
 			require.Error(t, err)
 
-			var ae *admin.Error
-			require.True(t, errors.As(err, &ae), "err should unwrap to *admin.Error; got %T: %v", err, err)
+			var ae *kcapi.Error
+			require.True(t, errors.As(err, &ae), "err should unwrap to *kcapi.Error; got %T: %v", err, err)
 			require.NotNil(t, ae)
-			assert.Equal(t, tc.wantStatus, ae.StatusCode)
+			assert.Equal(t, tc.wantStatus, ae.Status)
 			assert.Equal(t, tc.wantKind, ae.Kind)
 		})
 	}
@@ -84,11 +85,11 @@ func TestApplyReturnsTypedConflictErrorOnUpdate(t *testing.T) {
 	}}, nil, admin.ApplyOptions{})
 	require.Error(t, err)
 
-	var ae *admin.Error
-	require.True(t, errors.As(err, &ae), "err should unwrap to *admin.Error; got %T: %v", err, err)
+	var ae *kcapi.Error
+	require.True(t, errors.As(err, &ae), "err should unwrap to *kcapi.Error; got %T: %v", err, err)
 	require.NotNil(t, ae)
-	assert.Equal(t, http.StatusConflict, ae.StatusCode)
-	assert.Equal(t, admin.ErrorConflict, ae.Kind)
+	assert.Equal(t, http.StatusConflict, ae.Status)
+	assert.Equal(t, kcapi.KindConflict, ae.Kind)
 }
 
 // TestApplyErrorStringFormatPreserved locks the backward-compatible .Error()

@@ -3,13 +3,12 @@ package admin
 import (
 	"time"
 
-	"github.com/thedataflows/keycloak-cli/pkg/admin/internal"
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 type service struct {
-	specClient *internal.RuntimeClient
+	specClient *kcapi.RuntimeClient
 	timeout    time.Duration
 
 	identities    map[string]kcapi.ResourceIdentity
@@ -21,7 +20,7 @@ func newService(config Config) (Service, error) {
 	if config.Auth != nil {
 		authSvc = config.Auth
 	}
-	impl, err := internal.NewRuntimeClient(internal.Config{
+	impl, err := kcapi.NewRuntimeClient(kcapi.RuntimeConfig{
 		BaseURL:  config.BaseURL,
 		SpecPath: config.SpecPath,
 		Timeout:  config.Timeout,
