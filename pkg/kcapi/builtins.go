@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // BuiltInResource describes a resource type and the names that should be treated
@@ -63,13 +62,13 @@ func ApplyBuiltInResources(overrides []BuiltInResource) error {
 }
 
 // InstallDefaultBuiltInResources loads built-in resource overrides from the
-// directory containing the spec and wires the matcher into the manifest package.
-// It is safe to call when no override file exists.
+// directory containing the spec and wires the matcher into the package-level
+// hook below. It is safe to call when no override file exists.
 func InstallDefaultBuiltInResources(specPath string) error {
 	specDir := filepath.Dir(specPath)
 	overridePath := filepath.Join(specDir, "built-in-resources.yaml")
 
-	manifest.IsBuiltInResource = builtInResourceMatcher
+	IsBuiltInResource = builtInResourceMatcher
 
 	overrides, err := LoadBuiltInResources(overridePath)
 	if err != nil {
@@ -81,7 +80,13 @@ func InstallDefaultBuiltInResources(specPath string) error {
 	return ApplyBuiltInResources(overrides)
 }
 
-func builtInResourceMatcher(resource manifest.Resource) bool {
+// IsBuiltInResource is the hook var moved verbatim from pkg/manifest/manifest.go
+// (manifest's round-trip reads now consult kcapi.IsBuiltInResource directly).
+// It allows the catalog package to inject knowledge of built-in
+// resources that should be excluded from round-trip comparison.
+var IsBuiltInResource = func(Resource) bool { return false }
+
+func builtInResourceMatcher(resource Resource) bool {
 	names, ok := defaultBuiltInResourceNames[resource.Type]
 	if !ok {
 		return false
@@ -95,7 +100,7 @@ func builtInResourceMatcher(resource manifest.Resource) bool {
 	return false
 }
 
-func builtInResourceName(resource manifest.Resource) string {
+func builtInResourceName(resource Resource) string {
 	if name := stringField(resource.Data, "clientId"); name != "" {
 		return name
 	}

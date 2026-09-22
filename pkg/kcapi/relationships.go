@@ -13,7 +13,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 const relationshipPathPrefix = "/admin/realms/"
@@ -64,7 +63,7 @@ func RelationshipTemplatePattern(template string) (string, error) {
 	return buildTemplatePattern(normalized, paramNames)
 }
 
-func ValidateRelationshipOperations(spec *Spec, ops []manifest.RelationshipOperation) error {
+func ValidateRelationshipOperations(spec *Spec, ops []RelationshipOperation) error {
 	if spec == nil {
 		return fmt.Errorf("spec is required")
 	}
@@ -96,7 +95,7 @@ func ValidateRelationshipOperations(spec *Spec, ops []manifest.RelationshipOpera
 	return errors.Join(validationErrors...)
 }
 
-func validateRelationshipOperation(spec *Spec, rel *manifest.RelationshipOperation, matchers []templateMatcher) error {
+func validateRelationshipOperation(spec *Spec, rel *RelationshipOperation, matchers []templateMatcher) error {
 	normalized := normalizeRelationshipPath(rel.Path)
 	if normalized == "" {
 		return fmt.Errorf("path is required")

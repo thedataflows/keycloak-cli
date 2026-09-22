@@ -138,7 +138,7 @@ func compareFetchResources(loaded manifest.LoadResult) string {
 		}
 	}
 	for _, rel := range loaded.Relationships {
-		for _, resourceType := range manifest.RelationshipParamTypes(rel.Kind) {
+		for _, resourceType := range kcapi.RelationshipParamTypes(rel.Kind) {
 			resourceSet[resourceType] = struct{}{}
 		}
 	}

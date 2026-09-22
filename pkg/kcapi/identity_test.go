@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestLoadFieldOverrides(t *testing.T) {
@@ -87,7 +86,7 @@ overrides:
 
 	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(dir, "26.6.2.spec.json")))
 
-	stripped := manifest.StripVolatileFields(manifest.Resource{Type: "user", Data: map[string]interface{}{
+	stripped := StripVolatileFields(Resource{Type: "user", Data: map[string]interface{}{
 		"username":    "alice",
 		"wiredField":  "x",
 		"wiredSecret": "y",
@@ -99,7 +98,7 @@ overrides:
 func TestInstallDefaultFieldOverridesWiresDefaultsWhenFileMissing(t *testing.T) {
 	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(t.TempDir(), "26.6.2.spec.json")))
 
-	stripped := manifest.StripVolatileFields(manifest.Resource{Type: "identityprovider", Data: map[string]interface{}{
+	stripped := StripVolatileFields(Resource{Type: "identityprovider", Data: map[string]interface{}{
 		"alias": "idp-1",
 		"types": []string{"USER_AUTHENTICATION"},
 		"config": map[string]interface{}{

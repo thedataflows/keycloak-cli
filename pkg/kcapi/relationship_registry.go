@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // RelationshipKind describes a family of Keycloak relationships discovered from
@@ -194,11 +193,55 @@ func InstallDefaultRegistry(specPath string) error {
 	return nil
 }
 
-// InstallManifestRegistry wires the default registry into the manifest package
-// so relationship normalization can resolve parameter types from the registry
-// instead of a hardcoded switch.
+// InstallManifestRegistry wires the default registry into the package-level
+// hook below so relationship normalization can resolve parameter types from
+// the registry instead of a hardcoded switch.
 func InstallManifestRegistry() {
-	manifest.RelationshipParamTypes = defaultRelationshipRegistry.paramTypesFunc()
+	RelationshipParamTypes = defaultRelationshipRegistry.paramTypesFunc()
+}
+
+// RelationshipParamTypes resolves the resource types for path parameters of a
+// relationship kind. The default implementation is used when the catalog package
+// has not yet installed a registry. Assigning a replacement function allows
+// catalog-driven overrides without creating an import cycle.
+// Moved verbatim from pkg/manifest/manifest.go; manifest reads this var directly.
+var RelationshipParamTypes = defaultRelationshipParamTypes
+
+func defaultRelationshipParamTypes(kind string) map[string]string {
+	switch kind {
+	case "user-group-membership":
+		return map[string]string{"user-id": "user", "groupId": "group"}
+	case "user-realm-role-mapping":
+		return map[string]string{"user-id": "user"}
+	case "group-realm-role-mapping":
+		return map[string]string{"group-id": "group"}
+	case "user-client-role-mapping":
+		return map[string]string{"user-id": "user", "client-id": "client"}
+	case "group-client-role-mapping":
+		return map[string]string{"group-id": "group", "client-id": "client"}
+	case "role-composite-mapping":
+		return map[string]string{"role-id": "role"}
+	case "default-group-membership":
+		return map[string]string{"groupId": "group"}
+	case "realm-default-client-scope", "realm-optional-client-scope":
+		return map[string]string{"clientScopeId": "clientscope"}
+	case "client-default-scope", "client-optional-scope":
+		return map[string]string{"client-uuid": "client", "clientScopeId": "clientscope"}
+	case "client-scope-realm-role-mapping":
+		return map[string]string{"client-scope-id": "clientscope"}
+	case "client-scope-client-role-mapping":
+		return map[string]string{"client-scope-id": "clientscope", "client": "client"}
+	case "user-federated-identity":
+		return map[string]string{"user-id": "user", "provider": "identityprovider"}
+	case "organization-member", "organization-identity-provider":
+		return map[string]string{"org-id": "organization"}
+	case "organization-group-member":
+		return map[string]string{"org-id": "organization", "group-id": "group", "userId": "user"}
+	case "organization-group-child":
+		return map[string]string{"org-id": "organization", "group-id": "group"}
+	default:
+		return nil
+	}
 }
 
 func (r *Registry) paramTypesFunc() func(string) map[string]string {
@@ -411,7 +454,7 @@ func extractStringValue(payload interface{}, key string) string {
 }
 
 // BuildDeleteOperation creates a delete operation for an existing relationship.
-func BuildDeleteOperation(actual manifest.RelationshipOperation, kind RelationshipKind) (manifest.RelationshipOperation, error) {
+func BuildDeleteOperation(actual RelationshipOperation, kind RelationshipKind) (RelationshipOperation, error) {
 	params := make(map[string]string, len(actual.PathParams))
 	for k, v := range actual.PathParams {
 		params[k] = v
@@ -426,7 +469,7 @@ func BuildDeleteOperation(actual manifest.RelationshipOperation, kind Relationsh
 	if kind.DeleteItemParam != "" {
 		value := extractStringValue(parsedPayload, kind.DeletePayloadField)
 		if value == "" {
-			return manifest.RelationshipOperation{}, fmt.Errorf("cannot build delete for %s: missing %s in payload", kind.Name, kind.DeleteItemParam)
+			return RelationshipOperation{}, fmt.Errorf("cannot build delete for %s: missing %s in payload", kind.Name, kind.DeleteItemParam)
 		}
 		params[kind.DeleteItemParam] = value
 		deletePayload = nil
@@ -434,5 +477,5 @@ func BuildDeleteOperation(actual manifest.RelationshipOperation, kind Relationsh
 		deletePayload = nil
 	}
 
-	return manifest.NewRelationshipOperation(kind.DeleteTemplate, kind.DeleteMethod, params, deletePayload)
+	return NewRelationshipOperation(kind.DeleteTemplate, kind.DeleteMethod, params, deletePayload)
 }

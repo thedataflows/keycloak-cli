@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestPathParamsResolvesPathPlaceholders(t *testing.T) {
@@ -15,49 +14,49 @@ func TestPathParamsResolvesPathPlaceholders(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		resource manifest.Resource
+		resource Resource
 		path     string
 		want     map[string]string
 	}{
 		{
 			name:     "realm-only path",
-			resource: manifest.Resource{Type: "realm", Realm: "demo", Data: map[string]interface{}{"realm": "demo"}},
+			resource: Resource{Type: "realm", Realm: "demo", Data: map[string]interface{}{"realm": "demo"}},
 			path:     "/admin/realms/{realm}",
 			want:     map[string]string{"realm": "demo"},
 		},
 		{
 			name:     "user with username fallback",
-			resource: manifest.Resource{Type: "user", Realm: "demo", Data: map[string]interface{}{"username": "alice"}},
+			resource: Resource{Type: "user", Realm: "demo", Data: map[string]interface{}{"username": "alice"}},
 			path:     "/admin/realms/{realm}/users/{user-id}",
 			want:     map[string]string{"realm": "demo", "user-id": "alice"},
 		},
 		{
 			name:     "user with id present",
-			resource: manifest.Resource{Type: "user", Realm: "demo", Data: map[string]interface{}{"id": "user-1", "username": "alice"}},
+			resource: Resource{Type: "user", Realm: "demo", Data: map[string]interface{}{"id": "user-1", "username": "alice"}},
 			path:     "/admin/realms/{realm}/users/{user-id}",
 			want:     map[string]string{"realm": "demo", "user-id": "user-1"},
 		},
 		{
 			name:     "client with clientId",
-			resource: manifest.Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"clientId": "app"}},
+			resource: Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"clientId": "app"}},
 			path:     "/admin/realms/{realm}/clients/{client-uuid}",
 			want:     map[string]string{"realm": "demo", "client-uuid": "app"},
 		},
 		{
 			name:     "nested protocolmapper with parent id in data",
-			resource: manifest.Resource{Type: "protocolmapper", Realm: "demo", Data: map[string]interface{}{"id": "mapper-1", "clientScopeId": "scope-1"}},
+			resource: Resource{Type: "protocolmapper", Realm: "demo", Data: map[string]interface{}{"id": "mapper-1", "clientScopeId": "scope-1"}},
 			path:     "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}",
 			want:     map[string]string{"realm": "demo", "client-scope-id": "scope-1", "id": "mapper-1"},
 		},
 		{
 			name:     "role with role-name path",
-			resource: manifest.Resource{Type: "role", Realm: "demo", Data: map[string]interface{}{"name": "developer"}},
+			resource: Resource{Type: "role", Realm: "demo", Data: map[string]interface{}{"name": "developer"}},
 			path:     "/admin/realms/{realm}/roles/{role-name}",
 			want:     map[string]string{"realm": "demo", "role-name": "developer"},
 		},
 		{
 			name:     "empty path returns realm only",
-			resource: manifest.Resource{Type: "group", Realm: "demo", Data: map[string]interface{}{"name": "devs"}},
+			resource: Resource{Type: "group", Realm: "demo", Data: map[string]interface{}{"name": "devs"}},
 			path:     "",
 			want:     map[string]string{"realm": "demo"},
 		},
@@ -130,7 +129,7 @@ func TestPathParamsFallsBackToIdentifier(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "group",
 		Realm: "demo",
 		Data:  map[string]interface{}{"id": "group-1", "name": "devs"},
@@ -148,25 +147,25 @@ func TestParentReferenceFieldsMapsPlaceholderToParentID(t *testing.T) {
 	tests := []struct {
 		name   string
 		path   string
-		parent manifest.Resource
+		parent Resource
 		want   map[string]string
 	}{
 		{
 			name:   "protocolmapper under client scope",
 			path:   "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models",
-			parent: manifest.Resource{Type: "clientscope", Realm: "demo", Data: map[string]interface{}{"id": "scope-1", "name": "email"}},
+			parent: Resource{Type: "clientscope", Realm: "demo", Data: map[string]interface{}{"id": "scope-1", "name": "email"}},
 			want:   map[string]string{"clientScopeId": "scope-1"},
 		},
 		{
 			name:   "authz resource under client",
 			path:   "/admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource",
-			parent: manifest.Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"id": "client-1", "clientId": "app"}},
+			parent: Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"id": "client-1", "clientId": "app"}},
 			want:   map[string]string{"clientUuid": "client-1"},
 		},
 		{
 			name:   "no matching placeholder",
 			path:   "/admin/realms/{realm}/users",
-			parent: manifest.Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"id": "client-1"}},
+			parent: Resource{Type: "client", Realm: "demo", Data: map[string]interface{}{"id": "client-1"}},
 			want:   nil,
 		},
 	}
@@ -183,7 +182,7 @@ func TestPathParamsUsesCamelCaseField(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "protocolmapper",
 		Realm: "demo",
 		Data:  map[string]interface{}{"id": "mapper-1", "clientScopeId": "scope-1"},
@@ -198,7 +197,7 @@ func TestPathParamsUsesExactFieldName(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"user-id": "alice", "username": "alice-smith"},
@@ -213,7 +212,7 @@ func TestPathParamsAlwaysAddsPrimaryIdentifier(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"username": "alice"},
@@ -228,7 +227,7 @@ func TestPathParamsPrimaryIdentifierEmptyWhenNoData(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{},
@@ -311,7 +310,7 @@ func TestResolveResourcePathWithParentType(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:       "protocolmapper",
 		Realm:      "demo",
 		ParentType: "clientscope",
@@ -328,7 +327,7 @@ func TestResolveResourcePathWithoutParentType(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:  "client",
 		Realm: "demo",
 		Data: map[string]interface{}{
@@ -344,7 +343,7 @@ func TestResolveResourcePathParamsWithClientScopeParent(t *testing.T) {
 	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	resource := manifest.Resource{
+	resource := Resource{
 		Type:       "protocolmapper",
 		Realm:      "demo",
 		ParentType: "clientscope",

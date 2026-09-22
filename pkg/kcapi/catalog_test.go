@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestNewSpecLoadsDocument(t *testing.T) {
@@ -25,7 +24,7 @@ func TestValidateRelationshipOperations(t *testing.T) {
 	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	rels := []manifest.RelationshipOperation{{Path: "test-realm/users/test-user/groups/test-group"}}
+	rels := []kcapi.RelationshipOperation{{Path: "test-realm/users/test-user/groups/test-group"}}
 	require.NoError(t, kcapi.ValidateRelationshipOperations(spec, rels))
 	require.Equal(t, "{realm}/users/{user-id}/groups/{groupId}", rels[0].Template)
 	require.Equal(t, "PUT", rels[0].Method)
@@ -53,7 +52,7 @@ func TestValidateRelationshipOperationsDelete(t *testing.T) {
 	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	rels := []manifest.RelationshipOperation{{
+	rels := []kcapi.RelationshipOperation{{
 		Path:   "test-realm/users/test-user/groups/test-group",
 		Delete: true,
 	}}
@@ -72,7 +71,7 @@ func TestValidateRelationshipOperationsAssignsRealmScopeKinds(t *testing.T) {
 	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	rels := []manifest.RelationshipOperation{{Path: "test-realm/default-default-client-scopes/scope-1"}, {Path: "test-realm/default-optional-client-scopes/scope-2"}}
+	rels := []kcapi.RelationshipOperation{{Path: "test-realm/default-default-client-scopes/scope-1"}, {Path: "test-realm/default-optional-client-scopes/scope-2"}}
 
 	require.NoError(t, kcapi.ValidateRelationshipOperations(spec, rels))
 	assert.Equal(t, http.MethodPut, rels[0].Method)
@@ -104,7 +103,7 @@ func TestValidateResourceRejectsWrongTypes(t *testing.T) {
 	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	err = spec.ValidateResource(manifest.Resource{
+	err = spec.ValidateResource(kcapi.Resource{
 		Type:  "user",
 		Realm: "demo",
 		Data: map[string]interface{}{
@@ -140,15 +139,15 @@ func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
 	params := map[string]string{"realm": "demo", "user-id": "user-1", "client-id": "client-1"}
 	body := []interface{}{map[string]interface{}{"id": "role-1", "name": "demo-a-clientrole-1"}}
 
-	link, err := manifest.NewRelationshipOperation(
+	link, err := kcapi.NewRelationshipOperation(
 		"{realm}/users/{user-id}/role-mappings/clients/{client-id}", http.MethodPost, params, body)
 	require.NoError(t, err)
-	unlink, err := manifest.NewRelationshipOperation(
+	unlink, err := kcapi.NewRelationshipOperation(
 		"{realm}/users/{user-id}/role-mappings/clients/{client-id}", http.MethodDelete, params, body)
 	require.NoError(t, err)
 
 	require.NoError(t, kcapi.ValidateRelationshipOperations(spec,
-		[]manifest.RelationshipOperation{link, unlink}))
+		[]kcapi.RelationshipOperation{link, unlink}))
 }
 
 func TestResourceContractsPreferRoleNameEndpoint(t *testing.T) {

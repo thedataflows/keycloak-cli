@@ -13,7 +13,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi/internal"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // ResourceIdentity describes how a resource type is identified in manifests and URLs.
@@ -169,8 +168,8 @@ func InstallDefaultFieldOverrides(specPath string) error {
 
 	// Install catalog defaults unconditionally so that spec-derived volatile and
 	// write-only fields are available even when no override file exists.
-	manifest.InstallVolatileFields(volatileFieldMap())
-	manifest.InstallWriteOnlyFields(writeOnlyFieldMap())
+	InstallVolatileFields(volatileFieldMap())
+	InstallWriteOnlyFields(writeOnlyFieldMap())
 
 	overrides, err := LoadFieldOverrides(overridePath)
 	if err != nil {
@@ -183,8 +182,8 @@ func InstallDefaultFieldOverrides(specPath string) error {
 	if err := ApplyFieldOverrides(overrides); err != nil {
 		return err
 	}
-	manifest.InstallVolatileFields(volatileFieldMap())
-	manifest.InstallWriteOnlyFields(writeOnlyFieldMap())
+	InstallVolatileFields(volatileFieldMap())
+	InstallWriteOnlyFields(writeOnlyFieldMap())
 	return nil
 }
 
@@ -412,12 +411,12 @@ func (s *Spec) WriteOnlyFields(resourceType string) ([]string, error) {
 }
 
 // IdentifierOf returns the best identifier value for a resource using its identity model.
-func IdentifierOf(resource manifest.Resource, identity ResourceIdentity) string {
+func IdentifierOf(resource Resource, identity ResourceIdentity) string {
 	return firstStringField(resource.Data, identity.IdentifierFields)
 }
 
 // NameOf returns the human-readable name for a resource.
-func NameOf(resource manifest.Resource, identity ResourceIdentity) string {
+func NameOf(resource Resource, identity ResourceIdentity) string {
 	if identity.DisplayField != "" {
 		if v := stringField(resource.Data, identity.DisplayField); v != "" {
 			return v
@@ -427,7 +426,7 @@ func NameOf(resource manifest.Resource, identity ResourceIdentity) string {
 }
 
 // DisplayNameOf returns a display name, falling back to the identifier.
-func DisplayNameOf(resource manifest.Resource, identity ResourceIdentity) string {
+func DisplayNameOf(resource Resource, identity ResourceIdentity) string {
 	if name := NameOf(resource, identity); name != "" {
 		return name
 	}

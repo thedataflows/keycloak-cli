@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // A group nested under a group shares the "group" type with its parent, so the
@@ -43,7 +42,7 @@ func TestNestedGroupCreateStripsParentBinding(t *testing.T) {
 func TestNestedGroupCreateRendersParentPath(t *testing.T) {
 	resolver := loadOrgGroupSpec(t).Resolver()
 
-	child := manifest.Resource{
+	child := kcapi.Resource{
 		Type: "group", Realm: "demo", ParentType: "group",
 		Data: map[string]interface{}{"name": "platform", "groupId": "parent-1"},
 	}
@@ -59,7 +58,7 @@ func TestNestedGroupCreateRendersParentPath(t *testing.T) {
 func TestNestedGroupUpdateDeleteAddressOwnID(t *testing.T) {
 	resolver := loadOrgGroupSpec(t).Resolver()
 
-	child := manifest.Resource{
+	child := kcapi.Resource{
 		Type: "group", Realm: "demo", ParentType: "group",
 		Data: map[string]interface{}{"id": "child-1", "name": "platform", "groupId": "parent-1"},
 	}

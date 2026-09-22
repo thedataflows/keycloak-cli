@@ -3,8 +3,6 @@ package kcapi
 import (
 	"fmt"
 	"strings"
-
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // OperationShape controls which kind of endpoint the resolver should pick.
@@ -152,7 +150,7 @@ func firstParentPlaceholderType(path string, placeholderMap map[string]string) s
 
 // ResolveResourcePath resolves the operation for the resource and renders the
 // path by substituting path parameters from resource.Data and resource.Realm.
-func (r *Resolver) ResolveResourcePath(resource manifest.Resource, method string, shape OperationShape) (string, OperationContract, map[string]string, error) {
+func (r *Resolver) ResolveResourcePath(resource Resource, method string, shape OperationShape) (string, OperationContract, map[string]string, error) {
 	contract, err := r.ResolveResourceOperation(resource.Type, resource.ParentType, method, shape)
 	if err != nil {
 		return "", OperationContract{}, nil, err
@@ -166,7 +164,7 @@ func (r *Resolver) ResolveResourcePath(resource manifest.Resource, method string
 }
 
 // PathParams extracts path parameters for a resource given an operation contract.
-func (r *Resolver) PathParams(resource manifest.Resource, op OperationContract) (map[string]string, error) {
+func (r *Resolver) PathParams(resource Resource, op OperationContract) (map[string]string, error) {
 	params := map[string]string{"realm": resource.Realm}
 	if op.Path == "" {
 		return params, nil
@@ -304,7 +302,7 @@ func (r *Resolver) ParentReferenceFieldTypes(resourceType string, op OperationCo
 // a path such as /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models,
 // the returned map contains {"clientScopeId": "<parent-scope-id>"} so the child
 // can be applied independently as a top-level resource.
-func (r *Resolver) ParentReferenceFields(childPath, parentType string, parent manifest.Resource) map[string]string {
+func (r *Resolver) ParentReferenceFields(childPath, parentType string, parent Resource) map[string]string {
 	if childPath == "" || parentType == "" {
 		return nil
 	}
@@ -372,7 +370,7 @@ func (r *Resolver) ParentReferenceFieldNames(resourceType string, op OperationCo
 	return fields
 }
 
-func parentReferenceValue(parent manifest.Resource, placeholder string) string {
+func parentReferenceValue(parent Resource, placeholder string) string {
 	if data := parent.Data; data != nil {
 		if id, ok := data["id"].(string); ok && id != "" {
 			return id

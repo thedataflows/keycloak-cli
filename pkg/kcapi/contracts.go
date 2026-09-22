@@ -14,7 +14,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -140,7 +139,7 @@ func (s *Spec) ValidateOperationResponse(path, method string, body interface{}) 
 	return validateSchemaProxy(contract.ResponseSchema, body, label)
 }
 
-func (s *Spec) ValidateResource(resource manifest.Resource, method string) error {
+func (s *Spec) ValidateResource(resource Resource, method string) error {
 	contracts, err := s.ResourceContracts()
 	if err != nil {
 		return err
@@ -176,7 +175,7 @@ func (s *Spec) ValidateResource(resource manifest.Resource, method string) error
 	return nil
 }
 
-func ValidateResources(spec *Spec, resources []manifest.Resource, deleteMode bool) error {
+func ValidateResources(spec *Spec, resources []Resource, deleteMode bool) error {
 	if spec == nil || len(resources) == 0 {
 		return nil
 	}
@@ -210,7 +209,7 @@ func ValidateResources(spec *Spec, resources []manifest.Resource, deleteMode boo
 
 // ValidateManifest validates both resources and relationship operations in a
 // single call. It returns a joined error containing all validation failures.
-func (s *Spec) ValidateManifest(resources []manifest.Resource, relationships []manifest.RelationshipOperation, deleteMode bool) error {
+func (s *Spec) ValidateManifest(resources []Resource, relationships []RelationshipOperation, deleteMode bool) error {
 	var errs []error
 	if err := ValidateResources(s, resources, deleteMode); err != nil {
 		errs = append(errs, err)

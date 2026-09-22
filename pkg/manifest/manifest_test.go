@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -421,11 +422,11 @@ func TestCompareRoundTrip(t *testing.T) {
 }
 
 func TestCompareRoundTripIgnoresBuiltInResources(t *testing.T) {
-	orig := manifest.IsBuiltInResource
-	manifest.IsBuiltInResource = func(r manifest.Resource) bool {
+	orig := kcapi.IsBuiltInResource
+	kcapi.IsBuiltInResource = func(r manifest.Resource) bool {
 		return r.Type == "client" && r.Data["clientId"] == "account"
 	}
-	t.Cleanup(func() { manifest.IsBuiltInResource = orig })
+	t.Cleanup(func() { kcapi.IsBuiltInResource = orig })
 
 	expected := []manifest.Resource{{
 		Type:  "client",
