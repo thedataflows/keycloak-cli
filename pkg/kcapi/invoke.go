@@ -48,11 +48,12 @@ type resolvedOp struct {
 // response body is a valid nil result. Failures surface as *Error: validation
 // failures before anything is sent, taxonomy-classified errors afterwards.
 func (c *Client) Invoke(ctx context.Context, call Call) (json.RawMessage, error) {
-	op, path, err := c.resolveCall(call)
+	spec, runtime := c.snapshot() // capture the pair once: in-flight calls keep it across Reload
+	op, path, err := resolveCall(spec, call)
 	if err != nil {
 		return nil, &Error{Kind: KindValidation, Op: callLabel(call), Err: err}
 	}
-	if err := ValidateCall(c.spec, op.path, string(op.verb), call); err != nil {
+	if err := ValidateCall(spec, op.path, string(op.verb), call); err != nil {
 		return nil, &Error{Kind: KindValidation, Op: callLabel(call), Err: err}
 	}
 	body, err := marshalBody(op, call)
@@ -60,7 +61,7 @@ func (c *Client) Invoke(ctx context.Context, call Call) (json.RawMessage, error)
 		return nil, &Error{Kind: KindValidation, Op: callLabel(call), Err: err}
 	}
 
-	fullURL := c.runtime.BaseURL() + path
+	fullURL := runtime.BaseURL() + path
 	if query := callQueryParams(op.path, call); len(query) > 0 {
 		values := url.Values{}
 		for key, value := range query {
@@ -77,7 +78,7 @@ func (c *Client) Invoke(ctx context.Context, call Call) (json.RawMessage, error)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if err := c.runtime.Authorize(ctx, req); err != nil {
+	if err := runtime.Authorize(ctx, req); err != nil {
 		return nil, classifyError(err, 0, callLabel(call))
 	}
 
@@ -104,9 +105,11 @@ func (c *Client) Invoke(ctx context.Context, call Call) (json.RawMessage, error)
 // path placeholders from Params (+Realm). Op mode requires exactly one
 // operation to carry the operationId; Resource+Verb mode considers only
 // operations whose every placeholder is fillable from Params+Realm and picks
-// the most specific (most placeholders), shortest path on ties.
-func (c *Client) resolveCall(call Call) (resolvedOp, string, error) {
-	if c == nil || c.spec == nil {
+// the most specific (most placeholders), shortest path on ties. It resolves
+// against the spec captured by the caller's snapshot, never the live client
+// field.
+func resolveCall(spec *Spec, call Call) (resolvedOp, string, error) {
+	if spec == nil {
 		return resolvedOp{}, "", fmt.Errorf("client is not initialized")
 	}
 
@@ -114,21 +117,21 @@ func (c *Client) resolveCall(call Call) (resolvedOp, string, error) {
 	case call.Op != "" && call.Resource != "":
 		return resolvedOp{}, "", fmt.Errorf("call must set either Op or Resource+Verb, not both")
 	case call.Op != "":
-		return c.resolveCallByOp(call)
+		return resolveCallByOp(spec, call)
 	case call.Resource != "":
-		return c.resolveCallByResourceAndVerb(call)
+		return resolveCallByResourceAndVerb(spec, call)
 	default:
 		return resolvedOp{}, "", fmt.Errorf("call requires either Op or Resource+Verb")
 	}
 }
 
-func (c *Client) resolveCallByOp(call Call) (resolvedOp, string, error) {
+func resolveCallByOp(spec *Spec, call Call) (resolvedOp, string, error) {
 	type opMatch struct {
 		path   string
 		method string
 	}
 	var matches []opMatch
-	c.spec.ForEachOperation(func(path, method string, operation *v3.Operation, item *v3.PathItem) {
+	spec.ForEachOperation(func(path, method string, operation *v3.Operation, item *v3.PathItem) {
 		if operation != nil && operation.OperationId == call.Op {
 			matches = append(matches, opMatch{path: path, method: strings.ToUpper(method)})
 		}
@@ -145,7 +148,7 @@ func (c *Client) resolveCallByOp(call Call) (resolvedOp, string, error) {
 	}
 
 	match := matches[0]
-	contract, err := c.spec.OperationContract(match.path, match.method)
+	contract, err := spec.OperationContract(match.path, match.method)
 	if err != nil {
 		return resolvedOp{}, "", err
 	}
@@ -157,7 +160,7 @@ func (c *Client) resolveCallByOp(call Call) (resolvedOp, string, error) {
 	return op, path, nil
 }
 
-func (c *Client) resolveCallByResourceAndVerb(call Call) (resolvedOp, string, error) {
+func resolveCallByResourceAndVerb(spec *Spec, call Call) (resolvedOp, string, error) {
 	if call.Verb == "" {
 		return resolvedOp{}, "", fmt.Errorf("resource %q requires a Verb", call.Resource)
 	}
@@ -170,7 +173,7 @@ func (c *Client) resolveCallByResourceAndVerb(call Call) (resolvedOp, string, er
 		placeholders int
 	}
 	var candidates []candidate
-	c.spec.ForEachOperation(func(path, method string, operation *v3.Operation, item *v3.PathItem) {
+	spec.ForEachOperation(func(path, method string, operation *v3.Operation, item *v3.PathItem) {
 		if !strings.EqualFold(method, string(call.Verb)) {
 			return
 		}
@@ -201,7 +204,7 @@ func (c *Client) resolveCallByResourceAndVerb(call Call) (resolvedOp, string, er
 	})
 	picked := candidates[0]
 
-	contract, err := c.spec.OperationContract(picked.path, picked.method)
+	contract, err := spec.OperationContract(picked.path, picked.method)
 	if err != nil {
 		return resolvedOp{}, "", err
 	}

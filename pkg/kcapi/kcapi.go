@@ -4,9 +4,11 @@
 package kcapi
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
@@ -46,20 +48,30 @@ type Config struct {
 }
 
 // Client is the public entry point of the kcapi library: it owns the loaded
-// spec, the runtime transport, and the auth service.
+// spec, the runtime transport, and the auth service. The spec/runtime pair is
+// guarded by mu: readers capture it via snapshot and keep their captured
+// values for the whole call, so Reload can swap the pair atomically without
+// disturbing in-flight operations.
 type Client struct {
+	mu      sync.RWMutex // guards spec and runtime
 	spec    *Spec
 	runtime *RuntimeClient
 	http    *http.Client
 	tokens  TokenProvider
+	// timeout is the EFFECTIVE per-request timeout: cfg.Timeout when set,
+	// defaultTimeout otherwise. It is resolved at New (not stored raw) so
+	// Reload rebuilds the runtime with the same timeout the client was
+	// constructed with, even when Config.Timeout was left zero.
 	timeout time.Duration
+	// specSource records where the spec was loaded from; Reload refetches it.
+	specSource SpecSource
 }
 
 // New builds a Client from cfg: it loads the spec, resolves the token
 // provider, and wires the runtime transport. No token exchange happens here;
 // tokens are acquired lazily per request by the auth service.
 func New(cfg Config) (*Client, error) {
-	spec, err := loadSpec(cfg.Spec, cfg.HTTP)
+	spec, err := loadSpec(context.Background(), cfg.Spec, cfg.HTTP)
 	if err != nil {
 		return nil, err
 	}
@@ -72,18 +84,21 @@ func New(cfg Config) (*Client, error) {
 		}
 	}
 
+	// Resolve the effective timeout once: the raw cfg.Timeout may be zero,
+	// which would leave a rebuilt runtime without any request deadline.
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
+
 	httpClient := cfg.HTTP
 	if httpClient == nil {
-		timeout := cfg.Timeout
-		if timeout == 0 {
-			timeout = defaultTimeout
-		}
 		httpClient = &http.Client{Timeout: timeout}
 	}
 
 	rt, err := NewRuntimeClient(RuntimeConfig{
 		BaseURL: cfg.BaseURL,
-		Timeout: cfg.Timeout,
+		Timeout: timeout,
 		Spec:    spec,
 		HTTP:    httpClient,
 	}, tokens)
@@ -92,12 +107,23 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		spec:    spec,
-		runtime: rt,
-		http:    httpClient,
-		tokens:  tokens,
-		timeout: cfg.Timeout,
+		spec:       spec,
+		runtime:    rt,
+		http:       httpClient,
+		tokens:     tokens,
+		timeout:    timeout,
+		specSource: cfg.Spec,
 	}, nil
+}
+
+// snapshot returns the current spec/runtime pair under the read lock. Callers
+// must use the returned values for the entire call and never re-read the
+// client fields: an in-flight operation keeps the pair it captured even when
+// Reload swaps in a new one.
+func (c *Client) snapshot() (*Spec, *RuntimeClient) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.spec, c.runtime
 }
 
 // Spec returns the loaded OpenAPI spec.
@@ -105,28 +131,63 @@ func (c *Client) Spec() *Spec {
 	if c == nil {
 		return nil
 	}
-	return c.spec
+	spec, _ := c.snapshot()
+	return spec
+}
+
+// Reload refetches the spec from the client's configured source (URL or Path;
+// Raw reloads the same bytes), parses it, builds a fresh RuntimeClient, and
+// swaps both under one write lock. The new pair is built completely before
+// the lock, so a failure at any step — fetch, parse, or runtime build —
+// returns early and leaves the old pair untouched. In-flight calls keep the
+// old pair: they captured it under the read lock and never re-read the
+// client fields.
+func (c *Client) Reload(ctx context.Context) error {
+	_, oldRuntime := c.snapshot()
+
+	spec, err := loadSpec(ctx, c.specSource, c.http)
+	if err != nil {
+		return err
+	}
+	rt, err := NewRuntimeClient(RuntimeConfig{
+		BaseURL: oldRuntime.BaseURL(),
+		Timeout: c.timeout,
+		Spec:    spec,
+		HTTP:    c.http,
+	}, c.tokens)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.spec, c.runtime = spec, rt
+	return nil
 }
 
 // loadSpec dispatches SpecSource on Path/URL/Raw.
-func loadSpec(src SpecSource, httpClient *http.Client) (*Spec, error) {
+func loadSpec(ctx context.Context, src SpecSource, httpClient *http.Client) (*Spec, error) {
 	switch {
 	case len(src.Raw) > 0:
 		return NewSpecFromBytes(src.Raw)
 	case src.Path != "":
 		return NewSpec(src.Path)
 	case src.URL != "":
-		return fetchSpec(src.URL, httpClient)
+		return fetchSpec(ctx, src.URL, httpClient)
 	default:
 		return nil, fmt.Errorf("spec source requires one of Path, URL, or Raw")
 	}
 }
 
-func fetchSpec(specURL string, httpClient *http.Client) (*Spec, error) {
+func fetchSpec(ctx context.Context, specURL string, httpClient *http.Client) (*Spec, error) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	resp, err := httpClient.Get(specURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, specURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetch spec: %w", err)
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch spec: %w", err)
 	}

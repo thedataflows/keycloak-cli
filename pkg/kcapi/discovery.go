@@ -46,8 +46,9 @@ type OpFilter struct {
 
 // Operations lists the spec's operations, filtered by filter.
 func (c *Client) Operations(filter OpFilter) ([]Operation, error) {
+	spec, _ := c.snapshot() // capture the pair once: in-flight calls keep it across Reload
 	var out []Operation
-	c.spec.ForEachOperation(func(path, method string, op *v3.Operation, item *v3.PathItem) {
+	spec.ForEachOperation(func(path, method string, op *v3.Operation, item *v3.PathItem) {
 		o := buildOperation(path, method, op, item)
 		if matchOp(filter, o) {
 			out = append(out, o)
