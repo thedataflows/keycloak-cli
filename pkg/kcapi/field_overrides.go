@@ -68,14 +68,14 @@ func CloneResource(resource Resource, preserveIDs map[string]struct{}) Resource 
 		clone.Data = normalizeMapForRoundTrip(resource.Data, true)
 	}
 	if clone.Realm == "" {
-		clone.Realm = stringField(clone.Data, "realm")
+		clone.Realm = rawStringField(clone.Data, "realm")
 	}
 	if clone.Data != nil {
 		if fields, ok := writeOnlyResourceFields[clone.Type]; ok {
 			deleteWriteOnlyFields(clone.Data, fields)
 		}
 		if preserveIDs != nil {
-			if id := stringField(resource.Data, "id"); id != "" {
+			if id := rawStringField(resource.Data, "id"); id != "" {
 				if _, ok := preserveIDs[id]; ok {
 					clone.Data["id"] = id
 				}
