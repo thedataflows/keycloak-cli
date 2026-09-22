@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 // Client-scoped roles are resource type "role" told apart from realm roles by
@@ -20,19 +20,19 @@ func TestClientScopedRoleResolution(t *testing.T) {
 		name       string
 		parentType string
 		method     string
-		shape      catalog.OperationShape
+		shape      kcapi.OperationShape
 		wantPath   string
 		wantStrip  []string
 	}{
-		{"client parent create", "client", http.MethodPost, catalog.OperationCollection,
+		{"client parent create", "client", http.MethodPost, kcapi.OperationCollection,
 			"/admin/realms/{realm}/clients/{client-uuid}/roles", []string{"clientUuid"}},
-		{"client parent update", "client", http.MethodPut, catalog.OperationSingle,
+		{"client parent update", "client", http.MethodPut, kcapi.OperationSingle,
 			"/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", []string{"clientUuid"}},
-		{"client parent delete", "client", http.MethodDelete, catalog.OperationSingle,
+		{"client parent delete", "client", http.MethodDelete, kcapi.OperationSingle,
 			"/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", []string{"clientUuid"}},
-		{"no parent create stays realm", "", http.MethodPost, catalog.OperationCollection,
+		{"no parent create stays realm", "", http.MethodPost, kcapi.OperationCollection,
 			"/admin/realms/{realm}/roles", nil},
-		{"no parent update stays realm", "", http.MethodPut, catalog.OperationSingle,
+		{"no parent update stays realm", "", http.MethodPut, kcapi.OperationSingle,
 			"/admin/realms/{realm}/roles/{role-name}", nil},
 	}
 	for _, tt := range tests {
@@ -54,7 +54,7 @@ func TestClientScopedRoleResolution(t *testing.T) {
 func TestClientScopedRoleGetCollectionDivergence(t *testing.T) {
 	spec := loadOrgGroupSpec(t)
 
-	op, err := spec.Resolver().ResolveResourceOperation("role", "client", http.MethodGet, catalog.OperationCollection)
+	op, err := spec.Resolver().ResolveResourceOperation("role", "client", http.MethodGet, kcapi.OperationCollection)
 	require.NoError(t, err)
 	assert.Equal(t, "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites", op.Path,
 		"documented: bare GET collection prefers composites — do not use it for a parent-scoped role fetch")

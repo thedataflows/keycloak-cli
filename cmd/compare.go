@@ -9,7 +9,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
 	"github.com/thedataflows/keycloak-cli/pkg/admin"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
 )
@@ -45,7 +45,7 @@ func (c *CompareCmd) Run(ctx *kong.Context, cli *CLI) error {
 	if len(loaded.Resources) == 0 && len(loaded.Relationships) == 0 {
 		return fmt.Errorf("no manifests loaded")
 	}
-	if err := catalog.ValidateRelationshipOperations(svc.Spec(), loaded.Relationships); err != nil {
+	if err := kcapi.ValidateRelationshipOperations(svc.Spec(), loaded.Relationships); err != nil {
 		return err
 	}
 

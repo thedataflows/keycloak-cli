@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -32,7 +32,7 @@ func (nativeGenerator) GenerateBundle(specPath string, options Options) (generat
 		Relationships: make([]manifest.RelationshipOperation, 0),
 	}
 
-	spec, err := catalog.NewSpec(specPath)
+	spec, err := kcapi.NewSpec(specPath)
 	if err != nil {
 		return generatedBundle{}, fmt.Errorf("load spec: %w", err)
 	}
@@ -172,17 +172,17 @@ func (nativeGenerator) GenerateBundle(specPath string, options Options) (generat
 	bundle.Relationships = append(bundle.Relationships, generateOrganizationRelationships(options.Realm, users, bundle.Resources)...)
 
 	applySpecDefaults(spec, bundle.Resources)
-	if err := catalog.ValidateResources(spec, bundle.Resources, false); err != nil {
+	if err := kcapi.ValidateResources(spec, bundle.Resources, false); err != nil {
 		return generatedBundle{}, fmt.Errorf("validate generated resources: %w", err)
 	}
-	if err := catalog.ValidateRelationshipOperations(spec, bundle.Relationships); err != nil {
+	if err := kcapi.ValidateRelationshipOperations(spec, bundle.Relationships); err != nil {
 		return generatedBundle{}, fmt.Errorf("validate generated relationships: %w", err)
 	}
 
 	return bundle, nil
 }
 
-func applySpecDefaults(spec *catalog.Spec, resources []manifest.Resource) {
+func applySpecDefaults(spec *kcapi.Spec, resources []manifest.Resource) {
 	if spec == nil {
 		return
 	}

@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 // Realm groups and org-scoped groups are both resource type "group", so the only
@@ -22,49 +22,49 @@ func TestResolveGroupOperationDisambiguatesByParentType(t *testing.T) {
 		name       string
 		parentType string
 		method     string
-		shape      catalog.OperationShape
+		shape      kcapi.OperationShape
 		wantPath   string
 	}{
 		{
 			name:       "organization parent resolves the org-scoped collection",
 			parentType: "organization",
 			method:     http.MethodPost,
-			shape:      catalog.OperationCollection,
+			shape:      kcapi.OperationCollection,
 			wantPath:   "/admin/realms/{realm}/organizations/{org-id}/groups",
 		},
 		{
 			name:       "organization parent resolves the org-scoped collection on GET",
 			parentType: "organization",
 			method:     http.MethodGet,
-			shape:      catalog.OperationCollection,
+			shape:      kcapi.OperationCollection,
 			wantPath:   "/admin/realms/{realm}/organizations/{org-id}/groups",
 		},
 		{
 			name:       "organization parent resolves the org-scoped single resource on PUT",
 			parentType: "organization",
 			method:     http.MethodPut,
-			shape:      catalog.OperationSingle,
+			shape:      kcapi.OperationSingle,
 			wantPath:   "/admin/realms/{realm}/organizations/{org-id}/groups/{group-id}",
 		},
 		{
 			name:       "organization parent resolves the org-scoped single resource on DELETE",
 			parentType: "organization",
 			method:     http.MethodDelete,
-			shape:      catalog.OperationSingle,
+			shape:      kcapi.OperationSingle,
 			wantPath:   "/admin/realms/{realm}/organizations/{org-id}/groups/{group-id}",
 		},
 		{
 			name:       "no parent resolves the realm collection",
 			parentType: "",
 			method:     http.MethodPost,
-			shape:      catalog.OperationCollection,
+			shape:      kcapi.OperationCollection,
 			wantPath:   "/admin/realms/{realm}/groups",
 		},
 		{
 			name:       "group parent resolves the realm children collection",
 			parentType: "group",
 			method:     http.MethodPost,
-			shape:      catalog.OperationCollection,
+			shape:      kcapi.OperationCollection,
 			wantPath:   "/admin/realms/{realm}/groups/{group-id}/children",
 		},
 	}
@@ -93,14 +93,14 @@ func TestDownwardGraphExposesOrgScopedGroups(t *testing.T) {
 		"realm group children must stay on the realm path")
 }
 
-func loadOrgGroupSpec(t *testing.T) *catalog.Spec {
+func loadOrgGroupSpec(t *testing.T) *kcapi.Spec {
 	t.Helper()
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	return spec
 }
 
-func childPaths(children []catalog.DownwardChild, childType string) []string {
+func childPaths(children []kcapi.DownwardChild, childType string) []string {
 	paths := make([]string, 0, len(children))
 	for _, child := range children {
 		if child.ChildType == childType {

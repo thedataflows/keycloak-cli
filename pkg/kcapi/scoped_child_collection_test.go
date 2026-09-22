@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"testing"

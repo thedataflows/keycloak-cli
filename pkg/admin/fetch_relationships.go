@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -24,7 +24,7 @@ func (s *service) fetchRelationships(ctx context.Context, realms []string, paren
 		results = append(results, realmRelationships...)
 	}
 
-	if err := catalog.ValidateRelationshipOperations(s.Spec(), results); err != nil {
+	if err := kcapi.ValidateRelationshipOperations(s.Spec(), results); err != nil {
 		failures = append(failures, FetchFailure{Resource: "relationships", Detail: "validation", Err: err})
 	}
 
@@ -90,7 +90,7 @@ func (s *service) fetchRelationshipsForResources(ctx context.Context, realms []s
 		results = append(results, realmRelationships...)
 	}
 
-	if err := catalog.ValidateRelationshipOperations(s.Spec(), results); err != nil {
+	if err := kcapi.ValidateRelationshipOperations(s.Spec(), results); err != nil {
 		failures = append(failures, FetchFailure{Resource: "relationships", Detail: "validation", Err: err})
 	}
 
@@ -168,7 +168,7 @@ func (s *service) buildParentIndexes(ctx context.Context, realm string, parentTy
 	return indexes, nil
 }
 
-func (s *service) fetchRelationshipsForPattern(ctx context.Context, realm string, pattern catalog.RelationshipOperationPattern, parentIndexes []map[string]manifest.Resource, placeholderMap map[string]string) ([]manifest.RelationshipOperation, error) {
+func (s *service) fetchRelationshipsForPattern(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, parentIndexes []map[string]manifest.Resource, placeholderMap map[string]string) ([]manifest.RelationshipOperation, error) {
 	var results []manifest.RelationshipOperation
 
 	parentTypes, _ := pattern.ParentResourceTypes(placeholderMap)
@@ -234,7 +234,7 @@ func resolveParentParamValue(paramName, identifier string, resource manifest.Res
 	return identifier
 }
 
-func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, realm string, pattern catalog.RelationshipOperationPattern, params map[string]string) []manifest.RelationshipOperation {
+func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, params map[string]string) []manifest.RelationshipOperation {
 	var results []manifest.RelationshipOperation
 
 	payload, err := s.specClient.FetchPathCollection(ctx, pattern.Path, params)
@@ -275,15 +275,15 @@ func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, real
 	return results
 }
 
-func (s *service) buildRelationship(pattern catalog.RelationshipOperationPattern, baseParams, itemParams map[string]string, data interface{}) *manifest.RelationshipOperation {
-	relPath := catalog.RenderPath(pattern.RelationshipTemplate, itemParams)
+func (s *service) buildRelationship(pattern kcapi.RelationshipOperationPattern, baseParams, itemParams map[string]string, data interface{}) *manifest.RelationshipOperation {
+	relPath := kcapi.RenderPath(pattern.RelationshipTemplate, itemParams)
 	rel, err := manifest.NewRelationshipOperation(pattern.RelationshipTemplate, pattern.RelationshipMethod, itemParams, data)
 	if err != nil {
 		return nil
 	}
 	rel.Path = relPath
 	if rel.Path == "" {
-		rel.Path = catalog.RenderPath(pattern.RelationshipTemplate, baseParams)
+		rel.Path = kcapi.RenderPath(pattern.RelationshipTemplate, baseParams)
 	}
 	return &rel
 }
@@ -301,7 +301,7 @@ func extractItemValue(paramName string, item map[string]interface{}) string {
 	return stringValue(item, paramName)
 }
 
-func relationshipPayload(pattern catalog.RelationshipOperationPattern, item map[string]interface{}) interface{} {
+func relationshipPayload(pattern kcapi.RelationshipOperationPattern, item map[string]interface{}) interface{} {
 	if pattern.PayloadField != "" {
 		return stringValue(item, pattern.PayloadField)
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/pkg/admin"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -70,11 +70,11 @@ func TestApplyNestedRealmGroupStripsParentBindingFromBody(t *testing.T) {
 	assert.NotContains(t, createBody, "groupId", "parent binding must be stripped from the body")
 	assert.Equal(t, "platform", createBody["name"])
 
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/groups/{group-id}/children", http.MethodPost,
-		catalog.RequestValidation{
+		kcapi.RequestValidation{
 			PathParams: map[string]string{"realm": "demo", "group-id": "parent-1"},
 			Body:       createBody,
 		}),
@@ -125,11 +125,11 @@ func TestApplyNestedRealmGroupUpdateAddressesChildAndStripsParentBinding(t *test
 	require.NotNil(t, updateBody)
 	assert.NotContains(t, updateBody, "groupId", "parent binding must be stripped from the update body")
 
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/groups/{group-id}", http.MethodPut,
-		catalog.RequestValidation{
+		kcapi.RequestValidation{
 			PathParams: map[string]string{"realm": "demo", "group-id": "child-1"},
 			Body:       updateBody,
 		}),

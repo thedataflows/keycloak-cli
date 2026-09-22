@@ -5,14 +5,14 @@ import (
 
 	"github.com/thedataflows/keycloak-cli/pkg/admin/internal"
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 type service struct {
 	specClient *internal.RuntimeClient
 	timeout    time.Duration
 
-	identities    map[string]catalog.ResourceIdentity
+	identities    map[string]kcapi.ResourceIdentity
 	identitiesErr error
 }
 
@@ -33,11 +33,11 @@ func newService(config Config) (Service, error) {
 	return &service{specClient: impl, timeout: config.Timeout}, nil
 }
 
-func (s *service) Spec() *catalog.Spec {
+func (s *service) Spec() *kcapi.Spec {
 	return s.specClient.Spec()
 }
 
-func (s *service) resourceIdentity(resourceType string) (catalog.ResourceIdentity, bool) {
+func (s *service) resourceIdentity(resourceType string) (kcapi.ResourceIdentity, bool) {
 	if s.identities == nil && s.identitiesErr == nil {
 		s.identities, s.identitiesErr = s.Spec().ResourceIdentities()
 	}

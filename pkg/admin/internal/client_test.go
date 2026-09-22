@@ -7,19 +7,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	client := &RuntimeClient{spec: spec}
 
 	tests := []struct {
 		name     string
 		resource manifest.Resource
-		contract catalog.OperationContract
+		contract kcapi.OperationContract
 		want     map[string]interface{}
 	}{
 		{
@@ -34,7 +34,7 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 					"clientUuid": "target-client-uuid",
 				},
 			},
-			contract: catalog.OperationContract{Path: "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", Method: http.MethodPost},
+			contract: kcapi.OperationContract{Path: "/admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"name": "admin",
 			},
@@ -51,7 +51,7 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 					"protocol":      "openid-connect",
 				},
 			},
-			contract: catalog.OperationContract{Path: "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}", Method: http.MethodPost},
+			contract: kcapi.OperationContract{Path: "/admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"name":     "email",
 				"protocol": "openid-connect",
@@ -64,7 +64,7 @@ func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
 				Realm: "demo",
 				Data:  map[string]interface{}{"realm": "demo", "enabled": true},
 			},
-			contract: catalog.OperationContract{Path: "/admin/realms", Method: http.MethodPost},
+			contract: kcapi.OperationContract{Path: "/admin/realms", Method: http.MethodPost},
 			want: map[string]interface{}{
 				"realm":   "demo",
 				"enabled": true,

@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	_ "embed"
@@ -6,18 +6,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog/internal"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi/internal"
 )
 
 //go:embed testdata/minimal-spec.json
 var minimalSpecJSON []byte
 
-func loadMinimalSpec(t *testing.T) *catalog.Spec {
+func loadMinimalSpec(t *testing.T) *kcapi.Spec {
 	t.Helper()
 	loaded, err := internal.NewSpecFromBytes(minimalSpecJSON)
 	require.NoError(t, err)
-	return catalog.WrapSpec(loaded)
+	return kcapi.WrapSpec(loaded)
 }
 
 func TestMinimalSpecLoads(t *testing.T) {
@@ -47,7 +47,7 @@ func TestMinimalSpecDiscoversUserOrganizationsRelationship(t *testing.T) {
 	patterns, err := spec.DiscoverRelationshipPatterns()
 	require.NoError(t, err)
 
-	var found *catalog.RelationshipOperationPattern
+	var found *kcapi.RelationshipOperationPattern
 	for i := range patterns {
 		if patterns[i].Path == "/admin/realms/{realm}/users/{user-id}/organizations" {
 			found = &patterns[i]

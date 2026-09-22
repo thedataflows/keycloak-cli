@@ -19,7 +19,7 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -39,7 +39,7 @@ type RuntimeClient struct {
 	baseURL    string
 	httpClient *http.Client
 	authEditor requestEditor
-	spec       *catalog.Spec
+	spec       *kcapi.Spec
 }
 
 func NewRuntimeClient(config Config, tokens TokenProvider) (*RuntimeClient, error) {
@@ -48,20 +48,20 @@ func NewRuntimeClient(config Config, tokens TokenProvider) (*RuntimeClient, erro
 		return nil, fmt.Errorf("base URL is required")
 	}
 
-	spec, err := catalog.NewSpec(config.SpecPath)
+	spec, err := kcapi.NewSpec(config.SpecPath)
 	if err != nil {
 		return nil, fmt.Errorf("load spec: %w", err)
 	}
 
-	if err := catalog.InstallDefaultRegistry(config.SpecPath); err != nil {
+	if err := kcapi.InstallDefaultRegistry(config.SpecPath); err != nil {
 		return nil, fmt.Errorf("load relationship overrides: %w", err)
 	}
 
-	if err := catalog.InstallDefaultFieldOverrides(config.SpecPath); err != nil {
+	if err := kcapi.InstallDefaultFieldOverrides(config.SpecPath); err != nil {
 		return nil, fmt.Errorf("load field overrides: %w", err)
 	}
 
-	if err := catalog.InstallDefaultBuiltInResources(config.SpecPath); err != nil {
+	if err := kcapi.InstallDefaultBuiltInResources(config.SpecPath); err != nil {
 		return nil, fmt.Errorf("load built-in resources: %w", err)
 	}
 
@@ -83,7 +83,7 @@ func NewRuntimeClient(config Config, tokens TokenProvider) (*RuntimeClient, erro
 	return client, nil
 }
 
-func (r *RuntimeClient) Spec() *catalog.Spec {
+func (r *RuntimeClient) Spec() *kcapi.Spec {
 	if r == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func (r *RuntimeClient) Spec() *catalog.Spec {
 }
 
 func (r *RuntimeClient) FetchResources(ctx context.Context, resourceType string, scope map[string]string, params ...map[string]string) ([]manifest.Resource, error) {
-	contract, err := r.spec.Resolver().ResolveResourceOperation(resourceType, "", http.MethodGet, catalog.OperationCollection)
+	contract, err := r.spec.Resolver().ResolveResourceOperation(resourceType, "", http.MethodGet, kcapi.OperationCollection)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (r *RuntimeClient) FetchResources(ctx context.Context, resourceType string,
 
 	queryParams := mergeQueryParams(params...)
 	requestPath := r.buildPathWithOperation(contract.Path, op, scope)
-	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, catalog.RequestValidation{
+	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, kcapi.RequestValidation{
 		PathParams:  scope,
 		QueryParams: queryParams,
 	}); err != nil {
@@ -158,7 +158,7 @@ func (r *RuntimeClient) FetchResources(ctx context.Context, resourceType string,
 // FetchResourcesWithParent fetches a resource collection scoped by the resource's
 // parent type, so nested resources resolve to the correct endpoint.
 func (r *RuntimeClient) FetchResourcesWithParent(ctx context.Context, resource manifest.Resource, params ...map[string]string) ([]manifest.Resource, error) {
-	contract, err := r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodGet, catalog.OperationCollection)
+	contract, err := r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodGet, kcapi.OperationCollection)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (r *RuntimeClient) FetchResourcesWithParent(ctx context.Context, resource m
 
 	queryParams := mergeQueryParams(params...)
 	requestPath := r.buildPathWithOperation(contract.Path, op, paramsMap)
-	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, catalog.RequestValidation{
+	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, kcapi.RequestValidation{
 		PathParams:  paramsMap,
 		QueryParams: queryParams,
 	}); err != nil {
@@ -230,7 +230,7 @@ func (r *RuntimeClient) FetchResourcesWithParent(ctx context.Context, resource m
 func (r *RuntimeClient) FetchPathCollection(ctx context.Context, path string, scope map[string]string, params ...map[string]string) ([]map[string]interface{}, error) {
 	queryParams := mergeQueryParams(params...)
 	resolvedPath := r.buildPathWithOperation(path, nil, scope)
-	if err := r.spec.ValidateOperationRequest(path, http.MethodGet, catalog.RequestValidation{
+	if err := r.spec.ValidateOperationRequest(path, http.MethodGet, kcapi.RequestValidation{
 		PathParams:  scope,
 		QueryParams: queryParams,
 	}); err != nil {
@@ -295,7 +295,7 @@ func (r *RuntimeClient) FetchResource(ctx context.Context, resource manifest.Res
 	}
 
 	requestPath := r.buildPathWithOperation(contract.Path, op, params)
-	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, catalog.RequestValidation{PathParams: params}); err != nil {
+	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, kcapi.RequestValidation{PathParams: params}); err != nil {
 		return manifest.Resource{}, false, err
 	}
 
@@ -352,7 +352,7 @@ func (r *RuntimeClient) CreateResource(ctx context.Context, resource manifest.Re
 
 	requestPath := r.buildPathWithOperation(contract.Path, op, params)
 	r.sanitizeResourcePayload(&resource, http.MethodPost, contract)
-	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodPost, catalog.RequestValidation{PathParams: params, Body: resource.Data}); err != nil {
+	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodPost, kcapi.RequestValidation{PathParams: params, Body: resource.Data}); err != nil {
 		return 0, "", err
 	}
 
@@ -416,7 +416,7 @@ func (r *RuntimeClient) DeleteResource(ctx context.Context, resource manifest.Re
 	}
 
 	requestPath := r.buildPathWithOperation(contract.Path, op, params)
-	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodDelete, catalog.RequestValidation{PathParams: params}); err != nil {
+	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodDelete, kcapi.RequestValidation{PathParams: params}); err != nil {
 		return 0, err
 	}
 
@@ -468,7 +468,7 @@ func (r *RuntimeClient) ExecuteRelationship(ctx context.Context, rel manifest.Re
 			return 0, err
 		}
 	}
-	if err := r.spec.ValidateOperationRequest("/admin/realms/"+templatePath, method, catalog.RequestValidation{
+	if err := r.spec.ValidateOperationRequest("/admin/realms/"+templatePath, method, kcapi.RequestValidation{
 		PathParams: rel.PathParams,
 		Body:       requestBody,
 	}); err != nil {
@@ -514,7 +514,7 @@ func (r *RuntimeClient) resourceOperation(ctx context.Context, resource manifest
 
 	requestPath := r.buildPathWithOperation(contract.Path, op, params)
 	r.sanitizeResourcePayload(&resource, method, contract)
-	if err := r.spec.ValidateOperationRequest(contract.Path, method, catalog.RequestValidation{PathParams: params, Body: resource.Data}); err != nil {
+	if err := r.spec.ValidateOperationRequest(contract.Path, method, kcapi.RequestValidation{PathParams: params, Body: resource.Data}); err != nil {
 		return 0, err
 	}
 	fullURL := r.baseURL + requestPath
@@ -544,21 +544,21 @@ func (r *RuntimeClient) resourceOperation(ctx context.Context, resource manifest
 // resolveResourceContract resolves the operation contract for a resource and method.
 // It handles the realm special case and uses OperationCollection for create
 // operations to avoid picking nested single-resource endpoints.
-func (r *RuntimeClient) resolveResourceContract(resource manifest.Resource, method string) (catalog.OperationContract, error) {
+func (r *RuntimeClient) resolveResourceContract(resource manifest.Resource, method string) (kcapi.OperationContract, error) {
 	if resource.Type == "realm" {
 		switch method {
 		case http.MethodGet, http.MethodPut, http.MethodPatch, http.MethodDelete:
-			return catalog.OperationContract{Path: "/admin/realms/{realm}", Method: method}, nil
+			return kcapi.OperationContract{Path: "/admin/realms/{realm}", Method: method}, nil
 		default:
-			return catalog.OperationContract{Path: "/admin/realms", Method: method}, nil
+			return kcapi.OperationContract{Path: "/admin/realms", Method: method}, nil
 		}
 	}
 
-	shape := catalog.OperationSingle
+	shape := kcapi.OperationSingle
 	if method == http.MethodPost {
 		// Creation is always a collection endpoint. Use OperationCollection to avoid
 		// picking nested single-resource endpoints (e.g. client scope mappings).
-		shape = catalog.OperationCollection
+		shape = kcapi.OperationCollection
 	}
 
 	return r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, method, shape)
@@ -613,7 +613,7 @@ func (r *RuntimeClient) buildPathWithOperation(path string, operation *v3.Operat
 	return result
 }
 
-func (r *RuntimeClient) sanitizeResourcePayload(resource *manifest.Resource, method string, contract catalog.OperationContract) {
+func (r *RuntimeClient) sanitizeResourcePayload(resource *manifest.Resource, method string, contract kcapi.OperationContract) {
 	if resource == nil {
 		return
 	}
@@ -655,7 +655,7 @@ func (r *RuntimeClient) sanitizeResourcePayload(resource *manifest.Resource, met
 		// create contract's parent-reference fields on every write when a parent
 		// type is set (ISSUE 0005).
 		if resource.ParentType != "" {
-			if createContract, err := r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodPost, catalog.OperationCollection); err == nil {
+			if createContract, err := r.spec.Resolver().ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodPost, kcapi.OperationCollection); err == nil {
 				for _, field := range r.spec.Resolver().ParentReferenceFieldNames(resource.Type, createContract) {
 					delete(resource.Data, field)
 				}

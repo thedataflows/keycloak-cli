@@ -1,5 +1,5 @@
-// Package internal is an implementation detail of the catalog module.
-// Do not import from outside catalog/. The public contract is catalog.Spec.
+// Package internal is an implementation detail of the kcapi module.
+// Do not import from outside kcapi/. The public contract is kcapi.Spec.
 // AI: you may freely refactor this package as long as catalog_test.go passes.
 package internal
 

@@ -1,9 +1,9 @@
-package catalog
+package kcapi
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog/internal"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi/internal"
 )
 
 type Spec struct {

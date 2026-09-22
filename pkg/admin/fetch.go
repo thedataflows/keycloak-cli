@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -287,7 +287,7 @@ func isScopedParent(parent manifest.Resource) bool {
 // (the ISSUE 0005 Gap 3 hazard, on a collection path). Children are identified by
 // (orgId, own id, ParentType).
 func (s *service) fetchScopedChildren(ctx context.Context, childType, path string, parent manifest.Resource, inherited []string, params ...map[string]string) ([]manifest.Resource, error) {
-	contract := catalog.OperationContract{Path: path, Method: http.MethodGet}
+	contract := kcapi.OperationContract{Path: path, Method: http.MethodGet}
 	scope, err := s.Spec().Resolver().PathParams(parent, contract)
 	if err != nil {
 		return nil, err
@@ -649,7 +649,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 }
 
 func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, path, parentType string, parent manifest.Resource, params ...map[string]string) ([]manifest.Resource, error) {
-	contract := catalog.OperationContract{Path: path, Method: http.MethodGet}
+	contract := kcapi.OperationContract{Path: path, Method: http.MethodGet}
 	scope, err := s.Spec().Resolver().PathParams(parent, contract)
 	if err != nil {
 		return nil, err

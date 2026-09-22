@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"net/http"
@@ -7,12 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestNewSpecLoadsDocument(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	require.NotNil(t, spec)
 
@@ -22,20 +22,20 @@ func TestNewSpecLoadsDocument(t *testing.T) {
 }
 
 func TestValidateRelationshipOperations(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	rels := []manifest.RelationshipOperation{{Path: "test-realm/users/test-user/groups/test-group"}}
-	require.NoError(t, catalog.ValidateRelationshipOperations(spec, rels))
+	require.NoError(t, kcapi.ValidateRelationshipOperations(spec, rels))
 	require.Equal(t, "{realm}/users/{user-id}/groups/{groupId}", rels[0].Template)
 	require.Equal(t, "PUT", rels[0].Method)
 }
 
 func TestCollectRelationshipTemplates(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	templates, err := catalog.CollectRelationshipTemplates(spec)
+	templates, err := kcapi.CollectRelationshipTemplates(spec)
 	require.NoError(t, err)
 	require.NotEmpty(t, templates)
 
@@ -50,7 +50,7 @@ func TestCollectRelationshipTemplates(t *testing.T) {
 }
 
 func TestValidateRelationshipOperationsDelete(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	rels := []manifest.RelationshipOperation{{
@@ -58,7 +58,7 @@ func TestValidateRelationshipOperationsDelete(t *testing.T) {
 		Delete: true,
 	}}
 
-	require.NoError(t, catalog.ValidateRelationshipOperations(spec, rels))
+	require.NoError(t, kcapi.ValidateRelationshipOperations(spec, rels))
 	assert.Equal(t, http.MethodDelete, rels[0].Method)
 	assert.True(t, rels[0].Delete)
 	assert.Equal(t, map[string]string{
@@ -69,12 +69,12 @@ func TestValidateRelationshipOperationsDelete(t *testing.T) {
 }
 
 func TestValidateRelationshipOperationsAssignsRealmScopeKinds(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	rels := []manifest.RelationshipOperation{{Path: "test-realm/default-default-client-scopes/scope-1"}, {Path: "test-realm/default-optional-client-scopes/scope-2"}}
 
-	require.NoError(t, catalog.ValidateRelationshipOperations(spec, rels))
+	require.NoError(t, kcapi.ValidateRelationshipOperations(spec, rels))
 	assert.Equal(t, http.MethodPut, rels[0].Method)
 	assert.Equal(t, "realm-default-client-scope", rels[0].Kind)
 	assert.Equal(t, http.MethodPut, rels[1].Method)
@@ -82,7 +82,7 @@ func TestValidateRelationshipOperationsAssignsRealmScopeKinds(t *testing.T) {
 }
 
 func TestOperationContractIncludesQueryParams(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	contract, err := spec.OperationContract("/admin/realms/{realm}/users", http.MethodGet)
@@ -101,7 +101,7 @@ func TestOperationContractIncludesQueryParams(t *testing.T) {
 }
 
 func TestValidateResourceRejectsWrongTypes(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	err = spec.ValidateResource(manifest.Resource{
@@ -118,10 +118,10 @@ func TestValidateResourceRejectsWrongTypes(t *testing.T) {
 }
 
 func TestValidateOperationRequestRejectsWrongRelationshipBody(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
-	err = spec.ValidateOperationRequest("/admin/realms/{realm}/users/{user-id}/role-mappings/realm", http.MethodPost, catalog.RequestValidation{
+	err = spec.ValidateOperationRequest("/admin/realms/{realm}/users/{user-id}/role-mappings/realm", http.MethodPost, kcapi.RequestValidation{
 		PathParams: map[string]string{"realm": "demo", "user-id": "user-1"},
 		Body:       map[string]interface{}{"id": "role-1"},
 	})
@@ -134,7 +134,7 @@ func TestValidateOperationRequestRejectsWrongRelationshipBody(t *testing.T) {
 // role-mapping path must both validate against the embedded spec, which they
 // only do once the write template uses the spec's {client-id} placeholder.
 func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	params := map[string]string{"realm": "demo", "user-id": "user-1", "client-id": "client-1"}
@@ -147,12 +147,12 @@ func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
 		"{realm}/users/{user-id}/role-mappings/clients/{client-id}", http.MethodDelete, params, body)
 	require.NoError(t, err)
 
-	require.NoError(t, catalog.ValidateRelationshipOperations(spec,
+	require.NoError(t, kcapi.ValidateRelationshipOperations(spec,
 		[]manifest.RelationshipOperation{link, unlink}))
 }
 
 func TestResourceContractsPreferRoleNameEndpoint(t *testing.T) {
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 
 	contracts, err := spec.ResourceContracts()

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -23,7 +23,7 @@ type Config struct {
 
 // Service is the public admin API used by command handlers.
 type Service interface {
-	Spec() *catalog.Spec
+	Spec() *kcapi.Spec
 	Fetch(ctx context.Context, query FetchQuery) (FetchReport, error)
 	// FetchChildren returns one child collection of one parent resource (e.g. the
 	// roles of a client) with exactly one HTTP GET — no depth fan-out and no

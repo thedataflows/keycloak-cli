@@ -1,4 +1,4 @@
-package catalog
+package kcapi
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog/internal"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi/internal"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 

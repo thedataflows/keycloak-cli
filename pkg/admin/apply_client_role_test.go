@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/pkg/admin"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -88,11 +88,11 @@ func TestApplyClientRoleCreatesViaClientEndpoint(t *testing.T) {
 	assert.NotContains(t, body, "clientUuid", "parent binding must be stripped from the body")
 	assert.Equal(t, "r1", body["name"])
 
-	spec, err := catalog.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/clients/{client-uuid}/roles", http.MethodPost,
-		catalog.RequestValidation{
+		kcapi.RequestValidation{
 			PathParams: map[string]string{"realm": "demo", "client-uuid": demoClientUUID},
 			Body:       body,
 		}))

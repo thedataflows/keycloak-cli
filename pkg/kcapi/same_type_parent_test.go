@@ -1,4 +1,4 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -19,19 +19,19 @@ import (
 func TestNestedGroupCreateStripsParentBinding(t *testing.T) {
 	resolver := loadOrgGroupSpec(t).Resolver()
 
-	createOp, err := resolver.ResolveResourceOperation("group", "group", http.MethodPost, catalog.OperationCollection)
+	createOp, err := resolver.ResolveResourceOperation("group", "group", http.MethodPost, kcapi.OperationCollection)
 	require.NoError(t, err)
 	assert.Equal(t, "/admin/realms/{realm}/groups/{group-id}/children", createOp.Path)
 	assert.Equal(t, []string{"groupId"}, resolver.ParentReferenceFieldNames("group", createOp),
 		"the same-type parent binding must be a stripped parent-reference field")
 
 	// No contamination of the realm paths.
-	realmCollection, err := resolver.ResolveResourceOperation("group", "", http.MethodPost, catalog.OperationCollection)
+	realmCollection, err := resolver.ResolveResourceOperation("group", "", http.MethodPost, kcapi.OperationCollection)
 	require.NoError(t, err)
 	assert.Equal(t, "/admin/realms/{realm}/groups", realmCollection.Path)
 	assert.Nil(t, resolver.ParentReferenceFieldNames("group", realmCollection))
 
-	singleOp, err := resolver.ResolveResourceOperation("group", "", http.MethodPut, catalog.OperationSingle)
+	singleOp, err := resolver.ResolveResourceOperation("group", "", http.MethodPut, kcapi.OperationSingle)
 	require.NoError(t, err)
 	assert.Equal(t, "/admin/realms/{realm}/groups/{group-id}", singleOp.Path)
 	assert.Nil(t, resolver.ParentReferenceFieldNames("group", singleOp),
@@ -47,7 +47,7 @@ func TestNestedGroupCreateRendersParentPath(t *testing.T) {
 		Type: "group", Realm: "demo", ParentType: "group",
 		Data: map[string]interface{}{"name": "platform", "groupId": "parent-1"},
 	}
-	path, _, params, err := resolver.ResolveResourcePath(child, http.MethodPost, catalog.OperationCollection)
+	path, _, params, err := resolver.ResolveResourcePath(child, http.MethodPost, kcapi.OperationCollection)
 	require.NoError(t, err)
 	assert.Equal(t, "parent-1", params["group-id"])
 	assert.Equal(t, "/admin/realms/demo/groups/parent-1/children", path)
@@ -65,7 +65,7 @@ func TestNestedGroupUpdateDeleteAddressOwnID(t *testing.T) {
 	}
 	for _, method := range []string{http.MethodPut, http.MethodDelete} {
 		t.Run(method, func(t *testing.T) {
-			path, _, params, err := resolver.ResolveResourcePath(child, method, catalog.OperationSingle)
+			path, _, params, err := resolver.ResolveResourcePath(child, method, kcapi.OperationSingle)
 			require.NoError(t, err)
 			assert.Equal(t, "child-1", params["group-id"], "must address the group by its own id")
 			assert.Equal(t, "/admin/realms/demo/groups/child-1", path)

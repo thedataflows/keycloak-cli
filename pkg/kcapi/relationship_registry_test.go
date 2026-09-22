@@ -1,4 +1,4 @@
-package catalog
+package kcapi
 
 import (
 	"net/http"

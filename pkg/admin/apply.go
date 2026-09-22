@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	admininternal "github.com/thedataflows/keycloak-cli/pkg/admin/internal"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -188,7 +188,7 @@ func realmHasDeferredConfig(data map[string]interface{}) bool {
 	return false
 }
 
-func (s *service) applyRealmsLast(ctx context.Context, resources []manifest.Resource, contracts map[string]catalog.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) []ApplyResult {
+func (s *service) applyRealmsLast(ctx context.Context, resources []manifest.Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) []ApplyResult {
 	var results []ApplyResult
 	for _, resource := range resources {
 		if resource.Type != "realm" {
@@ -305,7 +305,7 @@ func (s *service) applyRelationships(ctx context.Context, relationships []manife
 
 func (s *service) resourceName(resource manifest.Resource) string {
 	if identity, ok := s.resourceIdentity(resource.Type); ok {
-		if name := catalog.NameOf(resource, identity); name != "" {
+		if name := kcapi.NameOf(resource, identity); name != "" {
 			return name
 		}
 	}
@@ -314,14 +314,14 @@ func (s *service) resourceName(resource manifest.Resource) string {
 
 func (s *service) resourceDisplayName(resource manifest.Resource) string {
 	if identity, ok := s.resourceIdentity(resource.Type); ok {
-		if name := catalog.DisplayNameOf(resource, identity); name != "" {
+		if name := kcapi.DisplayNameOf(resource, identity); name != "" {
 			return name
 		}
 	}
 	return resource.DisplayName()
 }
 
-func (s *service) applyResource(ctx context.Context, resource manifest.Resource, contracts map[string]catalog.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) ApplyResult {
+func (s *service) applyResource(ctx context.Context, resource manifest.Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) ApplyResult {
 	resource.Data = stripUnresolvedClientFlowBindingOverrides(resource.Data, idMap)
 	resource.Data = remapResourceDataIDs(resource.Data, idMap)
 	s.resolveParentReferences(ctx, &resource, index, idMap)
@@ -360,8 +360,8 @@ func (s *service) applyResource(ctx context.Context, resource manifest.Resource,
 
 	resourceExists := s.locateExistingResource(operationCtx, &resource, idMap)
 
-	hasDelete := operationExists(resolver, resource, http.MethodDelete, catalog.OperationSingle)
-	hasPost := operationExists(resolver, resource, http.MethodPost, catalog.OperationAny)
+	hasDelete := operationExists(resolver, resource, http.MethodDelete, kcapi.OperationSingle)
+	hasPost := operationExists(resolver, resource, http.MethodPost, kcapi.OperationAny)
 
 	if resource.Delete {
 		return s.applyDelete(operationCtx, resource, hasDelete, resourceExists, idMap)
@@ -382,7 +382,7 @@ func (s *service) resolveParentReferences(ctx context.Context, resource *manifes
 		return
 	}
 	resolver := s.Spec().Resolver()
-	contract, err := resolver.ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodPost, catalog.OperationCollection)
+	contract, err := resolver.ResolveResourceOperation(resource.Type, resource.ParentType, http.MethodPost, kcapi.OperationCollection)
 	if err != nil {
 		return
 	}
@@ -631,7 +631,7 @@ func isExplicitEmptyCollection(value interface{}) bool {
 	}
 }
 
-func operationExists(resolver *catalog.Resolver, resource manifest.Resource, method string, shape catalog.OperationShape) bool {
+func operationExists(resolver *kcapi.Resolver, resource manifest.Resource, method string, shape kcapi.OperationShape) bool {
 	_, err := resolver.ResolveResourceOperation(resource.Type, resource.ParentType, method, shape)
 	return err == nil
 }
@@ -784,7 +784,7 @@ func (s *service) resolveExistingResource(ctx context.Context, resource *manifes
 	resolver := s.Spec().Resolver()
 	originalID := stringID(resource.Data, "id")
 
-	if operationExists(resolver, *resource, http.MethodGet, catalog.OperationSingle) {
+	if operationExists(resolver, *resource, http.MethodGet, kcapi.OperationSingle) {
 		fetched, exists, err := s.specClient.FetchResource(ctx, *resource)
 		if err != nil {
 			log.Logger.Debug().Str("pkg", "admin").Msgf("fetch resource %s/%s failed: %v", resource.Type, s.resourceName(*resource), err)
@@ -1046,7 +1046,7 @@ func relationshipKey(rel manifest.RelationshipOperation, identityFromPath bool) 
 }
 
 func identityFromPath(rel manifest.RelationshipOperation) bool {
-	kind, ok := catalog.DefaultRegistry().ByName(rel.Kind)
+	kind, ok := kcapi.DefaultRegistry().ByName(rel.Kind)
 	if !ok {
 		return false
 	}
@@ -1082,11 +1082,11 @@ func reconcileRelationshipSets(desired, actual []manifest.RelationshipOperation)
 }
 
 func buildRelationshipDeleteOperation(rel manifest.RelationshipOperation) (manifest.RelationshipOperation, bool) {
-	kind, ok := catalog.DefaultRegistry().ByName(rel.Kind)
+	kind, ok := kcapi.DefaultRegistry().ByName(rel.Kind)
 	if !ok {
 		return manifest.RelationshipOperation{}, false
 	}
-	op, err := catalog.BuildDeleteOperation(rel, kind)
+	op, err := kcapi.BuildDeleteOperation(rel, kind)
 	if err != nil {
 		return manifest.RelationshipOperation{}, false
 	}

@@ -1,11 +1,11 @@
-package catalog_test
+package kcapi_test
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 // TestOrgChildrenCreateNestsUnderChild is ISSUE 0006 AC #3: nesting under an org
@@ -19,7 +19,7 @@ func TestOrgChildrenCreateNestsUnderChild(t *testing.T) {
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/children",
 		http.MethodPost,
-		catalog.RequestValidation{
+		kcapi.RequestValidation{
 			PathParams: map[string]string{"realm": "demo", "org-id": "org-1", "group-id": "child-1"},
 			Body:       map[string]interface{}{"name": "grandchild"},
 		}))
