@@ -250,6 +250,32 @@ func (r *Registry) paramTypesFunc() func(string) map[string]string {
 	}
 }
 
+// displayOverrides carries the registry's curated relationship names onto the
+// structural edges inferred by Edges(), keyed "parent->child" in the plural
+// path-segment vocabulary those edges speak (the operationResource vocabulary,
+// which Call{Resource}/Ref{Type} resolve by). Each entry names the relationship
+// family whose spec paths span both edge placeholders. Pairs spanned by several
+// families (organizations->groups is claimed by both organization-group-member
+// and organization-group-child) stay unnamed rather than arbitrating.
+var displayOverrides = map[string]string{
+	"realms->default-groups":                 "default-group-membership",
+	"realms->default-default-client-scopes":  "realm-default-client-scope",
+	"realms->default-optional-client-scopes": "realm-optional-client-scope",
+	"users->groups":                          "user-group-membership",
+	"users->federated-identity":              "user-federated-identity",
+	"groups->members":                        "organization-group-member",
+	"organizations->identity-providers":      "organization-identity-provider",
+	"clients->default-client-scopes":         "client-default-scope",
+	"clients->optional-client-scopes":        "client-optional-scope",
+}
+
+// displayOverride returns the curated display name for an edge pair, if the
+// registry curates one.
+func displayOverride(parent, child string) (string, bool) {
+	name, ok := displayOverrides[parent+"->"+child]
+	return name, ok
+}
+
 // RelationshipOverride describes a single override entry in a relationship
 // overrides YAML file.
 type RelationshipOverride struct {
