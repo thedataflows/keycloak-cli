@@ -472,7 +472,7 @@ go fmt ./...
 
 ## Architecture
 
-```
+```properties
 cmd/          — CLI commands (Kong)
 admin/        — Admin service (fetch, apply, errors)
   internal/   — Runtime HTTP client & resource operation mapping
