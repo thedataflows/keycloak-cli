@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/thedataflows/keycloak-cli/pkg/admin"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 const (
@@ -39,6 +40,7 @@ type CLI struct {
 	Upload     UploadCmd     `cmd:"" help:"Upload objects"`
 	Generate   GenerateCmd   `cmd:"" help:"Generate test data"`
 	AdminToken AdminTokenCmd `cmd:"" help:"Get administrative access token from current instance"`
+	Invoke     InvokeCmd     `cmd:"" help:"Invoke any Keycloak API operation from the loaded spec"`
 }
 
 // AfterApply is called after Kong parses the CLI but before the command runs
@@ -85,6 +87,19 @@ func (cli *CLI) adminClient() (admin.Service, error) {
 		BaseURL:  cli.KeycloakBaseURL,
 		SpecPath: cli.SpecPath,
 		Timeout:  cli.effectiveTimeout(),
+	})
+}
+
+// Kcapi builds the spec-driven Keycloak client shared by commands that speak
+// raw spec operations. It mirrors adminClient: the same base-URL and spec-path
+// flags/env plus the effective timeout. The CLI has no dedicated credentials
+// surface, so kcapi resolves tokens from the environment, matching the other
+// commands.
+func (cli *CLI) Kcapi() (*kcapi.Client, error) {
+	return kcapi.New(kcapi.Config{
+		BaseURL: cli.KeycloakBaseURL,
+		Spec:    kcapi.SpecSource{Path: cli.SpecPath},
+		Timeout: cli.effectiveTimeout(),
 	})
 }
 
