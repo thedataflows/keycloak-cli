@@ -7,6 +7,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -99,7 +100,7 @@ func New(client *kcapi.Client) *mcp.Server {
 			"body is a JSON request body. " +
 			"State-changing verbs (" + destructiveVerbs + ") require confirm=true; " +
 			"without it the call is rejected before anything is sent. Returns the raw JSON response.",
-		Annotations: destructive(),
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in invokeIn) (*mcp.CallToolResult, any, error) {
 		call, err := invokeCall(in)
 		if err != nil {
@@ -123,7 +124,11 @@ func New(client *kcapi.Client) *mcp.Server {
 			"identity (username, clientId, role name, realm name). Returns the resource object.",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in refIn) (*mcp.CallToolResult, any, error) {
-		return unimplemented(req), nil, nil
+		node, err := client.Resolve(ctx, kcapi.Ref{Type: in.Type, Name: in.Name, ID: in.ID, Realm: in.Realm})
+		if err != nil {
+			return nil, nil, toErrorResult(err)
+		}
+		return jsonResult(node.Resource.Data), nil, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -134,7 +139,15 @@ func New(client *kcapi.Client) *mcp.Server {
 			"Use it to discover what hangs off a resource (e.g. an organization's groups).",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in neighborsIn) (*mcp.CallToolResult, any, error) {
-		return unimplemented(req), nil, nil
+		node, err := client.Resolve(ctx, kcapi.Ref{Type: in.Type, Name: in.Name, ID: in.ID, Realm: in.Realm})
+		if err != nil {
+			return nil, nil, toErrorResult(err)
+		}
+		children, edges, err := client.Neighbors(ctx, node, kcapi.EdgeFilter{Child: in.Child, Parent: in.Parent})
+		if err != nil {
+			return nil, nil, toErrorResult(err)
+		}
+		return jsonResult(neighborsOut(children, edges)), nil, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -142,7 +155,10 @@ func New(client *kcapi.Client) *mcp.Server {
 		Description: "Reload the OpenAPI spec from disk. Call it if the spec file changed since the server started.",
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in reloadIn) (*mcp.CallToolResult, any, error) {
-		return unimplemented(req), nil, nil
+		if err := client.Reload(ctx); err != nil {
+			return nil, nil, toErrorResult(err)
+		}
+		return jsonResult(map[string]string{"status": "reloaded"}), nil, nil
 	})
 
 	return srv
@@ -216,17 +232,37 @@ func callVerb(client *kcapi.Client, call kcapi.Call) (verb string, known bool) {
 	return "", false
 }
 
+// neighborsOut shapes a Neighbors walk as the children's resource objects
+// plus the edges used, with empty slices (never null) for stable JSON.
+func neighborsOut(children []kcapi.Node, edges []kcapi.Edge) map[string]any {
+	kids := make([]map[string]any, 0, len(children))
+	for _, child := range children {
+		kids = append(kids, child.Resource.Data)
+	}
+	if edges == nil {
+		edges = []kcapi.Edge{}
+	}
+	return map[string]any{"children": kids, "edges": edges}
+}
+
+// toErrorResult prefixes kcapi's typed errors with their taxonomy kind, so
+// the calling agent sees e.g. "[not_found] ..." and can react.
+func toErrorResult(err error) error {
+	var kerr *kcapi.Error
+	if errors.As(err, &kerr) {
+		return fmt.Errorf("[%s] %w", kerr.Kind, err)
+	}
+	return err
+}
+
+// Run serves the MCP server over stdio until the client disconnects or ctx
+// is cancelled. stdout carries only protocol frames; logging stays on stderr.
+func Run(ctx context.Context, client *kcapi.Client) error {
+	return New(client).Run(ctx, &mcp.StdioTransport{})
+}
+
 func readOnly() *mcp.ToolAnnotations {
 	return &mcp.ToolAnnotations{ReadOnlyHint: true}
-}
-
-func destructive() *mcp.ToolAnnotations {
-	return &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)}
-}
-
-// unimplemented is the cycle-1 stub every acceptance test replaces.
-func unimplemented(req *mcp.CallToolRequest) *mcp.CallToolResult {
-	return errorResultf("%s is not implemented yet", req.Params.Name)
 }
 
 // errorResultf builds a tool error result the calling agent can read and

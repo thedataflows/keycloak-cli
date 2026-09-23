@@ -42,6 +42,7 @@ type CLI struct {
 	AdminToken AdminTokenCmd `cmd:"" help:"Get administrative access token from current instance"`
 	Invoke     InvokeCmd     `cmd:"" help:"Invoke any Keycloak API operation from the loaded spec"`
 	Graph      GraphCmd      `cmd:"" help:"Inspect the resource graph implied by the spec (edges, resolve, neighbors)"`
+	Mcp        McpCmd        `cmd:"" help:"Serve the Keycloak admin API as an MCP server over stdio (for LLM agents)"`
 }
 
 // AfterApply is called after Kong parses the CLI but before the command runs

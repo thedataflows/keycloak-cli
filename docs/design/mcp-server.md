@@ -73,4 +73,6 @@ Official SDK `github.com/modelcontextprotocol/go-sdk` v1.8.0, vendored.
 
 Resources/prompts/sampling, HTTP transport, per-tool authn, server-side
 read-only mode, operationId mode beyond passing `op` through (the vendored
-spec has none).
+spec has none). Realm representations are not resolvable via `kc_resolve`:
+kcapi's resource vocabulary does not address the realms collection (the
+realm name is the anchor parameter of every call).

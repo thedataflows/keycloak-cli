@@ -55,7 +55,7 @@ func newFakeKeycloak(t *testing.T) *fakeKeycloak {
 	fake := &fakeKeycloak{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /admin/realms", fake.jsonReply(`[{"realm":"master","id":"master","displayName":"Master"},{"realm":"acme","id":"acme"}]`))
-	mux.HandleFunc("GET /admin/realms/{realm}/organizations", fake.jsonReply(`[{"id":"org-1","name":"acme-org"}]`))
+	mux.HandleFunc("GET /admin/realms/{realm}/organizations", fake.jsonReply(`[{"id":"org-1","alias":"acme-org","name":"Acme Org"}]`))
 	mux.HandleFunc("GET /admin/realms/{realm}/organizations/{orgid}/groups", fake.jsonReply(`[{"id":"g1","name":"eng"}]`))
 	mux.HandleFunc("GET /admin/realms/{realm}/users", fake.jsonReply(`[{"id":"u1","username":"alice"}]`))
 	mux.HandleFunc("POST /admin/realms/{realm}/users", func(w http.ResponseWriter, r *http.Request) {
@@ -218,4 +218,84 @@ func toolText(t *testing.T, res *mcp.CallToolResult) string {
 	text, ok := res.Content[0].(*mcp.TextContent)
 	require.True(t, ok, "first content is %T, want TextContent", res.Content[0])
 	return text.Text
+}
+
+// Scenario 6: kc_resolve resolves a resource by name through the real kcapi
+// flow and returns the resource object. (Realm representations themselves are
+// out of scope: kcapi's resource vocabulary does not address the realms
+// collection — the realm name is the anchor of every other call.)
+func TestKcResolveByName(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
+		"type":  "users",
+		"name":  "alice",
+		"realm": "master",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var user map[string]any
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &user))
+	assert.Equal(t, "alice", user["username"])
+	assert.Contains(t, fake.requests(), "GET /admin/realms/master/users")
+}
+
+// Scenario 7: kc_neighbors walks an organization's child collection and
+// returns the fetched children plus the edges used.
+func TestKcNeighborsWalksChildCollection(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_neighbors", Arguments: map[string]any{
+		"type":  "organizations",
+		"name":  "acme-org",
+		"realm": "master",
+		"child": "groups",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var out struct {
+		Children []map[string]any `json:"children"`
+		Edges    []map[string]any `json:"edges"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &out))
+	require.Len(t, out.Children, 1)
+	assert.Equal(t, "eng", out.Children[0]["name"])
+	require.NotEmpty(t, out.Edges)
+	assert.Equal(t, "groups", out.Edges[0]["Child"])
+	assert.Contains(t, fake.requests(), "GET /admin/realms/master/organizations/acme-org/groups")
+}
+
+// Scenario 8: kc_reload completes and keeps the tools working afterwards.
+func TestKcReloadCompletes(t *testing.T) {
+	client, _ := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_reload"})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	after, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_operations", Arguments: map[string]any{"resource": "users", "method": "GET"}})
+	require.NoError(t, err)
+	assert.False(t, after.IsError, toolText(t, after))
+}
+
+// Scenario 9: kcapi failures surface as tool error results carrying kind and
+// status, so the agent can self-correct.
+func TestKcapiErrorsBecomeToolErrors(t *testing.T) {
+	client, _ := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
+		"type": "nosuchtype",
+		"name": "x",
+	}})
+	require.NoError(t, err, "domain errors are tool errors, not transport failures")
+	require.True(t, res.IsError)
+	text := toolText(t, res)
+	assert.Contains(t, text, "unknown resource type")
+	assert.Contains(t, text, "nosuchtype")
 }
