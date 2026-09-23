@@ -85,9 +85,11 @@ func buildOperation(path, method string, op *v3.Operation, item *v3.PathItem) Op
 
 // operationResource returns the last meaningful path segment as the
 // operation's resource, e.g. "users" for "/admin/realms/{realm}/users/{id}".
-// Unlike inferResourceTypeFromPath it keeps the plural form: discovery
-// filters speak the spec's path vocabulary, not the catalog's singular
-// resource types.
+// Realm-root paths ("/admin/realms", "/admin/realms/{realm}") therefore
+// resolve to "realms", which is what makes the realms collection addressable
+// by Call{Resource} and Ref{Type}. Unlike inferResourceTypeFromPath it keeps
+// the plural form: discovery filters speak the spec's path vocabulary, not
+// the catalog's singular resource types.
 func operationResource(path string) string {
 	if path == "" {
 		return ""
@@ -96,7 +98,7 @@ func operationResource(path string) string {
 	var candidate string
 	for _, segment := range segments {
 		segment = strings.TrimSpace(segment)
-		if segment == "" || segment == "admin" || segment == "realms" {
+		if segment == "" || segment == "admin" {
 			continue
 		}
 		if strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}") {

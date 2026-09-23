@@ -66,13 +66,14 @@ Official SDK `github.com/modelcontextprotocol/go-sdk` v1.8.0, vendored.
 7. `kc_neighbors` walks a parent's child collection and returns edges.
 8. `kc_reload` completes without error.
 9. kcapi failures surface as tool error results carrying kind and status.
-10. Stdio smoke: the built binary completes an MCP initialize handshake over
+10. `kc_resolve` resolves a realm by its own name onto
+    `GET /admin/realms/{name}`; `kc_neighbors` from the realm node lists the
+    realm-rooted child collections.
+11. Stdio smoke: the built binary completes an MCP initialize handshake over
     stdin/stdout and lists the five tools.
 
 ## Out of scope
 
 Resources/prompts/sampling, HTTP transport, per-tool authn, server-side
 read-only mode, operationId mode beyond passing `op` through (the vendored
-spec has none). Realm representations are not resolvable via `kc_resolve`:
-kcapi's resource vocabulary does not address the realms collection (the
-realm name is the anchor parameter of every call).
+spec has none).

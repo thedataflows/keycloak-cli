@@ -245,6 +245,12 @@ keycloak-cli graph resolve users alice --realm demo
 # Resolve straight by id (the <name> argument is still required but ignored)
 keycloak-cli graph resolve users "" --realm demo --id <uuid>
 
+# Resolve a realm by its own name (the realm is the graph root)
+keycloak-cli graph resolve realms demo --realm demo
+
+# Walk the realm root: list its child collections (users, clients, roles, ...)
+keycloak-cli graph neighbors realms demo --realm demo
+
 # List the objects related to a resolved user, with the edges that produced them
 keycloak-cli graph neighbors users alice --realm demo
 

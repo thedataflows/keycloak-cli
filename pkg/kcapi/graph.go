@@ -57,6 +57,11 @@ func (c *Client) Resolve(ctx context.Context, ref Ref) (Node, error) {
 	if !ok {
 		return Node{}, &Error{Kind: KindValidation, Op: resolveOpLabel(ref), Err: fmt.Errorf("unknown resource type %q", ref.Type)}
 	}
+	if ref.ID == "" && identity.IDParam == "realm" {
+		// A realm's identity field IS the {realm} path parameter: the name
+		// is the address, so resolve straight onto GET /admin/realms/{name}.
+		ref.ID = ref.Name
+	}
 	if ref.ID != "" {
 		return c.resolveSingle(ctx, spec, ref, identity)
 	}

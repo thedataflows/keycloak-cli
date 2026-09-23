@@ -7,6 +7,7 @@ package mcpserver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -55,6 +56,14 @@ func newFakeKeycloak(t *testing.T) *fakeKeycloak {
 	fake := &fakeKeycloak{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /admin/realms", fake.jsonReply(`[{"realm":"master","id":"master","displayName":"Master"},{"realm":"acme","id":"acme"}]`))
+	mux.HandleFunc("GET /admin/realms/{realm}", func(w http.ResponseWriter, r *http.Request) {
+		// Echo the requested realm: a real Keycloak's realm representation
+		// names the realm it serves, and the neighbor walk anchors on it.
+		fake.record(r)
+		name := r.PathValue("realm")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"realm":%q,"id":%q,"displayName":%q,"enabled":true}`, name, name, "Realm "+name)
+	})
 	mux.HandleFunc("GET /admin/realms/{realm}/organizations", fake.jsonReply(`[{"id":"org-1","alias":"acme-org","name":"Acme Org"}]`))
 	mux.HandleFunc("GET /admin/realms/{realm}/organizations/{orgid}/groups", fake.jsonReply(`[{"id":"g1","name":"eng"}]`))
 	mux.HandleFunc("GET /admin/realms/{realm}/users", fake.jsonReply(`[{"id":"u1","username":"alice"}]`))
@@ -221,9 +230,7 @@ func toolText(t *testing.T, res *mcp.CallToolResult) string {
 }
 
 // Scenario 6: kc_resolve resolves a resource by name through the real kcapi
-// flow and returns the resource object. (Realm representations themselves are
-// out of scope: kcapi's resource vocabulary does not address the realms
-// collection — the realm name is the anchor of every other call.)
+// flow and returns the resource object.
 func TestKcResolveByName(t *testing.T) {
 	client, fake := newTestClient(t)
 	session := newSession(t, mcpserver.New(client))
@@ -298,4 +305,53 @@ func TestKcapiErrorsBecomeToolErrors(t *testing.T) {
 	text := toolText(t, res)
 	assert.Contains(t, text, "unknown resource type")
 	assert.Contains(t, text, "nosuchtype")
+}
+
+// Scenario 10: kc_resolve resolves a realm by its own name. The realm is the
+// one resource whose identity field IS the {realm} path parameter, so the
+// lookup is the single-resource GET /admin/realms/{name} — one exact request,
+// no collection search.
+func TestKcResolveRealmByName(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
+		"type":  "realms",
+		"name":  "acme",
+		"realm": "acme",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var realm map[string]any
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &realm))
+	assert.Equal(t, "acme", realm["realm"])
+	assert.Contains(t, fake.requests(), "GET /admin/realms/acme")
+}
+
+// Scenario 11: kc_neighbors from a realm node lists the child collections
+// hanging off the realm root, anchored by the realm's own identifier.
+func TestKcNeighborsFromRealmNode(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, mcpserver.New(client))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_neighbors", Arguments: map[string]any{
+		"type":  "realms",
+		"name":  "master",
+		"realm": "master",
+		"child": "users",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var out struct {
+		Children []map[string]any `json:"children"`
+		Edges    []map[string]any `json:"edges"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &out))
+	require.Len(t, out.Children, 1)
+	assert.Equal(t, "alice", out.Children[0]["username"])
+	require.NotEmpty(t, out.Edges)
+	assert.Equal(t, "users", out.Edges[0]["Child"])
+	assert.Contains(t, fake.requests(), "GET /admin/realms/master/users")
 }

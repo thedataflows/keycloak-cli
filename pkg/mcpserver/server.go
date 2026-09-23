@@ -136,7 +136,8 @@ func New(client *kcapi.Client) *mcp.Server {
 		Description: "List the child collections of one resolved Keycloak resource: resolves the " +
 			"parent (type+name or id), then walks the relationship edges whose collection prefix " +
 			"matches, fetching each child collection. Optional child/parent narrow the edge set. " +
-			"Use it to discover what hangs off a resource (e.g. an organization's groups).",
+			"Use it to discover what hangs off a resource (e.g. a realm's users, an organization's groups). " +
+			"A realm node is the graph root: resolve type \"realms\" by realm name, then walk from there.",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in neighborsIn) (*mcp.CallToolResult, any, error) {
 		node, err := client.Resolve(ctx, kcapi.Ref{Type: in.Type, Name: in.Name, ID: in.ID, Realm: in.Realm})

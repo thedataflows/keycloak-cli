@@ -311,6 +311,11 @@ func (s *Spec) inferIdentity(resourceType string, contract ResourceContract) (id
 
 	if len(singleGets) > 0 {
 		idParam = primaryIdentifierParam(singleGets[0].Path)
+		if idParam == "" && lastPlaceholderName(strings.Split(singleGets[0].Path, "/")) == "realm" {
+			// GET /admin/realms/{realm}: {realm} addresses the realm itself,
+			// where primaryIdentifierParam skips it as every other type's anchor.
+			idParam = "realm"
+		}
 	}
 	if idParam == "" {
 		if op, ok := contract.Operations[http.MethodGet]; ok && !isCollectionEndpoint(op.Path) {
