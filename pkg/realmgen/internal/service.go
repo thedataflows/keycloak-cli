@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -62,7 +62,7 @@ func (s *Service) Generate(specPath string, options Options) (Result, error) {
 		return Result{}, fmt.Errorf("resolve spec path: %w", err)
 	}
 
-	spec, err := catalog.NewSpec(resolvedSpecPath)
+	spec, err := kcapi.NewSpec(resolvedSpecPath)
 	if err != nil {
 		return Result{}, fmt.Errorf("load spec: %w", err)
 	}

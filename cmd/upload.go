@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
 )
@@ -42,7 +41,7 @@ func (c *UploadCmd) Run(ctx *kong.Context, cli *CLI) error {
 		log.Logger.Warn().Str("pkg", PKG_CMD).Msgf("skipping %s: %s", skipped.Path, skipped.Reason)
 	}
 
-	report, err := specClient.Apply(commandCtx, loaded.Resources, loaded.Relationships, admin.ApplyOptions{
+	report, err := specClient.Apply(commandCtx, loaded.Resources, loaded.Relationships, manifest.ApplyOptions{
 		DryRun:          c.DryRun,
 		Delete:          c.Delete,
 		ContinueOnError: c.ContinueOnError,
@@ -59,7 +58,7 @@ func (c *UploadCmd) Run(ctx *kong.Context, cli *CLI) error {
 	return nil
 }
 
-func (c *UploadCmd) outputResults(results []admin.ApplyResult) error {
+func (c *UploadCmd) outputResults(results []manifest.ApplyResult) error {
 	dest, shouldClose, err := output.Destination(c.Output, c.Force)
 	if err != nil {
 		return err

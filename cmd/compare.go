@@ -8,8 +8,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
-	"github.com/thedataflows/keycloak-cli/pkg/catalog"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
 )
@@ -45,7 +44,7 @@ func (c *CompareCmd) Run(ctx *kong.Context, cli *CLI) error {
 	if len(loaded.Resources) == 0 && len(loaded.Relationships) == 0 {
 		return fmt.Errorf("no manifests loaded")
 	}
-	if err := catalog.ValidateRelationshipOperations(svc.Spec(), loaded.Relationships); err != nil {
+	if err := kcapi.ValidateRelationshipOperations(svc.Spec(), loaded.Relationships); err != nil {
 		return err
 	}
 
@@ -54,7 +53,7 @@ func (c *CompareCmd) Run(ctx *kong.Context, cli *CLI) error {
 		return err
 	}
 
-	fetched, err := svc.Fetch(commandCtx, admin.FetchQuery{
+	fetched, err := svc.Fetch(commandCtx, manifest.FetchQuery{
 		Realm:                realm,
 		Resources:            compareFetchResources(loaded),
 		IncludeRelationships: len(loaded.Relationships) > 0,
@@ -138,7 +137,7 @@ func compareFetchResources(loaded manifest.LoadResult) string {
 		}
 	}
 	for _, rel := range loaded.Relationships {
-		for _, resourceType := range manifest.RelationshipParamTypes(rel.Kind) {
+		for _, resourceType := range kcapi.RelationshipParamTypes(rel.Kind) {
 			resourceSet[resourceType] = struct{}{}
 		}
 	}

@@ -1,6 +1,26 @@
 # Design: `pkg/kcapi` — spec-driven Keycloak client library, generic CLI, MCP server
 
-Status: approved design (brainstorming session). Implementation plan: `docs/plans/kcapi-library.md`.
+Status: **shipped.** The design below was implemented on `feat/kcapi-library` (plan:
+`docs/superpowers/plans/2026-09-22-kcapi-library.md`); the body remains as originally written for
+historical context. Deviations from the design as actually built:
+
+- The vendored `keycloak-oapi/26.6.2.spec.json` defines **no operationIds**, so resource+verb is
+  the primary resolution mode everywhere (`Call{Resource, Verb}`, `invoke --resource --verb`,
+  `graph` types). `Op` mode still works for specs that carry operationIds.
+- `Neighbors` traversal instantiates each edge's **collection prefix** — the spec path ending
+  directly before the child's placeholder (e.g. `/admin/realms/{realm}/users/{user-id}/groups`) —
+  rather than the edge's own path, so the walk lists collections instead of having to guess child
+  ids the parent cannot know.
+- The legacy curated relationship registry was **retained in full** inside `kcapi`
+  (`relationship_registry.go`: kinds, path matching, param types, delete-operation building), not
+  reduced to display-name-only overrides; it still powers the manifest relationship flows pending
+  a successor design.
+- `Config.Credentials` **validates the intended grant shape only** (password pair vs client
+  secret, mutual exclusivity); the actual token values are resolved from the environment
+  (`KEYCLOAK_ACCESS_TOKEN`/`KEYCLOAK_REFRESH_TOKEN`) exactly as the CLI's `.env` flow does.
+  Programmatic token sourcing goes through `Config.Auth` (`auth.Service`;
+  kcapi only calls its `AccessToken` method).
+- The MCP server was **not started**; it is deferred to its own future plan.
 
 ## Context
 

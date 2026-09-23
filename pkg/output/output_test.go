@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
 )
@@ -84,7 +83,7 @@ func TestWriteResourceTable(t *testing.T) {
 }
 
 func TestWriteApplyResults(t *testing.T) {
-	results := []admin.ApplyResult{{
+	results := []manifest.ApplyResult{{
 		Resource: "user",
 		Realm:    "demo",
 		Name:     "alice",

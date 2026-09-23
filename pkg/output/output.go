@@ -15,7 +15,6 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -81,10 +80,13 @@ func WritePayload(writer io.Writer, payload interface{}, format string) error {
 	}
 }
 
-func WriteApplyResults(writer io.Writer, results []admin.ApplyResult, format string) error {
+func WriteApplyResults(writer io.Writer, results []manifest.ApplyResult, format string) error {
 	switch format {
-	case "json", "yaml", "toml":
+	case "json", "yaml":
 		return WritePayload(writer, results, format)
+	case "toml":
+		// TOML documents are key/value roots; a root-level array cannot be encoded.
+		return WriteTOML(writer, map[string]interface{}{"results": results})
 	case "table", "":
 		return writeApplyResultsTable(writer, results)
 	default:
@@ -152,7 +154,7 @@ func WriteRelationshipTable(writer io.Writer, relationships []manifest.Relations
 	return writeTabTable(writer, "KIND\tMETHOD\tPATH", rows)
 }
 
-func writeApplyResultsTable(writer io.Writer, results []admin.ApplyResult) error {
+func writeApplyResultsTable(writer io.Writer, results []manifest.ApplyResult) error {
 	rows := make([][]string, 0, len(results))
 	for _, result := range results {
 		rows = append(rows, []string{result.Resource, result.Realm, result.Name, result.Action, strconv.Itoa(result.Status)})

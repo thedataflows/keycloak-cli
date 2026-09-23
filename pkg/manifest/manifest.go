@@ -6,36 +6,22 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 const relationshipPathPrefix = "/admin/realms/"
 
-// Resource is the shared manifest model for Keycloak resources.
-type Resource struct {
-	Type       string                 `json:"type"`
-	Realm      string                 `json:"realm"`
-	Delete     bool                   `json:"delete,omitempty"`
-	Data       map[string]interface{} `json:"data"`
-	ParentType string                 `json:"parentType,omitempty"` // disambiguates multi-location types (e.g. protocolmapper under clientscope vs client)
-}
+// Resource and RelationshipOperation are owned by pkg/kcapi since the
+// kcapi library absorbed the catalog; aliased here for API stability.
+type Resource = kcapi.Resource
 
-type RelationshipOperation struct {
-	Kind   string          `json:"kind,omitempty"`
-	Path   string          `json:"path"`
-	Delete bool            `json:"delete,omitempty"`
-	Data   json.RawMessage `json:"data,omitempty"`
-
-	Method     string            `json:"-"`
-	Template   string            `json:"-"`
-	PathParams map[string]string `json:"-"`
-}
+type RelationshipOperation = kcapi.RelationshipOperation
 
 type RelationshipManifest struct {
 	Relationships []RelationshipOperation `json:"relationships"`
@@ -148,48 +134,11 @@ func LoadPaths(paths []string) (LoadResult, error) {
 	return result, nil
 }
 
+// NewRelationshipOperation is owned by pkg/kcapi (it constructs the
+// kcapi-owned RelationshipOperation); this delegator keeps external callers
+// unchanged.
 func NewRelationshipOperation(template, method string, params map[string]string, payload interface{}) (RelationshipOperation, error) {
-	trimmedTemplate := strings.TrimSpace(template)
-	trimmedTemplate = strings.TrimPrefix(trimmedTemplate, relationshipPathPrefix)
-	trimmedTemplate = strings.TrimPrefix(trimmedTemplate, "/")
-	if trimmedTemplate == "" {
-		return RelationshipOperation{}, fmt.Errorf("relationship template cannot be empty")
-	}
-
-	resolvedMethod := strings.ToUpper(strings.TrimSpace(method))
-	if resolvedMethod == "" {
-		return RelationshipOperation{}, fmt.Errorf("relationship method cannot be empty")
-	}
-
-	operation := RelationshipOperation{
-		Template:   trimmedTemplate,
-		Method:     resolvedMethod,
-		PathParams: maps.Clone(params),
-	}
-	if resolvedMethod == http.MethodDelete {
-		operation.Delete = true
-	}
-
-	operation.Path = buildActualRelationshipPath(operation.Template, operation.PathParams)
-
-	if payload != nil {
-		switch typed := payload.(type) {
-		case json.RawMessage:
-			operation.Data = append(json.RawMessage(nil), typed...)
-		default:
-			data, err := json.Marshal(payload)
-			if err != nil {
-				return RelationshipOperation{}, fmt.Errorf("marshal relationship payload: %w", err)
-			}
-			operation.Data = data
-		}
-	}
-
-	return operation, nil
-}
-
-func (r *RelationshipOperation) RebuildPath() {
-	r.Path = buildActualRelationshipPath(r.Template, r.PathParams)
+	return kcapi.NewRelationshipOperation(template, method, params, payload)
 }
 
 // ValidateResources ensures each resource has the minimum manifest fields required.
@@ -319,49 +268,6 @@ func CompareRoundTrip(expectedResources []Resource, expectedRelationships []Rela
 	return report
 }
 
-var identifierFields = map[string][]string{
-	"realm":            {"realm"},
-	"client":           {"id", "clientId"},
-	"role":             {"name", "alias"},
-	"identityprovider": {"alias"},
-	"user":             {"id", "username"},
-}
-
-func (r Resource) Identifier() string {
-	if fields, ok := identifierFields[r.Type]; ok {
-		return firstStringField(r.Data, fields)
-	}
-	return stringField(r.Data, "id")
-}
-
-var nameFields = map[string][]string{
-	"realm":  {"realm"},
-	"user":   {"username"},
-	"client": {"clientId"},
-}
-
-func (r Resource) Name() string {
-	if fields, ok := nameFields[r.Type]; ok {
-		return firstStringField(r.Data, fields)
-	}
-	return firstStringField(r.Data, []string{"name", "alias"})
-}
-
-var displayNameFields = []string{"name", "clientId", "username", "alias", "realm", "id"}
-
-func (r Resource) DisplayName() string {
-	return firstStringField(r.Data, displayNameFields)
-}
-
-func firstStringField(data map[string]interface{}, keys []string) string {
-	for _, key := range keys {
-		if value := stringField(data, key); value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func dependencyPriority(resourceType string) int {
 	switch resourceType {
 	case "realm":
@@ -435,7 +341,7 @@ func isIgnoredActualResource(resource Resource) bool {
 	if isBuiltinResource(resource) {
 		return true
 	}
-	if IsBuiltInResource != nil && IsBuiltInResource(resource) {
+	if kcapi.IsBuiltInResource != nil && kcapi.IsBuiltInResource(resource) {
 		return true
 	}
 	return false
@@ -448,7 +354,7 @@ func normalizeResourcesForRoundTrip(resources []Resource, preserveIDs map[string
 
 	normalized := make([]Resource, 0, len(resources))
 	for _, resource := range resources {
-		normalized = append(normalized, cloneResource(resource, preserveIDs))
+		normalized = append(normalized, kcapi.CloneResource(resource, preserveIDs))
 	}
 
 	sort.Slice(normalized, func(left, right int) bool {
@@ -458,60 +364,12 @@ func normalizeResourcesForRoundTrip(resources []Resource, preserveIDs map[string
 	return normalized
 }
 
-// cloneResource returns a copy of the resource with server-managed and volatile
-// fields removed. If preserveIDs is non-nil, any resource whose "id" appears in
-// the set keeps its id so that inline references from other resources can be
-// remapped during apply.
-func cloneResource(resource Resource, preserveIDs map[string]struct{}) Resource {
-	clone := Resource{
-		Type:       resource.Type,
-		Realm:      strings.TrimSpace(resource.Realm),
-		Delete:     resource.Delete,
-		ParentType: resource.ParentType,
-	}
-	if len(resource.Data) > 0 {
-		clone.Data = normalizeMapForRoundTrip(resource.Data, true)
-	}
-	if clone.Realm == "" {
-		clone.Realm = stringField(clone.Data, "realm")
-	}
-	if clone.Data != nil {
-		if fields, ok := writeOnlyResourceFields[clone.Type]; ok {
-			deleteWriteOnlyFields(clone.Data, fields)
-		}
-		if preserveIDs != nil {
-			if id := stringField(resource.Data, "id"); id != "" {
-				if _, ok := preserveIDs[id]; ok {
-					clone.Data["id"] = id
-				}
-			}
-		}
-	}
-	return clone
-}
-
 // StripVolatileFields returns a copy of the resource with server-managed and
 // write-only fields removed, suitable for validation before apply.
+// The implementation is owned by pkg/kcapi (round-trip field state moved there);
+// this delegator keeps external callers unchanged.
 func StripVolatileFields(resource Resource) Resource {
-	return cloneResource(resource, nil)
-}
-
-func deleteWriteOnlyFields(data map[string]interface{}, fields map[string]struct{}) {
-	for field := range fields {
-		delete(data, field)
-	}
-	for _, value := range data {
-		switch typed := value.(type) {
-		case map[string]interface{}:
-			deleteWriteOnlyFields(typed, fields)
-		case []interface{}:
-			for _, item := range typed {
-				if m, ok := item.(map[string]interface{}); ok {
-					deleteWriteOnlyFields(m, fields)
-				}
-			}
-		}
-	}
+	return kcapi.StripVolatileFields(resource)
 }
 
 func normalizeRelationshipsForRoundTrip(relationships []RelationshipOperation, index resourceIndex) []RelationshipOperation {
@@ -629,60 +487,12 @@ func resourceLookupKeys(resource Resource) []string {
 	return []string{id}
 }
 
-func normalizeMapForRoundTrip(values map[string]interface{}, stripVolatile bool) map[string]interface{} {
-	if len(values) == 0 {
-		return nil
-	}
-
-	result := make(map[string]interface{}, len(values))
-	for key, value := range values {
-		if stripVolatile && isVolatileField(key) {
-			continue
-		}
-		result[key] = normalizeValueForRoundTrip(value, stripVolatile)
-	}
-	return result
-}
-
-func isVolatileField(name string) bool {
-	_, ok := volatileRoundTripFields[strings.ToLower(strings.TrimSpace(name))]
-	return ok
-}
-
-func normalizeValueForRoundTrip(value interface{}, stripVolatile bool) interface{} {
-	switch typed := value.(type) {
-	case map[string]interface{}:
-		return normalizeMapForRoundTrip(typed, stripVolatile)
-	case []interface{}:
-		normalized := make([]interface{}, len(typed))
-		keys := make([]string, len(typed))
-		canSort := true
-		for idx, item := range typed {
-			normalized[idx] = normalizeValueForRoundTrip(item, stripVolatile)
-			key, ok := sortIdentity(normalized[idx])
-			if !ok {
-				canSort = false
-				continue
-			}
-			keys[idx] = key
-		}
-		if canSort {
-			sort.SliceStable(normalized, func(left, right int) bool {
-				return keys[left] < keys[right]
-			})
-		}
-		return normalized
-	default:
-		return value
-	}
-}
-
 func normalizeRelationshipPathParams(relationship RelationshipOperation, index resourceIndex) map[string]string {
 	params := maps.Clone(relationship.PathParams)
 	if params == nil {
 		params = make(map[string]string)
 	}
-	for key, resourceType := range RelationshipParamTypes(relationship.Kind) {
+	for key, resourceType := range kcapi.RelationshipParamTypes(relationship.Kind) {
 		if resolved := index.lookup(resourceType, relationship.PathParams[key]); resolved != "" {
 			params[key] = resolved
 		}
@@ -697,7 +507,7 @@ func normalizeRelationshipDataForRoundTrip(relationship RelationshipOperation, i
 	}
 
 	payload = rewriteRelationshipPayloadForRoundTrip(relationship.Kind, payload, index)
-	payload = normalizeValueForRoundTrip(payload, true)
+	payload = kcapi.NormalizeValueForRoundTrip(payload, true)
 
 	normalized, err := json.Marshal(payload)
 	if err != nil {
@@ -790,53 +600,6 @@ func normalizeRoleRelationshipPayload(payload interface{}, index resourceIndex) 
 	return normalized
 }
 
-// RelationshipParamTypes resolves the resource types for path parameters of a
-// relationship kind. The default implementation is used when the catalog package
-// has not yet installed a registry. Assigning a replacement function allows
-// catalog-driven overrides without creating an import cycle.
-var RelationshipParamTypes = defaultRelationshipParamTypes
-
-// IsBuiltInResource allows the catalog package to inject knowledge of built-in
-// resources that should be excluded from round-trip comparison.
-var IsBuiltInResource = func(Resource) bool { return false }
-
-func defaultRelationshipParamTypes(kind string) map[string]string {
-	switch kind {
-	case "user-group-membership":
-		return map[string]string{"user-id": "user", "groupId": "group"}
-	case "user-realm-role-mapping":
-		return map[string]string{"user-id": "user"}
-	case "group-realm-role-mapping":
-		return map[string]string{"group-id": "group"}
-	case "user-client-role-mapping":
-		return map[string]string{"user-id": "user", "client-id": "client"}
-	case "group-client-role-mapping":
-		return map[string]string{"group-id": "group", "client-id": "client"}
-	case "role-composite-mapping":
-		return map[string]string{"role-id": "role"}
-	case "default-group-membership":
-		return map[string]string{"groupId": "group"}
-	case "realm-default-client-scope", "realm-optional-client-scope":
-		return map[string]string{"clientScopeId": "clientscope"}
-	case "client-default-scope", "client-optional-scope":
-		return map[string]string{"client-uuid": "client", "clientScopeId": "clientscope"}
-	case "client-scope-realm-role-mapping":
-		return map[string]string{"client-scope-id": "clientscope"}
-	case "client-scope-client-role-mapping":
-		return map[string]string{"client-scope-id": "clientscope", "client": "client"}
-	case "user-federated-identity":
-		return map[string]string{"user-id": "user", "provider": "identityprovider"}
-	case "organization-member", "organization-identity-provider":
-		return map[string]string{"org-id": "organization"}
-	case "organization-group-member":
-		return map[string]string{"org-id": "organization", "group-id": "group", "userId": "user"}
-	case "organization-group-child":
-		return map[string]string{"org-id": "organization", "group-id": "group"}
-	default:
-		return nil
-	}
-}
-
 func resourceSortKey(resource Resource) string {
 	encoded, _ := json.Marshal(resource.Data)
 	return strings.Join([]string{resource.Type, resource.Realm, resource.Name(), resource.DisplayName(), string(encoded)}, "|")
@@ -852,54 +615,6 @@ func roundTripResourceKey(resource Resource) string {
 
 func relationshipSortKey(relationship RelationshipOperation) string {
 	return strings.Join([]string{relationship.Kind, relationship.Method, relationship.Path, string(relationship.Data)}, "|")
-}
-
-var volatileRoundTripFields = map[string]struct{}{
-	"id":               {},
-	"internalid":       {},
-	"containerid":      {},
-	"access":           {},
-	"origin":           {},
-	"createdtimestamp": {},
-}
-
-var writeOnlyResourceFields = map[string]map[string]struct{}{
-	"user":   {"credentials": {}},
-	"client": {"clientSecret": {}},
-}
-
-// InstallVolatileFields replaces the global set of volatile round-trip field
-// names. It is used by the catalog package after loading field overrides.
-func InstallVolatileFields(fields map[string]map[string]struct{}) {
-	merged := make(map[string]struct{})
-	for name := range volatileRoundTripFields {
-		merged[name] = struct{}{}
-	}
-	for _, set := range fields {
-		for name := range set {
-			merged[strings.ToLower(name)] = struct{}{}
-		}
-	}
-	volatileRoundTripFields = merged
-}
-
-// InstallWriteOnlyFields replaces the per-resource-type write-only field sets.
-// It is used by the catalog package after loading field overrides.
-func InstallWriteOnlyFields(fields map[string]map[string]struct{}) {
-	writeOnlyResourceFields = fields
-}
-
-func sortIdentity(value interface{}) (string, bool) {
-	mapped, ok := value.(map[string]interface{})
-	if !ok {
-		return "", false
-	}
-	for _, key := range []string{"name", "username", "clientId", "alias", "realm", "provider", "identityProvider", "path", "type"} {
-		if s, ok := mapped[key].(string); ok && strings.TrimSpace(s) != "" {
-			return key + ":" + strings.TrimSpace(s), true
-		}
-	}
-	return "", false
 }
 
 func coalesceString(m map[string]interface{}, keys ...string) string {

@@ -194,6 +194,72 @@ Flags:
 | `--output` | `-o`  |         | Write report to a file or directory (ends with `/` for directory) |
 | `--force`  |       | `false` | Overwrite existing output file                                    |
 
+### `invoke`
+
+Perform one generic, spec-driven API call against the loaded OpenAPI spec, or list the spec's operations.
+
+```bash
+# List operations whose id, path or summary contain a substring (case-insensitive)
+keycloak-cli invoke --list "client role"
+
+# Get one user. Resource+verb is the primary resolution mode: the bundled
+# spec defines no operationIds. The resource is the plural path segment.
+keycloak-cli invoke --resource users --verb GET --realm demo --param user-id=<uuid>
+
+# Params that are not path placeholders become query parameters
+keycloak-cli invoke --resource users --verb GET --realm demo --param max=5 --param username=alice
+
+# Create a user with a JSON body (inline or @file)
+keycloak-cli invoke --resource users --verb POST --realm demo --body @new-user.json
+
+# Specs that do define operationIds can address operations directly
+keycloak-cli invoke getUser --realm demo --param user-id=<uuid>
+```
+
+Flags:
+
+| Flag         | Short | Default | Description                                                                                  |
+| ------------ | ----- | ------- | -------------------------------------------------------------------------------------------- |
+| (op-id)      | (arg) |         | OpenAPI operationId to invoke (optional; only usable with specs that define operationIds)    |
+| `--resource` |       |         | Resource path segment to resolve (e.g. `users`), combined with `--verb`                      |
+| `--verb`     |       | `GET`   | HTTP verb when resolving via `--resource`: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`           |
+| `--realm`    | `-r`  |         | Fills the `{realm}` path placeholder when the operation's template has one                   |
+| `--param`    |       |         | Path or query parameter as `k=v` (repeatable); keys matching path placeholders are substituted |
+| `--body`     |       |         | Request body: inline JSON or `@file`                                                        |
+| `--list`     |       |         | List the spec's operations whose id, path or summary contain this substring, print JSON and exit |
+
+### `graph`
+
+Inspect the resource graph the loaded spec implies: the relationship edges its path structure contains, single objects resolved by type and name, and the neighbours hanging off a resolved object. Resource types use the plural path-segment vocabulary of API paths (e.g. `users`), the same vocabulary `invoke --resource` uses.
+
+```bash
+# List every relationship edge implied by the spec (offline; no server contact)
+keycloak-cli graph edges
+
+# Filter edges by parent and child resource type
+keycloak-cli graph edges --parent realms --child roles
+
+# Resolve a user by username
+keycloak-cli graph resolve users alice --realm demo
+
+# Resolve straight by id (the <name> argument is still required but ignored)
+keycloak-cli graph resolve users "" --realm demo --id <uuid>
+
+# List the objects related to a resolved user, with the edges that produced them
+keycloak-cli graph neighbors users alice --realm demo
+
+# Only walk edges whose child is a given resource type
+keycloak-cli graph neighbors users alice --realm demo --child groups
+```
+
+Subcommands:
+
+| Subcommand  | Arguments       | Description                                                                                   |
+| ----------- | --------------- | --------------------------------------------------------------------------------------------- |
+| `edges`     |                 | List relationship edges implied by the spec, as JSON (`--parent`/`--child` filters)           |
+| `resolve`   | `<type> <name>` | Resolve one object by plural type plus name (`--realm` required; `--id` skips the name lookup) |
+| `neighbors` | `<type> <name>` | Fetch each reachable child collection once; prints `{"nodes": [...], "edges": [...]}`         |
+
 ### `admin-token`
 
 Get an admin access token through the password grant flow.
@@ -227,6 +293,47 @@ Print the CLI version.
 ```bash
 keycloak-cli version
 ```
+
+## Library usage (pkg/kcapi)
+
+The CLI is a thin layer over [`pkg/kcapi`](pkg/kcapi/), a spec-driven Keycloak client library: every operation in the supplied OpenAPI spec is discoverable and invocable generically, plus graph queries over the object relationships the spec's path structure implies.
+
+```go
+client, err := kcapi.New(kcapi.Config{
+    BaseURL: "https://kc.example.com",
+    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/26.6.2.spec.json"}, // Path, URL, or Raw bytes
+})
+```
+
+Tokens resolve exactly as they do for the CLI: `KEYCLOAK_ACCESS_TOKEN` from the environment (refreshed via `KEYCLOAK_REFRESH_TOKEN`), so the same `.env` file works. `Config.Credentials` validates which grant shape you intend (password pair vs client secret), but the secret values themselves come from the environment; set `Config.Auth` to your own `auth.Service` to source tokens programmatically (kcapi only calls its `AccessToken` method).
+
+```go
+// Discovery: list the spec's operations matching a filter (zero fields match everything).
+ops, err := client.Operations(kcapi.OpFilter{Resource: "users", Method: kcapi.Get})
+
+// Invoke one operation. Exactly one resolution mode: Op, or Resource+Verb.
+// The bundled Keycloak spec defines no operationIds, so Resource+Verb is the
+// primary mode; the resource is the plural path segment (e.g. "users").
+user, err := client.Invoke(ctx, kcapi.Call{
+    Resource: "users",
+    Verb:     kcapi.Get,
+    Realm:    "demo",
+    Params:   kcapi.P{"user-id": "59b0..."}, // path placeholders first; the rest go to the query string
+})
+
+// Page through a collection operation via first/max (kcapi.DefaultPageSize, 100, per page).
+all, err := client.ListAll(ctx, kcapi.Call{Resource: "users", Verb: kcapi.Get, Realm: "demo"})
+
+// Graph queries. Types speak the same plural path-segment vocabulary as Call.Resource.
+node, err := client.Resolve(ctx, kcapi.Ref{Type: "users", Name: "alice", Realm: "demo"})
+neighbors, walked, err := client.Neighbors(ctx, node, kcapi.EdgeFilter{Child: "groups"})
+edges := client.Edges() // every parent→child edge the spec implies (230 edges / 35 pairs on the bundled spec)
+
+// Hot-swap the spec from its configured source; in-flight calls keep the spec they started with.
+err = client.Reload(ctx)
+```
+
+Failed calls return `*kcapi.Error{Kind, Op, Status, Body, Err}`; match failures with `errors.Is` against the `kcapi.ErrNotFound`, `ErrConflict`, `ErrValidation`, and `ErrAuth` sentinels. The declarative `fetch`/`upload`/`compare` flows live in [`pkg/manifest`](pkg/manifest/), built on the same client.
 
 ## Supported resources
 
@@ -473,15 +580,13 @@ go fmt ./...
 ## Architecture
 
 ```properties
-cmd/          — CLI commands (Kong)
-admin/        — Admin service (fetch, apply, errors)
-  internal/   — Runtime HTTP client & resource operation mapping
-auth/         — Token acquisition and .env storage
-catalog/      — OpenAPI spec parsing, contracts, validation, relationships
-manifest/     — Resource/relationship parsing, loading, comparison
-output/       — Table/JSON/YAML/TOML formatting
-realmgen/     — Test realm generation
-keycloak-oapi/ — Bundled Keycloak OpenAPI specs
+cmd/            — CLI commands (Kong)
+pkg/kcapi/      — Spec-driven client library: discovery, invoke, graph, runtime, errors
+pkg/manifest/   — Declarative fetch/apply/compare flows on top of kcapi
+pkg/auth/       — Token acquisition and .env storage
+pkg/output/     — Table/JSON/YAML/TOML formatting
+pkg/realmgen/   — Test realm generation
+keycloak-oapi/  — Bundled Keycloak OpenAPI specs
 ```
 
 ## Current scope
