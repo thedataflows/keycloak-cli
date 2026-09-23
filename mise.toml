@@ -1,6 +1,6 @@
 [tools]
 ## https://go.dev/doc/devel/release
-go = '1.26'
+go = '1.27'
 ## https://github.com/goreleaser/goreleaser/releases
 "goreleaser" = '2'
 ## https://github.com/golangci/golangci-lint/releases
