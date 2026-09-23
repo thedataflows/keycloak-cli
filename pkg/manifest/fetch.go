@@ -450,11 +450,8 @@ func buildQueryParams(query FetchQuery) []map[string]string {
 	if query.ExactMatch {
 		params["exact"] = "true"
 	}
-	// ponytail: emitted for every collection endpoint, not just the users, groups
-	// and organizations operations that declare it. Keycloak ignores unrecognized
-	// query parameters and validateOperationInput only checks spec-declared ones,
-	// so this is inert elsewhere. Upgrade path: gate on the resolved operation's
-	// parameter list, which is available in RuntimeClient.FetchResources.
+	// Only operations declaring briefRepresentation receive it: kcapi's fetch
+	// layer drops undeclared query params against the spec (declaredQueryParams).
 	if query.FullRepresentation {
 		params["briefRepresentation"] = "false"
 	}

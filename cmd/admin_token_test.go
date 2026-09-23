@@ -202,7 +202,6 @@ func BenchmarkTokenFromPtokenFromPassword(b *testing.B) {
 
 	_ = setGlobalLoggerLogLevel("error") // Suppress logs during benchmark
 
-
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		tokenCtx := context.Background()

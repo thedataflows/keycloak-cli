@@ -104,6 +104,32 @@ func (r *RuntimeClient) Spec() *Spec {
 	return r.spec
 }
 
+// declaredQueryParams drops parameters the operation does not declare as
+// query parameters. The manifest fetchers emit briefRepresentation=false and
+// friends for every collection; operations that don't declare a parameter
+// would otherwise receive noise the server can only ignore.
+func declaredQueryParams(contract OperationContract, params map[string]string) map[string]string {
+	if len(params) == 0 {
+		return nil
+	}
+	declared := make(map[string]struct{}, len(contract.Parameters))
+	for _, p := range contract.Parameters {
+		if p.In == "query" {
+			declared[p.Name] = struct{}{}
+		}
+	}
+	kept := make(map[string]string, len(params))
+	for k, v := range params {
+		if _, ok := declared[k]; ok {
+			kept[k] = v
+		}
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return kept
+}
+
 func (r *RuntimeClient) FetchResources(ctx context.Context, resourceType string, scope map[string]string, params ...map[string]string) ([]Resource, error) {
 	contract, err := r.spec.Resolver().ResolveResourceOperation(resourceType, "", http.MethodGet, OperationCollection)
 	if err != nil {
@@ -115,7 +141,7 @@ func (r *RuntimeClient) FetchResources(ctx context.Context, resourceType string,
 		return nil, err
 	}
 
-	queryParams := mergeQueryParams(params...)
+	queryParams := declaredQueryParams(contract, mergeQueryParams(params...))
 	requestPath := r.buildPathWithOperation(contract.Path, op, scope)
 	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, RequestValidation{
 		PathParams:  scope,
@@ -187,7 +213,7 @@ func (r *RuntimeClient) FetchResourcesWithParent(ctx context.Context, resource R
 		return nil, err
 	}
 
-	queryParams := mergeQueryParams(params...)
+	queryParams := declaredQueryParams(contract, mergeQueryParams(params...))
 	requestPath := r.buildPathWithOperation(contract.Path, op, paramsMap)
 	if err := r.spec.ValidateOperationRequest(contract.Path, http.MethodGet, RequestValidation{
 		PathParams:  paramsMap,
@@ -243,6 +269,11 @@ func (r *RuntimeClient) FetchResourcesWithParent(ctx context.Context, resource R
 
 func (r *RuntimeClient) FetchPathCollection(ctx context.Context, path string, scope map[string]string, params ...map[string]string) ([]map[string]interface{}, error) {
 	queryParams := mergeQueryParams(params...)
+	// Gate only when the spec knows the path; an unknown path keeps its
+	// parameters, since nothing is known about what it accepts.
+	if contract, err := r.spec.OperationContract(path, http.MethodGet); err == nil {
+		queryParams = declaredQueryParams(contract, queryParams)
+	}
 	resolvedPath := r.buildPathWithOperation(path, nil, scope)
 	if err := r.spec.ValidateOperationRequest(path, http.MethodGet, RequestValidation{
 		PathParams:  scope,
