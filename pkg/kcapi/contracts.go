@@ -149,10 +149,22 @@ func ValidateCall(spec *Spec, path, method string, call Call) error {
 		}
 	}
 
+	// A json.RawMessage body is an encoded JSON value, not a byte-string
+	// argument: decode it so validation sees the JSON value it carries
+	// (cmd/invoke.go and other callers hand RawMessage bodies straight in).
+	body := call.Body
+	if raw, ok := body.(json.RawMessage); ok {
+		var decoded interface{}
+		if err := json.Unmarshal(raw, &decoded); err != nil {
+			return fmt.Errorf("%s request body: invalid JSON: %w", path, err)
+		}
+		body = decoded
+	}
+
 	return validateOperationInput(contract, RequestValidation{
 		PathParams:  values,
 		QueryParams: callQueryParams(path, call),
-		Body:        call.Body,
+		Body:        body,
 	})
 }
 

@@ -6,7 +6,9 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
@@ -75,7 +77,18 @@ func New(client *kcapi.Client) *mcp.Server {
 			"method (GET/POST/PUT/DELETE/PATCH), tag, search (substring over path/summary).",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in operationsIn) (*mcp.CallToolResult, any, error) {
-		return unimplemented(req), nil, nil
+		filter := kcapi.OpFilter{Resource: in.Resource, Tag: in.Tag, Search: in.Search}
+		if in.Method != "" {
+			filter.Method = kcapi.Verb(in.Method)
+		}
+		ops, err := client.Operations(filter)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ops == nil {
+			ops = []kcapi.Operation{}
+		}
+		return jsonResult(ops), nil, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -88,7 +101,19 @@ func New(client *kcapi.Client) *mcp.Server {
 			"without it the call is rejected before anything is sent. Returns the raw JSON response.",
 		Annotations: destructive(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in invokeIn) (*mcp.CallToolResult, any, error) {
-		return unimplemented(req), nil, nil
+		call, err := invokeCall(in)
+		if err != nil {
+			return nil, nil, err
+		}
+		verb, known := callVerb(client, call)
+		if err := confirmGate(in.Confirm, verb, known); err != nil {
+			return nil, nil, err
+		}
+		raw, err := client.Invoke(ctx, call)
+		if err != nil {
+			return nil, nil, err
+		}
+		return jsonResult(raw), nil, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -123,6 +148,74 @@ func New(client *kcapi.Client) *mcp.Server {
 	return srv
 }
 
+// invokeCall maps kc_invoke's typed input onto a kcapi.Call, mirroring the
+// CLI's resolution modes: op alone, or resource+verb together. Body stays nil
+// when empty: a typed-nil json.RawMessage inside interface{} would make kcapi
+// treat the call as carrying a body.
+func invokeCall(in invokeIn) (kcapi.Call, error) {
+	call := kcapi.Call{Realm: in.Realm, Params: kcapi.P(in.Params)}
+	if in.Body != "" {
+		call.Body = json.RawMessage(in.Body)
+	}
+	switch {
+	case in.Op != "" && in.Resource != "":
+		return kcapi.Call{}, fmt.Errorf("use either op or resource with verb, not both")
+	case in.Resource != "":
+		if in.Verb == "" {
+			return kcapi.Call{}, fmt.Errorf("resource %q requires verb", in.Resource)
+		}
+		call.Resource = in.Resource
+		call.Verb = kcapi.Verb(in.Verb)
+	case in.Op != "":
+		call.Op = in.Op
+	default:
+		return kcapi.Call{}, fmt.Errorf("provide op or resource (with verb) to select an operation")
+	}
+	return call, nil
+}
+
+// readOnlyVerbs pass the confirm gate freely; every other verb — including
+// unknown ones — changes state and needs confirm:true.
+var readOnlyVerbs = map[string]bool{"GET": true, "HEAD": true}
+
+// confirmGate rejects state-changing invokes that lack confirm:true, before
+// anything is sent. An unknown verb (op mode whose operation is not in the
+// spec) is treated as state-changing: the safe default.
+func confirmGate(confirmed bool, verb string, known bool) error {
+	if confirmed || known && readOnlyVerbs[verb] {
+		return nil
+	}
+	return fmt.Errorf(
+		"refused: %s changes Keycloak state; retry the same call with \"confirm\": true to send it",
+		verbLabel(verb, known))
+}
+
+func verbLabel(verb string, known bool) string {
+	if known {
+		return verb
+	}
+	return "this operation (unknown verb)"
+}
+
+// callVerb reports the call's HTTP verb: the resource+verb mode's own verb,
+// or the verb of the spec operation named by op mode. known is false when the
+// verb cannot be determined (unknown operationId).
+func callVerb(client *kcapi.Client, call kcapi.Call) (verb string, known bool) {
+	if call.Resource != "" {
+		return strings.ToUpper(strings.TrimSpace(string(call.Verb))), true
+	}
+	ops, err := client.Operations(kcapi.OpFilter{Search: call.Op})
+	if err != nil {
+		return "", false
+	}
+	for _, op := range ops {
+		if op.ID == call.Op {
+			return strings.ToUpper(strings.TrimSpace(string(op.Verb))), true
+		}
+	}
+	return "", false
+}
+
 func readOnly() *mcp.ToolAnnotations {
 	return &mcp.ToolAnnotations{ReadOnlyHint: true}
 }
@@ -142,6 +235,15 @@ func errorResultf(format string, args ...any) *mcp.CallToolResult {
 	var res mcp.CallToolResult
 	res.SetError(fmt.Errorf(format, args...))
 	return &res
+}
+
+// jsonResult marshals v as the tool result's JSON text content.
+func jsonResult(v any) *mcp.CallToolResult {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return errorResultf("marshal result: %v", err)
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(data)}}}
 }
 
 func boolPtr(b bool) *bool { return &b }

@@ -334,3 +334,24 @@ func TestInvokeEmpty204Body(t *testing.T) {
 	assert.Equal(t, "/admin/realms/demo/users/u-1", captured.Path)
 	assert.Contains(t, string(captured.Body), "firstName")
 }
+
+// A json.RawMessage body must validate as its decoded JSON value, not as a
+// byte slice: cmd/invoke.go hands RawMessage bodies straight from --body.
+func TestValidateCallAcceptsRawMessageBody(t *testing.T) {
+	spec, err := NewSpecFromBytes(realSpecBytes(t))
+	require.NoError(t, err)
+
+	call := Call{
+		Resource: "users",
+		Verb:     Post,
+		Realm:    "master",
+		Body:     json.RawMessage(`{"username":"bob"}`),
+	}
+	require.NoError(t, ValidateCall(spec, "/admin/realms/{realm}/users", http.MethodPost, call),
+		"a valid RawMessage body must pass validation")
+
+	bad := call
+	bad.Body = json.RawMessage(`{not json`)
+	err = ValidateCall(spec, "/admin/realms/{realm}/users", http.MethodPost, bad)
+	require.Error(t, err, "a malformed RawMessage body must fail validation")
+}
