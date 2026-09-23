@@ -204,7 +204,7 @@ keycloak-cli invoke --list "client role"
 
 # Get one user. Resource+verb is the primary resolution mode: the bundled
 # spec defines no operationIds. The resource is the plural path segment.
-keycloak-cli invoke --resource users --verb GET --realm demo --param id=<uuid>
+keycloak-cli invoke --resource users --verb GET --realm demo --param user-id=<uuid>
 
 # Params that are not path placeholders become query parameters
 keycloak-cli invoke --resource users --verb GET --realm demo --param max=5 --param username=alice
@@ -213,7 +213,7 @@ keycloak-cli invoke --resource users --verb GET --realm demo --param max=5 --par
 keycloak-cli invoke --resource users --verb POST --realm demo --body @new-user.json
 
 # Specs that do define operationIds can address operations directly
-keycloak-cli invoke getUser --realm demo --param id=<uuid>
+keycloak-cli invoke getUser --realm demo --param user-id=<uuid>
 ```
 
 Flags:
@@ -305,7 +305,7 @@ client, err := kcapi.New(kcapi.Config{
 })
 ```
 
-Tokens resolve exactly as they do for the CLI: `KEYCLOAK_ACCESS_TOKEN` from the environment (refreshed via `KEYCLOAK_REFRESH_TOKEN`), so the same `.env` file works. `Config.Credentials` validates which grant shape you intend (password pair vs client secret), but the secret values themselves come from the environment; set `Config.Auth` to your own `kcapi.TokenProvider` to source tokens programmatically.
+Tokens resolve exactly as they do for the CLI: `KEYCLOAK_ACCESS_TOKEN` from the environment (refreshed via `KEYCLOAK_REFRESH_TOKEN`), so the same `.env` file works. `Config.Credentials` validates which grant shape you intend (password pair vs client secret), but the secret values themselves come from the environment; set `Config.Auth` to your own `auth.Service` to source tokens programmatically (kcapi only calls its `AccessToken` method).
 
 ```go
 // Discovery: list the spec's operations matching a filter (zero fields match everything).
@@ -318,7 +318,7 @@ user, err := client.Invoke(ctx, kcapi.Call{
     Resource: "users",
     Verb:     kcapi.Get,
     Realm:    "demo",
-    Params:   kcapi.P{"id": "59b0..."}, // path placeholders first; the rest go to the query string
+    Params:   kcapi.P{"user-id": "59b0..."}, // path placeholders first; the rest go to the query string
 })
 
 // Page through a collection operation via first/max (kcapi.DefaultPageSize, 100, per page).

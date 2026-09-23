@@ -18,7 +18,8 @@ historical context. Deviations from the design as actually built:
 - `Config.Credentials` **validates the intended grant shape only** (password pair vs client
   secret, mutual exclusivity); the actual token values are resolved from the environment
   (`KEYCLOAK_ACCESS_TOKEN`/`KEYCLOAK_REFRESH_TOKEN`) exactly as the CLI's `.env` flow does.
-  Programmatic token sourcing goes through `Config.Auth` (`kcapi.TokenProvider`).
+  Programmatic token sourcing goes through `Config.Auth` (`auth.Service`;
+  kcapi only calls its `AccessToken` method).
 - The MCP server was **not started**; it is deferred to its own future plan.
 
 ## Context
