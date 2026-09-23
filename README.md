@@ -2,7 +2,7 @@
 
 A Go CLI for declarative Keycloak administration. It speaks the Keycloak Admin REST API through an OpenAPI contract, so every operation is validated against the spec before it hits the wire. Endpoints are not hard-coded; they are deduced from the supplied OpenAPI spec, so passing a different Keycloak spec lets the CLI use the appropriate endpoints for any resource the spec describes.
 
-The tool loads manifest files (JSON or YAML), validates them against the Keycloak OpenAPI spec (bundled at `keycloak-oapi/26.6.2.spec.json` by default, overridable with `--spec-path`), and applies them via the Admin REST API. It can also fetch live state, compare it with local manifests, generate test fixtures, and manage admin tokens.
+The tool loads manifest files (JSON or YAML), validates them against the Keycloak OpenAPI spec (passed with the required `--spec-path` flag; a bundled copy lives at `keycloak-oapi/${KEYCLOAK_VERSION}.spec.json`), and applies them via the Admin REST API. It can also fetch live state, compare it with local manifests, generate test fixtures, and manage admin tokens.
 
 ## How it works
 
@@ -49,7 +49,7 @@ Every command accepts the same global flags:
 | --------------------- | ----- | -------------------------------- | ----------------------------------------- |
 | `--keycloak-base-url` | `-u`  | `http://localhost:8080`          | Keycloak base URL                         |
 | `--timeout`           | `-t`  | `5s`                             | Request timeout                           |
-| `--spec-path`         |       | `keycloak-oapi/26.6.2.spec.json` | Path to the OpenAPI spec                  |
+| `--spec-path`         |       | *(required)*                     | Path to the OpenAPI spec                  |
 | `--log-level`         |       | `info`                           | `trace`, `debug`, `info`, `warn`, `error` |
 | `--log-format`        |       | `console`                        | `console` or `json`                       |
 
@@ -294,10 +294,22 @@ Flags:
 
 ### `version`
 
-Print the CLI version.
+Print the version.
 
 ```bash
 keycloak-cli version
+```
+
+### `mcp`
+
+Serve the same capabilities to LLM agents as an MCP (Model Context Protocol) server: five tools — `kc_operations`, `kc_invoke`, `kc_resolve`, `kc_neighbors`, `kc_reload` — over stdio (for locally-launched agents) or streamable HTTP (for remote ones). State-changing `kc_invoke` verbs always require an explicit `confirm: true` tool argument. See [docs/design/mcp-server.md](docs/design/mcp-server.md) for the full design.
+
+```bash
+# stdio (default; stdout carries protocol frames, logging goes to stderr)
+keycloak-cli --spec-path keycloak-oapi/${KEYCLOAK_VERSION}.spec.json mcp
+
+# streamable HTTP on a loopback address (no authentication — keep it local)
+keycloak-cli --spec-path keycloak-oapi/${KEYCLOAK_VERSION}.spec.json mcp --transport http --http-addr 127.0.0.1:8081
 ```
 
 ## Library usage (pkg/kcapi)
@@ -307,7 +319,7 @@ The CLI is a thin layer over [`pkg/kcapi`](pkg/kcapi/), a spec-driven Keycloak c
 ```go
 client, err := kcapi.New(kcapi.Config{
     BaseURL: "https://kc.example.com",
-    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/26.6.2.spec.json"}, // Path, URL, or Raw bytes
+    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/26.7.4.spec.json"}, // Path, URL, or Raw bytes
 })
 ```
 
@@ -343,7 +355,7 @@ Failed calls return `*kcapi.Error{Kind, Op, Status, Body, Err}`; match failures 
 
 ## Supported resources
 
-Resource types are discovered dynamically from the OpenAPI spec. The CLI does not maintain a hard-coded list of endpoints; instead it scans the spec, creates a contract for every resource type with recognizable CRUD operations, and uses the appropriate endpoint for each request. Common types discovered from the bundled Keycloak 26.6.2 spec include:
+Resource types are discovered dynamically from the OpenAPI spec. The CLI does not maintain a hard-coded list of endpoints; instead it scans the spec, creates a contract for every resource type with recognizable CRUD operations, and uses the appropriate endpoint for each request. Common types discovered from the bundled Keycloak 26.7.4 spec include:
 
 | Resource type             | Typical operations     |
 | ------------------------- | ---------------------- |
@@ -548,13 +560,13 @@ The stack reads `KEYCLOAK_VERSION`, `KC_BOOTSTRAP_ADMIN_USERNAME`, and `KC_BOOTS
 Download a new Keycloak OpenAPI spec:
 
 ```bash
-KEYCLOAK_VERSION=26.6.2 mise run generate:oapi
+KEYCLOAK_VERSION=26.7.4 mise run generate:oapi
 ```
 
 Force overwrite an existing spec:
 
 ```bash
-KEYCLOAK_VERSION=26.6.2 mise run generate:oapi -- --force
+KEYCLOAK_VERSION=26.7.4 mise run generate:oapi -- --force
 ```
 
 ## Development

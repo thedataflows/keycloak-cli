@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
@@ -260,6 +263,39 @@ func toErrorResult(err error) error {
 // is cancelled. stdout carries only protocol frames; logging stays on stderr.
 func Run(ctx context.Context, client *kcapi.Client) error {
 	return New(client).Run(ctx, &mcp.StdioTransport{})
+}
+
+// RunHTTP serves the same server over the streamable HTTP transport on an
+// already-bound listener until ctx is cancelled or the listener fails. The
+// handler builds the server per HTTP session, so every remote client talks to
+// the current tool set. Sessions carry the SDK's default localhost DNS-rebinding
+// protection; authentication is out of scope — bind to loopback.
+func RunHTTP(ctx context.Context, client *kcapi.Client, ln net.Listener) error {
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return New(client) }, nil)
+	// BaseContext ties request lifetimes — the client's SSE streams included —
+	// to ctx, so cancellation ends streams at once and Shutdown never waits
+	// behind an open session.
+	srv := &http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(ln) }()
+
+	select {
+	case err := <-serveErr:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	}
 }
 
 func readOnly() *mcp.ToolAnnotations {

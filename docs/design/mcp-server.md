@@ -5,17 +5,21 @@ Status: approved design 2025, implemented against kcapi as built on `main`.
 ## Goal
 
 Expose the kcapi library to LLM agents as an MCP (Model Context Protocol)
-server speaking JSON-RPC over stdio. The server is a thin adapter: every tool
-is one kcapi call; no business logic lives here.
+server speaking JSON-RPC over stdio or streamable HTTP. The server is a thin
+adapter: every tool is one kcapi call; no business logic lives here.
 
 ## Entry point and configuration
 
 - Subcommand `keycloak-cli mcp` (kong, package `cmd`), server in
   `pkg/mcpserver`.
-- Transport: **stdio**. stdout carries only protocol frames; all logging goes
-  to stderr.
-- Config reuses the existing globals: `--base-url`/env, `--spec` (default
-  `keycloak-oapi/26.6.2.spec.json`), `--timeout`. Credentials resolve from the
+- Transport: **stdio** (default) or **streamable HTTP** via
+  `--transport=http`; `--http-addr` sets the listen address (default
+  `127.0.0.1:8081`). The HTTP surface has no authentication — the loopback
+  default plus the SDK's DNS-rebinding protection are the safety net; do not
+  expose it without adding auth. stdio's stdout carries only protocol frames;
+  all logging goes to stderr.
+- Config reuses the existing globals: `--base-url`/env, `--spec-path`
+  (required, no default), `--timeout`. Credentials resolve from the
   environment at request time (kcapi's as-built flow); the server never takes
   a secret on its command line.
 - One `kcapi.Client` is constructed at startup and shared by all tools.
@@ -71,9 +75,15 @@ Official SDK `github.com/modelcontextprotocol/go-sdk` v1.8.0, vendored.
     realm-rooted child collections.
 11. Stdio smoke: the built binary completes an MCP initialize handshake over
     stdin/stdout and lists the five tools.
+12. Streamable HTTP: an MCP client connects to `mcpserver.RunHTTP`'s listener,
+    completes the initialize handshake, lists the five tools and calls
+    `kc_resolve` end-to-end against the fake Keycloak; ctx cancellation shuts
+    the server down cleanly despite open sessions.
+13. HTTP smoke: the built binary with `mcp --transport=http` opens the
+    listener and serves the five tools to a streamable-HTTP MCP client.
 
 ## Out of scope
 
-Resources/prompts/sampling, HTTP transport, per-tool authn, server-side
-read-only mode, operationId mode beyond passing `op` through (the vendored
-spec has none).
+Resources/prompts/sampling, HTTP transport authentication, per-tool authn,
+server-side read-only mode, operationId mode beyond passing `op` through (the
+vendored spec has none).

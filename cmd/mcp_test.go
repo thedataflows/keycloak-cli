@@ -2,12 +2,17 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // The MCP stdio smoke test drives the real binary over stdin/stdout, so
@@ -42,7 +47,7 @@ type rpcResponse struct {
 }
 
 // mcpSpecFlag is the explicit spec flag: SpecPath no longer has a default, so
-// the stdio smoke test names the vendored spec.
+// every smoke test names the vendored spec.
 func mcpSpecFlag(t *testing.T) string {
 	t.Helper()
 	spec, err := filepath.Abs(filepath.Join("..", "keycloak-oapi", "26.7.4.spec.json"))
@@ -131,4 +136,57 @@ func TestMcpStdioHandshake(t *testing.T) {
 	}
 	_ = stdin.Close()
 	_ = cmd.Wait()
+}
+
+// Scenario 13: the built binary serves the same five tools over streamable
+// HTTP when launched with --transport=http.
+func TestMcpHTTPHandshake(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	cmd := exec.Command(mcpBinary, "mcp", "--transport", "http",
+		"--http-addr", fmt.Sprintf("127.0.0.1:%d", port),
+		"--spec-path", mcpSpecFlag(t))
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
+
+	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
+	waited := make(chan struct{})
+	go func() {
+		for {
+			conn, err := net.DialTimeout("tcp", endpoint, time.Second)
+			if err == nil {
+				_ = conn.Close()
+				close(waited)
+				return
+			}
+		}
+	}()
+	select {
+	case <-waited:
+	case <-time.After(10 * time.Second):
+		t.Fatal("binary never opened the HTTP listener")
+	}
+
+	mcpClient := mcp.NewClient(&mcp.Implementation{Name: "smoke", Version: "0"}, nil)
+	session, err := mcpClient.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: "http://" + endpoint}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	result, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Tools) != 5 {
+		t.Fatalf("tools/list over HTTP returned %d tools, want 5", len(result.Tools))
+	}
 }
