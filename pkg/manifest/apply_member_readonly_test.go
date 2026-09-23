@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -32,7 +31,7 @@ func TestApplySkipsReadOnlyMember(t *testing.T) {
 		Realm:      "demo",
 		ParentType: "organization",
 		Data:       map[string]interface{}{"id": "u1", "username": "alice", "orgId": "org-1", "groupId": "g1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "skipped", report.Results[0].Action)

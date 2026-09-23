@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -42,7 +41,7 @@ func TestFetchChildrenReturnsOneClientRoleCollection(t *testing.T) {
 	service := newServiceForTest(t, server.URL)
 	parent := manifest.Resource{Type: "client", Realm: "sync-source", Data: map[string]interface{}{"id": demoClientUUID}}
 
-	report, err := service.FetchChildren(context.Background(), parent, "role", admin.ChildFetchQuery{FullRepresentation: true})
+	report, err := service.FetchChildren(context.Background(), parent, "role", manifest.ChildFetchQuery{FullRepresentation: true})
 	require.NoError(t, err)
 	require.Empty(t, report.Failures)
 
@@ -72,7 +71,7 @@ func TestFetchChildrenClassifies404AsNotFound(t *testing.T) {
 	service := newServiceForTest(t, server.URL)
 	parent := manifest.Resource{Type: "client", Realm: "sync-source", Data: map[string]interface{}{"id": demoClientUUID}}
 
-	report, err := service.FetchChildren(context.Background(), parent, "role", admin.ChildFetchQuery{})
+	report, err := service.FetchChildren(context.Background(), parent, "role", manifest.ChildFetchQuery{})
 	require.NoError(t, err, "a 404 must not be a hard error")
 	assert.Empty(t, report.Resources)
 	require.Len(t, report.Failures, 1)

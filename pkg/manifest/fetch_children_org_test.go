@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -43,7 +42,7 @@ func TestFetchChildrenWalksOrgGroupHierarchy(t *testing.T) {
 	names := []string{}
 	cur := parent
 	for {
-		rep, err := service.FetchChildren(context.Background(), cur, "group", admin.ChildFetchQuery{})
+		rep, err := service.FetchChildren(context.Background(), cur, "group", manifest.ChildFetchQuery{})
 		require.NoError(t, err)
 		require.Empty(t, rep.Failures)
 		if len(rep.Resources) == 0 {

@@ -1,18 +1,17 @@
-package admin
+package manifest
 
 import (
 	"context"
 	"strings"
 
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // fetchRelationships retrieves relationship state for the supplied realms. When
 // parentTypes is non-empty, only relationship kinds whose ResourceA is in the
 // set are fetched. A nil or empty parentTypes map fetches all known kinds.
-func (s *service) fetchRelationships(ctx context.Context, realms []string, parentTypes map[string]struct{}) ([]manifest.RelationshipOperation, []FetchFailure) {
-	var results []manifest.RelationshipOperation
+func (s *service) fetchRelationships(ctx context.Context, realms []string, parentTypes map[string]struct{}) ([]RelationshipOperation, []FetchFailure) {
+	var results []RelationshipOperation
 	var failures []FetchFailure
 
 	for _, realm := range realms {
@@ -31,7 +30,7 @@ func (s *service) fetchRelationships(ctx context.Context, realms []string, paren
 	return results, failures
 }
 
-func (s *service) fetchRelationshipsForRealm(ctx context.Context, realm string, parentTypes map[string]struct{}) ([]manifest.RelationshipOperation, error) {
+func (s *service) fetchRelationshipsForRealm(ctx context.Context, realm string, parentTypes map[string]struct{}) ([]RelationshipOperation, error) {
 	patterns, err := s.Spec().DiscoverRelationshipPatterns()
 	if err != nil {
 		return nil, err
@@ -42,7 +41,7 @@ func (s *service) fetchRelationshipsForRealm(ctx context.Context, realm string, 
 		return nil, err
 	}
 
-	var results []manifest.RelationshipOperation
+	var results []RelationshipOperation
 
 	for _, pattern := range patterns {
 		if len(parentTypes) > 0 {
@@ -77,8 +76,8 @@ func (s *service) fetchRelationshipsForRealm(ctx context.Context, realm string, 
 // fetchRelationshipsForResources fetches relationship kinds whose ResourceA is in
 // parentTypes, but only for the supplied resources. Parent indexes are built from
 // those resources instead of re-fetching whole collections from the server.
-func (s *service) fetchRelationshipsForResources(ctx context.Context, realms []string, parentTypes map[string]struct{}, resources []manifest.Resource) ([]manifest.RelationshipOperation, []FetchFailure) {
-	var results []manifest.RelationshipOperation
+func (s *service) fetchRelationshipsForResources(ctx context.Context, realms []string, parentTypes map[string]struct{}, resources []Resource) ([]RelationshipOperation, []FetchFailure) {
+	var results []RelationshipOperation
 	var failures []FetchFailure
 
 	for _, realm := range realms {
@@ -97,7 +96,7 @@ func (s *service) fetchRelationshipsForResources(ctx context.Context, realms []s
 	return results, failures
 }
 
-func (s *service) fetchRelationshipsForRealmFromResources(ctx context.Context, realm string, parentTypes map[string]struct{}, resources []manifest.Resource) ([]manifest.RelationshipOperation, error) {
+func (s *service) fetchRelationshipsForRealmFromResources(ctx context.Context, realm string, parentTypes map[string]struct{}, resources []Resource) ([]RelationshipOperation, error) {
 	patterns, err := s.Spec().DiscoverRelationshipPatterns()
 	if err != nil {
 		return nil, err
@@ -109,7 +108,7 @@ func (s *service) fetchRelationshipsForRealmFromResources(ctx context.Context, r
 	}
 
 	index := indexResourcesByTypeRealm(resources)
-	var results []manifest.RelationshipOperation
+	var results []RelationshipOperation
 
 	for _, pattern := range patterns {
 		if _, ok := parentTypes[pattern.ResourceA]; !ok {
@@ -136,14 +135,14 @@ func (s *service) fetchRelationshipsForRealmFromResources(ctx context.Context, r
 	return results, nil
 }
 
-func buildParentIndexesFromResources(index map[string]map[string][]manifest.Resource, realm string, parentTypes []string) []map[string]manifest.Resource {
-	indexes := make([]map[string]manifest.Resource, 0, len(parentTypes))
+func buildParentIndexesFromResources(index map[string]map[string][]Resource, realm string, parentTypes []string) []map[string]Resource {
+	indexes := make([]map[string]Resource, 0, len(parentTypes))
 	for _, resourceType := range parentTypes {
 		resources := index[resourceType][realm]
 		if len(resources) == 0 {
 			return nil
 		}
-		m := make(map[string]manifest.Resource, len(resources))
+		m := make(map[string]Resource, len(resources))
 		for _, r := range resources {
 			m[r.Identifier()] = r
 		}
@@ -152,14 +151,14 @@ func buildParentIndexesFromResources(index map[string]map[string][]manifest.Reso
 	return indexes
 }
 
-func (s *service) buildParentIndexes(ctx context.Context, realm string, parentTypes []string) ([]map[string]manifest.Resource, error) {
-	indexes := make([]map[string]manifest.Resource, 0, len(parentTypes))
+func (s *service) buildParentIndexes(ctx context.Context, realm string, parentTypes []string) ([]map[string]Resource, error) {
+	indexes := make([]map[string]Resource, 0, len(parentTypes))
 	for _, resourceType := range parentTypes {
 		resources, err := s.fetchResourceCollection(ctx, resourceType, map[string]string{"realm": realm}, "")
 		if err != nil {
 			return nil, err
 		}
-		index := make(map[string]manifest.Resource, len(resources))
+		index := make(map[string]Resource, len(resources))
 		for _, r := range resources {
 			index[r.Identifier()] = r
 		}
@@ -168,8 +167,8 @@ func (s *service) buildParentIndexes(ctx context.Context, realm string, parentTy
 	return indexes, nil
 }
 
-func (s *service) fetchRelationshipsForPattern(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, parentIndexes []map[string]manifest.Resource, placeholderMap map[string]string) ([]manifest.RelationshipOperation, error) {
-	var results []manifest.RelationshipOperation
+func (s *service) fetchRelationshipsForPattern(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, parentIndexes []map[string]Resource, placeholderMap map[string]string) ([]RelationshipOperation, error) {
+	var results []RelationshipOperation
 
 	parentTypes, _ := pattern.ParentResourceTypes(placeholderMap)
 
@@ -224,7 +223,7 @@ func paramNameForResourceType(pathParams []string, resourceType string) string {
 	return ""
 }
 
-func resolveParentParamValue(paramName, identifier string, resource manifest.Resource) string {
+func resolveParentParamValue(paramName, identifier string, resource Resource) string {
 	if paramName != "role-id" {
 		return identifier
 	}
@@ -234,8 +233,8 @@ func resolveParentParamValue(paramName, identifier string, resource manifest.Res
 	return identifier
 }
 
-func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, params map[string]string) []manifest.RelationshipOperation {
-	var results []manifest.RelationshipOperation
+func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, realm string, pattern kcapi.RelationshipOperationPattern, params map[string]string) []RelationshipOperation {
+	var results []RelationshipOperation
 
 	payload, err := s.specClient.FetchPathCollection(ctx, pattern.Path, params)
 	if err != nil {
@@ -275,9 +274,9 @@ func (s *service) fetchRelationshipsForPatternInstance(ctx context.Context, real
 	return results
 }
 
-func (s *service) buildRelationship(pattern kcapi.RelationshipOperationPattern, baseParams, itemParams map[string]string, data interface{}) *manifest.RelationshipOperation {
+func (s *service) buildRelationship(pattern kcapi.RelationshipOperationPattern, baseParams, itemParams map[string]string, data interface{}) *RelationshipOperation {
 	relPath := kcapi.RenderPath(pattern.RelationshipTemplate, itemParams)
-	rel, err := manifest.NewRelationshipOperation(pattern.RelationshipTemplate, pattern.RelationshipMethod, itemParams, data)
+	rel, err := NewRelationshipOperation(pattern.RelationshipTemplate, pattern.RelationshipMethod, itemParams, data)
 	if err != nil {
 		return nil
 	}
@@ -332,14 +331,4 @@ func copyParams(base, extra map[string]string) map[string]string {
 		result[k] = v
 	}
 	return result
-}
-
-func stringValue(data map[string]interface{}, key string) string {
-	if data == nil {
-		return ""
-	}
-	if s, ok := data[key].(string); ok {
-		return strings.TrimSpace(s)
-	}
-	return ""
 }

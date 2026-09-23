@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -49,7 +48,7 @@ func TestApplyReturnsTypedError(t *testing.T) {
 				Type:  "user",
 				Realm: "demo",
 				Data:  map[string]interface{}{"username": "alice"},
-			}}, nil, admin.ApplyOptions{})
+			}}, nil, manifest.ApplyOptions{})
 			require.Error(t, err)
 
 			var ae *kcapi.Error
@@ -82,7 +81,7 @@ func TestApplyReturnsTypedConflictErrorOnUpdate(t *testing.T) {
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"username": "alice"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.Error(t, err)
 
 	var ae *kcapi.Error
@@ -113,7 +112,7 @@ func TestApplyErrorStringFormatPreserved(t *testing.T) {
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"username": "alice"},
-	}}, nil, admin.ApplyOptions{ContinueOnError: true})
+	}}, nil, manifest.ApplyOptions{ContinueOnError: true})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "apply user: validation failure (400): bad payload\n", report.Results[0].Error)

@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // recordingAuth captures the arguments passed to AccessToken so tests can
-// verify that admin.New wired the injected auth provider rather than the
+// verify that manifest.NewService wired the injected auth provider rather than the
 // default password-grant service. It implements auth.Service.
 type recordingAuth struct {
 	calls        int
@@ -59,7 +59,7 @@ func TestNewWithCustomAuth(t *testing.T) {
 	defer server.Close()
 
 	recorder := &recordingAuth{}
-	svc, err := admin.New(admin.Config{
+	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 		Auth:     recorder,
@@ -68,7 +68,7 @@ func TestNewWithCustomAuth(t *testing.T) {
 	require.NotNil(t, svc)
 
 	// Trigger an authenticated request through the runtime client.
-	_, _ = svc.Fetch(context.Background(), admin.FetchQuery{Realm: "master", Resources: "realm"})
+	_, _ = svc.Fetch(context.Background(), manifest.FetchQuery{Realm: "master", Resources: "realm"})
 
 	assert.GreaterOrEqual(t, recorder.calls, 1, "injected auth.AccessToken must be invoked")
 	assert.Equal(t, server.URL, recorder.baseURL, "injected auth must receive the configured base URL")
@@ -80,7 +80,7 @@ func TestNewWithoutAuthKeepsBackwardCompat(t *testing.T) {
 	server := httptest.NewServer(http.NotFoundHandler())
 	defer server.Close()
 
-	svc, err := admin.New(admin.Config{
+	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 	})

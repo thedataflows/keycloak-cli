@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -75,7 +74,7 @@ func TestApplyClientRoleCreatesViaClientEndpoint(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(false)}, nil, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(false)}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)
@@ -104,7 +103,7 @@ func TestApplyClientRoleUpdatesViaClientEndpoint(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(false)}, nil, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(false)}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, report.Failed)
 
@@ -120,7 +119,7 @@ func TestApplyClientRoleDeletesViaClientEndpoint(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(true)}, nil, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), []manifest.Resource{clientRoleResource(true)}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, report.Failed)
 

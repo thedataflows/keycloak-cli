@@ -1,17 +1,16 @@
-package admin
+package manifest
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestReconcileRelationshipSetsNoChurnForPathIdentified(t *testing.T) {
-	desired := []manifest.RelationshipOperation{
+	desired := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/devs", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"}, Method: "PUT"},
 	}
-	actual := []manifest.RelationshipOperation{
+	actual := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/devs", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"}, Method: "PUT", Data: []byte(`{"id":"devs","name":"devs"}`)},
 	}
 
@@ -21,7 +20,7 @@ func TestReconcileRelationshipSetsNoChurnForPathIdentified(t *testing.T) {
 }
 
 func TestBuildRelationshipDeleteOperationBulkPayload(t *testing.T) {
-	actual := manifest.RelationshipOperation{
+	actual := RelationshipOperation{
 		Kind:       "user-realm-role-mapping",
 		PathParams: map[string]string{"realm": "demo", "user-id": "alice"},
 		Data:       []byte(`[{"name":"admin"}]`),
@@ -34,7 +33,7 @@ func TestBuildRelationshipDeleteOperationBulkPayload(t *testing.T) {
 }
 
 func TestBuildRelationshipDeleteOrganizationMember(t *testing.T) {
-	actual := manifest.RelationshipOperation{
+	actual := RelationshipOperation{
 		Kind:       "organization-member",
 		PathParams: map[string]string{"realm": "demo", "org-id": "org-1"},
 		Data:       []byte(`"user-1"`),
@@ -46,7 +45,7 @@ func TestBuildRelationshipDeleteOrganizationMember(t *testing.T) {
 }
 
 func TestBuildRelationshipDeleteOrganizationIdentityProvider(t *testing.T) {
-	actual := manifest.RelationshipOperation{
+	actual := RelationshipOperation{
 		Kind:       "organization-identity-provider",
 		PathParams: map[string]string{"realm": "demo", "org-id": "org-1"},
 		Data:       []byte(`"github"`),
@@ -58,10 +57,10 @@ func TestBuildRelationshipDeleteOrganizationIdentityProvider(t *testing.T) {
 }
 
 func TestReconcileRelationshipSetsNoChanges(t *testing.T) {
-	desired := []manifest.RelationshipOperation{
+	desired := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/devs", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"}, Method: "PUT"},
 	}
-	actual := []manifest.RelationshipOperation{
+	actual := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/devs", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"}, Method: "PUT"},
 	}
 
@@ -71,7 +70,7 @@ func TestReconcileRelationshipSetsNoChanges(t *testing.T) {
 }
 
 func TestReconcileRelationshipSetsAddsMissing(t *testing.T) {
-	desired := []manifest.RelationshipOperation{
+	desired := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/devs", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"}, Method: "PUT"},
 	}
 
@@ -81,7 +80,7 @@ func TestReconcileRelationshipSetsAddsMissing(t *testing.T) {
 }
 
 func TestReconcileRelationshipSetsRemovesUnexpected(t *testing.T) {
-	actual := []manifest.RelationshipOperation{
+	actual := []RelationshipOperation{
 		{Kind: "user-group-membership", Path: "demo/users/alice/groups/old", PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "old"}, Method: "PUT"},
 	}
 
@@ -93,10 +92,10 @@ func TestReconcileRelationshipSetsRemovesUnexpected(t *testing.T) {
 }
 
 func TestReconcileRelationshipSetsBulkPayload(t *testing.T) {
-	desired := []manifest.RelationshipOperation{
+	desired := []RelationshipOperation{
 		{Kind: "user-realm-role-mapping", Path: "demo/users/alice/role-mappings/realm", PathParams: map[string]string{"realm": "demo", "user-id": "alice"}, Method: "POST", Data: []byte(`[{"name":"admin"}]`)},
 	}
-	actual := []manifest.RelationshipOperation{
+	actual := []RelationshipOperation{
 		{Kind: "user-realm-role-mapping", Path: "demo/users/alice/role-mappings/realm", PathParams: map[string]string{"realm": "demo", "user-id": "alice"}, Method: "POST", Data: []byte(`[{"name":"user"}]`)},
 	}
 
@@ -106,7 +105,7 @@ func TestReconcileRelationshipSetsBulkPayload(t *testing.T) {
 }
 
 func TestBuildRelationshipDeleteOperation(t *testing.T) {
-	actual := manifest.RelationshipOperation{
+	actual := RelationshipOperation{
 		Kind:       "user-group-membership",
 		PathParams: map[string]string{"realm": "demo", "user-id": "alice", "groupId": "devs"},
 		Template:   "{realm}/users/{user-id}/groups/{groupId}",
@@ -119,13 +118,13 @@ func TestBuildRelationshipDeleteOperation(t *testing.T) {
 }
 
 func TestRelationshipKeyCanonicalizesJSON(t *testing.T) {
-	a := manifest.RelationshipOperation{Kind: "k", Path: "p", Data: []byte(`{"b":2,"a":1}`)}
-	b := manifest.RelationshipOperation{Kind: "k", Path: "p", Data: []byte(`{"a":1,"b":2}`)}
+	a := RelationshipOperation{Kind: "k", Path: "p", Data: []byte(`{"b":2,"a":1}`)}
+	b := RelationshipOperation{Kind: "k", Path: "p", Data: []byte(`{"a":1,"b":2}`)}
 	assert.Equal(t, relationshipKey(a, false), relationshipKey(b, false))
 }
 
 func TestRelationshipRealms(t *testing.T) {
-	rels := []manifest.RelationshipOperation{
+	rels := []RelationshipOperation{
 		{PathParams: map[string]string{"realm": "demo"}},
 		{PathParams: map[string]string{"realm": "prod"}},
 		{PathParams: map[string]string{"realm": "demo"}},

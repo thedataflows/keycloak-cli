@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -49,7 +48,7 @@ func TestApplyReconcileRemovesUnexpectedRelationships(t *testing.T) {
 		Method: "PUT",
 	}}
 
-	report, err := service.Apply(context.Background(), nil, relationships, admin.ApplyOptions{Reconcile: true})
+	report, err := service.Apply(context.Background(), nil, relationships, manifest.ApplyOptions{Reconcile: true})
 	require.NoError(t, err)
 	assert.Zero(t, report.Failed)
 

@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -33,7 +32,7 @@ func TestIntegrationApplyFetchAndRelationships(t *testing.T) {
 	baseURL := os.Getenv("KEYCLOAK_BASE_URL")
 	require.NotEmpty(t, baseURL)
 
-	svc, err := admin.New(admin.Config{
+	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 		Timeout:  30 * time.Second,
@@ -50,14 +49,14 @@ func TestIntegrationApplyFetchAndRelationships(t *testing.T) {
 		{Type: "user", Realm: realmName, Data: map[string]interface{}{"username": "alice", "enabled": true, "emailVerified": true, "credentials": []interface{}{map[string]interface{}{"type": "password", "value": "Password123!", "temporary": false}}}},
 	}
 	// First apply should create everything cleanly (including relationship ID rewriting).
-	report, err := svc.Apply(context.Background(), resources, nil, admin.ApplyOptions{})
+	report, err := svc.Apply(context.Background(), resources, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, report.Failed)
 	// Re-apply the same manifest should report 0 failures (idempotent).
-	reapplyReport, err := svc.Apply(context.Background(), resources, nil, admin.ApplyOptions{})
+	reapplyReport, err := svc.Apply(context.Background(), resources, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, reapplyReport.Failed)
-	fetched, err := svc.Fetch(context.Background(), admin.FetchQuery{Realm: realmName, Resources: "realm,user,client,group,role,clientscope", IncludeRelationships: true})
+	fetched, err := svc.Fetch(context.Background(), manifest.FetchQuery{Realm: realmName, Resources: "realm,user,client,group,role,clientscope", IncludeRelationships: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, fetched.Resources)
 	// CompareRoundTrip should match after normalization (credentials stripped, volatile fields removed).
@@ -83,10 +82,10 @@ func TestIntegrationApplyFetchAndRelationships(t *testing.T) {
 	userRole, err := manifest.NewRelationshipOperation("/admin/realms/{realm}/users/{user-id}/role-mappings/realm", "POST", map[string]string{"realm": realmName, "user-id": user.Identifier()}, roleBody)
 	require.NoError(t, err)
 	relationships = append(relationships, userRole)
-	applyRelationships, err := svc.Apply(context.Background(), nil, relationships, admin.ApplyOptions{})
+	applyRelationships, err := svc.Apply(context.Background(), nil, relationships, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, applyRelationships.Failed)
-	fetchedWithRelationships, err := svc.Fetch(context.Background(), admin.FetchQuery{Realm: realmName, Resources: "realm,user,client,group,role,clientscope", IncludeRelationships: true})
+	fetchedWithRelationships, err := svc.Fetch(context.Background(), manifest.FetchQuery{Realm: realmName, Resources: "realm,user,client,group,role,clientscope", IncludeRelationships: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, fetchedWithRelationships.Relationships)
 	assertRoundTripResourceSubset(t, resources, fetchedWithRelationships.Resources)

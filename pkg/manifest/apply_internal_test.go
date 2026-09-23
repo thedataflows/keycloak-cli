@@ -1,4 +1,4 @@
-package admin
+package manifest
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestSanitizeResourceDataStripsNilAndEmptyMaps(t *testing.T) {
@@ -141,7 +140,7 @@ func TestSanitizeResourceDataStripsRealmForNonRealmResources(t *testing.T) {
 }
 
 func TestPriorityMapWithInlineReferencesOrdersReferencerAfterReferenced(t *testing.T) {
-	resources := []manifest.Resource{
+	resources := []Resource{
 		{
 			Type:  "client",
 			Realm: "demo",
@@ -174,7 +173,7 @@ func TestPriorityMapWithInlineReferencesOrdersReferencerAfterReferenced(t *testi
 }
 
 func TestPriorityMapWithInlineReferencesDetectsCycle(t *testing.T) {
-	resources := []manifest.Resource{
+	resources := []Resource{
 		{
 			Type: "client",
 			Data: map[string]interface{}{

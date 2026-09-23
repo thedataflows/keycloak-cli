@@ -1,4 +1,4 @@
-package admin
+package manifest
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestResolveReferencesIsIdempotent(t *testing.T) {
@@ -37,7 +36,7 @@ func TestResolveReferencesIsIdempotent(t *testing.T) {
 
 	service := newServiceForReferencesTest(t, server.URL)
 
-	client := manifest.Resource{
+	client := Resource{
 		Type:  "client",
 		Realm: "demo",
 		Data: map[string]interface{}{
@@ -49,12 +48,12 @@ func TestResolveReferencesIsIdempotent(t *testing.T) {
 		},
 	}
 
-	first, failures := service.resolveReferences(context.Background(), []string{"demo"}, []manifest.Resource{client})
+	first, failures := service.resolveReferences(context.Background(), []string{"demo"}, []Resource{client})
 	require.Empty(t, failures)
 	require.Len(t, first, 1)
 	assert.Equal(t, "authenticationflow", first[0].Type)
 
-	combined := append([]manifest.Resource{client}, first...)
+	combined := append([]Resource{client}, first...)
 	second, failures := service.resolveReferences(context.Background(), []string{"demo"}, combined)
 	require.Empty(t, failures)
 	assert.Empty(t, second, "second resolution should not return already-fetched resources")
@@ -77,7 +76,7 @@ func TestResolveReferencesDeduplicatesResources(t *testing.T) {
 
 	service := newServiceForReferencesTest(t, server.URL)
 
-	resources := []manifest.Resource{
+	resources := []Resource{
 		{
 			Type:  "client",
 			Realm: "demo",
@@ -127,7 +126,7 @@ func newServiceForReferencesTest(t *testing.T, baseURL string) *service {
 	require.NoError(t, os.Setenv("KEYCLOAK_ACCESS_TOKEN", validAccessTokenForReferences()))
 	require.NoError(t, os.Setenv("KEYCLOAK_REFRESH_TOKEN", ""))
 
-	svc, err := New(Config{
+	svc, err := NewService(Config{
 		BaseURL:  baseURL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 		Timeout:  time.Second,

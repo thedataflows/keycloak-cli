@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // TestFetchDepthDescendsOrgGroupHierarchy pins that the depth traversal reaches
@@ -37,7 +37,7 @@ func TestFetchDepthDescendsOrgGroupHierarchy(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{
 		Realm: "demo", Resources: "organization", Depth: 3,
 	})
 	require.NoError(t, err)

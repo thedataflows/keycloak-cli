@@ -7,7 +7,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
 )
@@ -43,7 +42,7 @@ func (c *FetchCmd) Run(ctx *kong.Context, cli *CLI) error {
 	commandCtx, cancel := cli.CreateContextWithTimeout()
 	defer cancel()
 
-	report, err := specClient.Fetch(commandCtx, admin.FetchQuery{
+	report, err := specClient.Fetch(commandCtx, manifest.FetchQuery{
 		Realm:                c.Realm,
 		Resources:            c.Resources,
 		Filter:               c.Filter,
@@ -91,7 +90,7 @@ func (c *FetchCmd) Run(ctx *kong.Context, cli *CLI) error {
 	return nil
 }
 
-func (c *FetchCmd) outputResources(report admin.FetchReport) error {
+func (c *FetchCmd) outputResources(report manifest.FetchReport) error {
 	resources := report.Resources
 	relationships := report.Relationships
 	if c.Canonicalize {

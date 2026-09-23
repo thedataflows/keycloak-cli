@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -31,7 +30,7 @@ func TestFetchDepthZeroPreservesExistingBehavior(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "clientscope", Depth: 0})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "clientscope", Depth: 0})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 1)
 	assert.Equal(t, "clientscope", report.Resources[0].Type)
@@ -57,7 +56,7 @@ func TestFetchDepthOneFetchesNestedChildren(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "clientscope", Depth: 1})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "clientscope", Depth: 1})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 2)
 	assert.Contains(t, requestPaths, "/admin/realms/demo/client-scopes/scope-1/protocol-mappers/models")
@@ -98,7 +97,7 @@ func TestFetchDepthOneInjectsClientParentIDIntoAuthzChildren(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Depth: 1})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Depth: 1})
 	require.NoError(t, err)
 
 	var resource, scope *manifest.Resource
@@ -130,7 +129,7 @@ func TestFetchDepthRespectsRealmFilter(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Realm: "demo", Resources: "clientscope", Depth: 1})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Realm: "demo", Resources: "clientscope", Depth: 1})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 2)
 	assert.Equal(t, "demo", report.Resources[0].Realm)
@@ -155,7 +154,7 @@ func TestFetchDepthOneDoesNotFetchRelationships(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "clientscope", Depth: 1})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "clientscope", Depth: 1})
 	require.NoError(t, err)
 	assert.Empty(t, report.Relationships)
 	assert.NotContains(t, requestPaths, "/admin/realms/demo/client-scopes/scope-1/scope-mappings/realm")
@@ -184,7 +183,7 @@ func TestFetchFilterScopesDepthExpansion(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "clientscope", Depth: 1, Filter: "email"})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "clientscope", Depth: 1, Filter: "email"})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 2)
 	assert.Contains(t, requestPaths, "/admin/realms/demo/client-scopes/scope-1/protocol-mappers/models")
@@ -212,7 +211,7 @@ func TestFetchDepthTwoFetchesChildRelationships(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Depth: 2})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Depth: 2})
 	require.NoError(t, err)
 	t.Logf("resources: %v", resourceTypes(report.Resources))
 	t.Logf("relationships: %v", relationshipKindsFromFetch(report.Relationships))
@@ -245,7 +244,7 @@ func TestFetchDepthOneResolvesIDReferences(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Filter: "fcc", Depth: 1})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Filter: "fcc", Depth: 1})
 	require.NoError(t, err)
 	require.Contains(t, requestPaths, "/admin/realms/demo/authentication/flows")
 
@@ -298,7 +297,7 @@ func TestFetchDepthTwoResolvesReferencesFromChildren(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Filter: "fcc", Depth: 2})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Filter: "fcc", Depth: 2})
 	require.NoError(t, err)
 	require.Contains(t, requestPaths, "/admin/realms/demo/authentication/flows")
 
@@ -326,10 +325,10 @@ func TestFetchAllDefaultResourcesIsIdempotentAcrossDepths(t *testing.T) {
 
 	for _, depth := range []int{0, 1, 2} {
 		t.Run(fmt.Sprintf("depth-%d", depth), func(t *testing.T) {
-			first, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: depth})
+			first, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: depth})
 			require.NoError(t, err)
 
-			second, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: depth})
+			second, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: depth})
 			require.NoError(t, err)
 
 			assertNoDuplicateResources(t, first.Resources)
@@ -345,13 +344,13 @@ func TestFetchDepthIsMonotonic(t *testing.T) {
 
 	service := newServiceForTest(t, server.URL)
 
-	depth0, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 0})
+	depth0, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 0})
 	require.NoError(t, err)
 
-	depth1, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 1})
+	depth1, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 1})
 	require.NoError(t, err)
 
-	depth2, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 2})
+	depth2, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "realm,user,client,group,role", Realm: "demo", Depth: 2})
 	require.NoError(t, err)
 
 	assert.Less(t, len(depth0.Resources), len(depth1.Resources))
@@ -448,10 +447,10 @@ func TestFetchDepthFourWalksDeepReferenceChain(t *testing.T) {
 
 	service := newServiceForTest(t, server.URL)
 
-	depth1, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Filter: "fcc", Depth: 1})
+	depth1, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Filter: "fcc", Depth: 1})
 	require.NoError(t, err)
 
-	depth5, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Filter: "fcc", Depth: 5})
+	depth5, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Filter: "fcc", Depth: 5})
 	require.NoError(t, err)
 
 	assert.Less(t, len(depth1.Resources), len(depth5.Resources))
@@ -464,7 +463,7 @@ func TestFetchDepthFourWalksDeepReferenceChain(t *testing.T) {
 
 	assertNoDuplicateResources(t, depth5.Resources)
 
-	first, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "client", Filter: "fcc", Depth: 5})
+	first, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "client", Filter: "fcc", Depth: 5})
 	require.NoError(t, err)
 	assertResourceSetsEqual(t, depth5.Resources, first.Resources)
 }
@@ -533,7 +532,7 @@ func TestFetchExactMatchEmitsExactQueryParam(t *testing.T) {
 			defer server.Close()
 
 			service := newServiceForTest(t, server.URL)
-			_, err := service.Fetch(context.Background(), admin.FetchQuery{
+			_, err := service.Fetch(context.Background(), manifest.FetchQuery{
 				Resources:  "user",
 				Search:     "alice",
 				ExactMatch: tc.exactMatch,
@@ -569,7 +568,7 @@ func TestFetchFullRepresentationSendsBriefRepresentationFalse(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{
 		Realm:              "demo",
 		Resources:          "group",
 		Depth:              0,
@@ -600,7 +599,7 @@ func TestFetchWithoutFullRepresentationOmitsBriefRepresentation(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	_, err := service.Fetch(context.Background(), admin.FetchQuery{Realm: "demo", Resources: "group", Depth: 0})
+	_, err := service.Fetch(context.Background(), manifest.FetchQuery{Realm: "demo", Resources: "group", Depth: 0})
 	require.NoError(t, err)
 
 	require.Len(t, groupQueries, 1)
@@ -636,7 +635,7 @@ func TestFetchFullRepresentationReachesNestedCollections(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{
 		Realm:              "demo",
 		Resources:          "organization",
 		Depth:              1,
@@ -667,7 +666,7 @@ func TestFetchNestedCollectionsDoNotInheritScopingParams(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	_, err := service.Fetch(context.Background(), admin.FetchQuery{
+	_, err := service.Fetch(context.Background(), manifest.FetchQuery{
 		Realm:              "demo",
 		Resources:          "organization",
 		Depth:              1,
@@ -694,7 +693,7 @@ func TestFetchWithoutFullRepresentationSendsNoNestedQuery(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	_, err := service.Fetch(context.Background(), admin.FetchQuery{
+	_, err := service.Fetch(context.Background(), manifest.FetchQuery{
 		Realm:     "demo",
 		Resources: "organization",
 		Depth:     1,

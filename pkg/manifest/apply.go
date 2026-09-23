@@ -1,4 +1,4 @@
-package admin
+package manifest
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // conflictResolutionMaxResults is the page size used when fetching a collection
@@ -45,16 +44,16 @@ type ApplyResult struct {
 	typedErr *kcapi.Error
 }
 
-func (s *service) Apply(ctx context.Context, resources []manifest.Resource, relationships []manifest.RelationshipOperation, options ApplyOptions) (ApplyReport, error) {
-	realmFinalization := make([]manifest.Resource, 0)
+func (s *service) Apply(ctx context.Context, resources []Resource, relationships []RelationshipOperation, options ApplyOptions) (ApplyReport, error) {
+	realmFinalization := make([]Resource, 0)
 	// "member" is a read-only artifact of an org-group members read (ISSUE 0007):
 	// the members endpoint is GET-only, so there is no write path. Filter such
 	// resources out of validation and apply entirely and record each as skipped —
 	// otherwise ValidateManifest mis-resolves them to the org-level members POST
 	// and rejects the body. (Org-level membership is written via the
 	// organization-member relationship, not as a member resource.)
-	readOnlyResources := make([]manifest.Resource, 0)
-	applyResources := make([]manifest.Resource, 0, len(resources))
+	readOnlyResources := make([]Resource, 0)
+	applyResources := make([]Resource, 0, len(resources))
 	for i := range resources {
 		resources[i].Data = sanitizeResourceData(resources[i].Type, resources[i].Data)
 		if resources[i].Type == "member" {
@@ -67,9 +66,9 @@ func (s *service) Apply(ctx context.Context, resources []manifest.Resource, rela
 		applyResources = append(applyResources, resources[i])
 	}
 	resources = applyResources
-	validationResources := make([]manifest.Resource, len(resources))
+	validationResources := make([]Resource, len(resources))
 	for i, r := range resources {
-		validationResources[i] = manifest.StripVolatileFields(r)
+		validationResources[i] = StripVolatileFields(r)
 	}
 	if err := s.Spec().ValidateManifest(validationResources, relationships, options.Delete); err != nil {
 		return ApplyReport{}, err
@@ -80,7 +79,7 @@ func (s *service) Apply(ctx context.Context, resources []manifest.Resource, rela
 	if err != nil {
 		return ApplyReport{}, fmt.Errorf("compute apply order: %w", err)
 	}
-	sorted := manifest.SortResources(resources, priorityMap)
+	sorted := SortResources(resources, priorityMap)
 	report := ApplyReport{
 		Results: make([]ApplyResult, 0, len(sorted)+len(relationships)+len(realmFinalization)),
 	}
@@ -187,7 +186,7 @@ func realmHasDeferredConfig(data map[string]interface{}) bool {
 	return false
 }
 
-func (s *service) applyRealmsLast(ctx context.Context, resources []manifest.Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) []ApplyResult {
+func (s *service) applyRealmsLast(ctx context.Context, resources []Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) []ApplyResult {
 	var results []ApplyResult
 	for _, resource := range resources {
 		if resource.Type != "realm" {
@@ -200,21 +199,21 @@ func (s *service) applyRealmsLast(ctx context.Context, resources []manifest.Reso
 }
 
 type resourceIdentityIndex struct {
-	byTypeRealm   map[string]map[string][]manifest.Resource
-	byTypeRealmID map[string]map[string]manifest.Resource
+	byTypeRealm   map[string]map[string][]Resource
+	byTypeRealmID map[string]map[string]Resource
 	resolvedCache map[string]string
 }
 
-func buildResourceIdentityIndex(resources []manifest.Resource) resourceIdentityIndex {
+func buildResourceIdentityIndex(resources []Resource) resourceIdentityIndex {
 	index := resourceIdentityIndex{
-		byTypeRealm:   make(map[string]map[string][]manifest.Resource),
-		byTypeRealmID: make(map[string]map[string]manifest.Resource),
+		byTypeRealm:   make(map[string]map[string][]Resource),
+		byTypeRealmID: make(map[string]map[string]Resource),
 		resolvedCache: make(map[string]string),
 	}
 	for _, r := range resources {
 		byRealm, ok := index.byTypeRealm[r.Type]
 		if !ok {
-			byRealm = make(map[string][]manifest.Resource)
+			byRealm = make(map[string][]Resource)
 			index.byTypeRealm[r.Type] = byRealm
 		}
 		byRealm[r.Realm] = append(byRealm[r.Realm], r)
@@ -222,7 +221,7 @@ func buildResourceIdentityIndex(resources []manifest.Resource) resourceIdentityI
 		if id := stringID(r.Data, "id"); id != "" {
 			byRealmID, ok := index.byTypeRealmID[r.Type]
 			if !ok {
-				byRealmID = make(map[string]manifest.Resource)
+				byRealmID = make(map[string]Resource)
 				index.byTypeRealmID[r.Type] = byRealmID
 			}
 			byRealmID[id] = r
@@ -231,23 +230,23 @@ func buildResourceIdentityIndex(resources []manifest.Resource) resourceIdentityI
 	return index
 }
 
-func (i resourceIdentityIndex) lookup(parentType, realm, identifier string) manifest.Resource {
+func (i resourceIdentityIndex) lookup(parentType, realm, identifier string) Resource {
 	byRealm, ok := i.byTypeRealm[parentType]
 	if !ok {
-		return manifest.Resource{}
+		return Resource{}
 	}
 	for _, r := range byRealm[realm] {
 		if r.Identifier() == identifier || r.Name() == identifier {
 			return r
 		}
 	}
-	return manifest.Resource{}
+	return Resource{}
 }
 
-func (i resourceIdentityIndex) lookupByID(parentType, id string) manifest.Resource {
+func (i resourceIdentityIndex) lookupByID(parentType, id string) Resource {
 	byRealmID, ok := i.byTypeRealmID[parentType]
 	if !ok {
-		return manifest.Resource{}
+		return Resource{}
 	}
 	return byRealmID[id]
 }
@@ -256,7 +255,7 @@ func (i resourceIdentityIndex) cacheKey(parentType, realm, identifier string) st
 	return strings.Join([]string{parentType, realm, identifier}, "|")
 }
 
-func (s *service) applyRelationships(ctx context.Context, relationships []manifest.RelationshipOperation, options ApplyOptions) []ApplyResult {
+func (s *service) applyRelationships(ctx context.Context, relationships []RelationshipOperation, options ApplyOptions) []ApplyResult {
 	results := make([]ApplyResult, 0, len(relationships))
 	for _, rel := range relationships {
 		result := ApplyResult{
@@ -302,7 +301,7 @@ func (s *service) applyRelationships(ctx context.Context, relationships []manife
 	return results
 }
 
-func (s *service) resourceName(resource manifest.Resource) string {
+func (s *service) resourceName(resource Resource) string {
 	if identity, ok := s.resourceIdentity(resource.Type); ok {
 		if name := kcapi.NameOf(resource, identity); name != "" {
 			return name
@@ -311,7 +310,7 @@ func (s *service) resourceName(resource manifest.Resource) string {
 	return resource.Name()
 }
 
-func (s *service) resourceDisplayName(resource manifest.Resource) string {
+func (s *service) resourceDisplayName(resource Resource) string {
 	if identity, ok := s.resourceIdentity(resource.Type); ok {
 		if name := kcapi.DisplayNameOf(resource, identity); name != "" {
 			return name
@@ -320,7 +319,7 @@ func (s *service) resourceDisplayName(resource manifest.Resource) string {
 	return resource.DisplayName()
 }
 
-func (s *service) applyResource(ctx context.Context, resource manifest.Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) ApplyResult {
+func (s *service) applyResource(ctx context.Context, resource Resource, contracts map[string]kcapi.ResourceContract, idMap map[string]string, index resourceIdentityIndex, options ApplyOptions) ApplyResult {
 	resource.Data = stripUnresolvedClientFlowBindingOverrides(resource.Data, idMap)
 	resource.Data = remapResourceDataIDs(resource.Data, idMap)
 	s.resolveParentReferences(ctx, &resource, index, idMap)
@@ -376,7 +375,7 @@ func (s *service) applyResource(ctx context.Context, resource manifest.Resource,
 	return s.applyUpdate(operationCtx, resource)
 }
 
-func (s *service) resolveParentReferences(ctx context.Context, resource *manifest.Resource, index resourceIdentityIndex, idMap map[string]string) {
+func (s *service) resolveParentReferences(ctx context.Context, resource *Resource, index resourceIdentityIndex, idMap map[string]string) {
 	if resource == nil || resource.ParentType == "" || len(resource.Data) == 0 {
 		return
 	}
@@ -417,7 +416,7 @@ func (s *service) resolveParentIdentifier(ctx context.Context, parentType, realm
 		}
 		operationCtx, cancel := s.operationContext(ctx)
 		defer cancel()
-		parentResource := manifest.Resource{Type: parentType, Realm: realm, Data: map[string]interface{}{"id": identifier}}
+		parentResource := Resource{Type: parentType, Realm: realm, Data: map[string]interface{}{"id": identifier}}
 		fetched, exists, err := s.specClient.FetchResource(operationCtx, parentResource)
 		if err == nil && exists {
 			if id := stringID(fetched.Data, "id"); looksLikeUUID(id) {
@@ -630,12 +629,12 @@ func isExplicitEmptyCollection(value interface{}) bool {
 	}
 }
 
-func operationExists(resolver *kcapi.Resolver, resource manifest.Resource, method string, shape kcapi.OperationShape) bool {
+func operationExists(resolver *kcapi.Resolver, resource Resource, method string, shape kcapi.OperationShape) bool {
 	_, err := resolver.ResolveResourceOperation(resource.Type, resource.ParentType, method, shape)
 	return err == nil
 }
 
-func (s *service) newResourceResult(resource manifest.Resource, action string, status int, err error, createdID string) ApplyResult {
+func (s *service) newResourceResult(resource Resource, action string, status int, err error, createdID string) ApplyResult {
 	result := ApplyResult{
 		Resource:  resource.Type,
 		Realm:     resource.Realm,
@@ -653,7 +652,7 @@ func (s *service) newResourceResult(resource manifest.Resource, action string, s
 	return result
 }
 
-func (s *service) applyDelete(ctx context.Context, resource manifest.Resource, hasDelete, resourceExists bool, idMap map[string]string) ApplyResult {
+func (s *service) applyDelete(ctx context.Context, resource Resource, hasDelete, resourceExists bool, idMap map[string]string) ApplyResult {
 	if !hasDelete {
 		return s.newResourceResult(resource, "not-supported", http.StatusOK, nil, "")
 	}
@@ -718,7 +717,7 @@ func isOrganizationDisabledError(err error) bool {
 	return false
 }
 
-func (s *service) tryCreate(ctx context.Context, resource manifest.Resource, originalID string, idMap map[string]string) (ApplyResult, bool) {
+func (s *service) tryCreate(ctx context.Context, resource Resource, originalID string, idMap map[string]string) (ApplyResult, bool) {
 	status, createdID, err := s.specClient.CreateResource(ctx, resource)
 	if err == nil && status < 300 {
 		serverID := createdID
@@ -747,7 +746,7 @@ func (s *service) tryCreate(ctx context.Context, resource manifest.Resource, ori
 	return s.newResourceResult(resource, "failed", status, fmt.Errorf("unknown error"), ""), true
 }
 
-func (s *service) applyUpdate(ctx context.Context, resource manifest.Resource) ApplyResult {
+func (s *service) applyUpdate(ctx context.Context, resource Resource) ApplyResult {
 	status, err := s.specClient.UpdateResource(ctx, resource)
 	if err == nil {
 		return s.newResourceResult(resource, "updated", status, nil, "")
@@ -758,11 +757,11 @@ func (s *service) applyUpdate(ctx context.Context, resource manifest.Resource) A
 	return s.newResourceResult(resource, "failed", status, classifyError(err, status, "apply", resource.Type), "")
 }
 
-func (s *service) resolveCreatedID(ctx context.Context, resource manifest.Resource, createdID string) string {
+func (s *service) resolveCreatedID(ctx context.Context, resource Resource, createdID string) string {
 	if createdID != "" && looksLikeUUID(createdID) {
 		return createdID
 	}
-	var fetched []manifest.Resource
+	var fetched []Resource
 	var err error
 	if resource.ParentType != "" {
 		fetched, err = s.specClient.FetchResourcesWithParent(ctx, resource)
@@ -802,7 +801,7 @@ func stringID(data map[string]interface{}, key string) string {
 // locateExistingResource checks whether a resource already exists on the server
 // and, if so, copies its server-assigned id into resource.Data and the idMap.
 // It returns false when the resource cannot be found.
-func (s *service) locateExistingResource(ctx context.Context, resource *manifest.Resource, idMap map[string]string) bool {
+func (s *service) locateExistingResource(ctx context.Context, resource *Resource, idMap map[string]string) bool {
 	_, err := s.resolveExistingResource(ctx, resource, idMap, false)
 	return err == nil
 }
@@ -810,12 +809,12 @@ func (s *service) locateExistingResource(ctx context.Context, resource *manifest
 // resolveExistingResourceID is used when a create returns 409 but we do not yet
 // know the server's id. It locates the existing resource by name and updates
 // resource.Data with the server id.
-func (s *service) resolveExistingResourceID(ctx context.Context, resource *manifest.Resource, idMap map[string]string) error {
+func (s *service) resolveExistingResourceID(ctx context.Context, resource *Resource, idMap map[string]string) error {
 	_, err := s.resolveExistingResource(ctx, resource, idMap, true)
 	return err
 }
 
-func (s *service) resolveExistingResource(ctx context.Context, resource *manifest.Resource, idMap map[string]string, allowCollectionFallback bool) (manifest.Resource, error) {
+func (s *service) resolveExistingResource(ctx context.Context, resource *Resource, idMap map[string]string, allowCollectionFallback bool) (Resource, error) {
 	resolver := s.Spec().Resolver()
 	originalID := stringID(resource.Data, "id")
 
@@ -832,7 +831,7 @@ func (s *service) resolveExistingResource(ctx context.Context, resource *manifes
 			return fetched, nil
 		}
 		if !allowCollectionFallback {
-			return manifest.Resource{}, fmt.Errorf("not found")
+			return Resource{}, fmt.Errorf("not found")
 		}
 	} else if !allowCollectionFallback {
 		log.Logger.Warn().Str("pkg", "admin").Str("type", resource.Type).Msg("no single GET endpoint; falling back to collection search")
@@ -845,7 +844,7 @@ func (s *service) resolveExistingResource(ctx context.Context, resource *manifes
 			fetched, fetchErr = s.specClient.FetchResources(ctx, resource.Type, map[string]string{"realm": resource.Realm}, map[string]string{"max": conflictResolutionMaxResults})
 		}
 		if fetchErr != nil {
-			return manifest.Resource{}, fetchErr
+			return Resource{}, fetchErr
 		}
 	}
 	for i := range fetched {
@@ -858,7 +857,7 @@ func (s *service) resolveExistingResource(ctx context.Context, resource *manifes
 		}
 		return fetched[i], nil
 	}
-	return manifest.Resource{}, fmt.Errorf("could not locate existing %s by name", resource.Type)
+	return Resource{}, fmt.Errorf("could not locate existing %s by name", resource.Type)
 }
 
 func (s *service) operationContext(parent context.Context) (context.Context, context.CancelFunc) {
@@ -875,7 +874,7 @@ func (s *service) operationContext(parent context.Context) (context.Context, con
 	return context.WithTimeout(context.WithoutCancel(parent), s.timeout)
 }
 
-func rewriteRelationshipIDs(relationships []manifest.RelationshipOperation, idMap map[string]string) []manifest.RelationshipOperation {
+func rewriteRelationshipIDs(relationships []RelationshipOperation, idMap map[string]string) []RelationshipOperation {
 	if len(idMap) == 0 {
 		return relationships
 	}
@@ -943,7 +942,7 @@ func looksLikeUUID(s string) bool {
 // of type A contains a UUID that matches the id of a resource of type B in the
 // same manifest, A is ordered after B so the reference can be remapped to B's
 // target-server id during apply.
-func priorityMapWithInlineReferences(resources []manifest.Resource, specGraph map[string][]string) (map[string]int, error) {
+func priorityMapWithInlineReferences(resources []Resource, specGraph map[string][]string) (map[string]int, error) {
 	idToType := make(map[string]string, len(resources))
 	for _, r := range resources {
 		if id := stringID(r.Data, "id"); id != "" {
@@ -1050,7 +1049,7 @@ func topologicalSortPriorityMap(graph map[string]map[string]struct{}) (map[strin
 	return result, nil
 }
 
-func relationshipRealms(relationships []manifest.RelationshipOperation) []string {
+func relationshipRealms(relationships []RelationshipOperation) []string {
 	seen := make(map[string]struct{})
 	realms := make([]string, 0)
 	for _, rel := range relationships {
@@ -1067,7 +1066,7 @@ func relationshipRealms(relationships []manifest.RelationshipOperation) []string
 	return realms
 }
 
-func relationshipKey(rel manifest.RelationshipOperation, identityFromPath bool) string {
+func relationshipKey(rel RelationshipOperation, identityFromPath bool) string {
 	data := ""
 	if len(rel.Data) > 0 && !identityFromPath {
 		var payload interface{}
@@ -1080,7 +1079,7 @@ func relationshipKey(rel manifest.RelationshipOperation, identityFromPath bool) 
 	return strings.Join([]string{rel.Kind, rel.Path, data}, "|")
 }
 
-func identityFromPath(rel manifest.RelationshipOperation) bool {
+func identityFromPath(rel RelationshipOperation) bool {
 	kind, ok := kcapi.DefaultRegistry().ByName(rel.Kind)
 	if !ok {
 		return false
@@ -1088,8 +1087,8 @@ func identityFromPath(rel manifest.RelationshipOperation) bool {
 	return !kind.BulkPayload && kind.ItemParamName != ""
 }
 
-func reconcileRelationshipSets(desired, actual []manifest.RelationshipOperation) (toAdd, toRemove []manifest.RelationshipOperation) {
-	actualByKey := make(map[string]manifest.RelationshipOperation, len(actual))
+func reconcileRelationshipSets(desired, actual []RelationshipOperation) (toAdd, toRemove []RelationshipOperation) {
+	actualByKey := make(map[string]RelationshipOperation, len(actual))
 	for _, rel := range actual {
 		actualByKey[relationshipKey(rel, identityFromPath(rel))] = rel
 	}
@@ -1116,14 +1115,14 @@ func reconcileRelationshipSets(desired, actual []manifest.RelationshipOperation)
 	return toAdd, toRemove
 }
 
-func buildRelationshipDeleteOperation(rel manifest.RelationshipOperation) (manifest.RelationshipOperation, bool) {
+func buildRelationshipDeleteOperation(rel RelationshipOperation) (RelationshipOperation, bool) {
 	kind, ok := kcapi.DefaultRegistry().ByName(rel.Kind)
 	if !ok {
-		return manifest.RelationshipOperation{}, false
+		return RelationshipOperation{}, false
 	}
 	op, err := kcapi.BuildDeleteOperation(rel, kind)
 	if err != nil {
-		return manifest.RelationshipOperation{}, false
+		return RelationshipOperation{}, false
 	}
 	return op, true
 }

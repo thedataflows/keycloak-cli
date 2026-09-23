@@ -1,4 +1,4 @@
-package admin
+package manifest
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 const defaultFetchResources = "realm,user,client,group,role"
@@ -41,8 +40,8 @@ type ChildFetchQuery struct {
 }
 
 type FetchReport struct {
-	Resources     []manifest.Resource
-	Relationships []manifest.RelationshipOperation
+	Resources     []Resource
+	Relationships []RelationshipOperation
 	Failures      []FetchFailure
 }
 
@@ -116,7 +115,7 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 
 	reqs, includeRelationships := requestedResources(resourceList)
 	includeRelationships = includeRelationships || query.IncludeRelationships || query.Depth > 1
-	var results []manifest.Resource
+	var results []Resource
 	var failures []FetchFailure
 	realmNames := realmNamesFromResources(realms)
 	queryParams := buildQueryParams(query)
@@ -179,14 +178,14 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 
 	var childTypes map[string]struct{}
 	if query.Depth > 0 && len(realmNames) > 0 {
-		var depthResources []manifest.Resource
+		var depthResources []Resource
 		var depthFailures []FetchFailure
 		depthResources, childTypes, depthFailures = s.fetchDepthLevels(ctx, query.Depth, realmNames, seeds, buildNestedQueryParams(query))
 		results = append(results, depthResources...)
 		failures = append(failures, depthFailures...)
 	}
 
-	relationships := make([]manifest.RelationshipOperation, 0)
+	relationships := make([]RelationshipOperation, 0)
 	if includeRelationships && len(realmNames) > 0 {
 		if query.IncludeRelationships {
 			fetchedRelationships, relationshipFailures := s.fetchRelationships(ctx, realmNames, nil)
@@ -201,7 +200,7 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 			for t := range childTypes {
 				parentTypes[t] = struct{}{}
 			}
-			scopedResources := make([]manifest.Resource, 0, len(seeds)+len(results))
+			scopedResources := make([]Resource, 0, len(seeds)+len(results))
 			scopedResources = append(scopedResources, seeds...)
 			for _, r := range results {
 				if _, ok := parentTypes[r.Type]; ok {
@@ -236,7 +235,7 @@ func (s *service) Fetch(ctx context.Context, query FetchQuery) (FetchReport, err
 // passing each returned child straight back in; org groups keep
 // ParentType=organization (a scope marker) at every level so descent terminates
 // only on an empty read.
-func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, childType string, query ChildFetchQuery) (FetchReport, error) {
+func (s *service) FetchChildren(ctx context.Context, parent Resource, childType string, query ChildFetchQuery) (FetchReport, error) {
 	path, inherited, ok := s.Spec().ScopedChildCollection(parent.Type, parent.ParentType, childType)
 	if !ok {
 		return FetchReport{}, fmt.Errorf("no child collection %q under parent %q", childType, parent.Type)
@@ -252,7 +251,7 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 	// the scope marker preserved so recursion keeps selecting the org path. The
 	// single-parent case keeps the existing immediate parent-reference injection.
 	var (
-		fetched  []manifest.Resource
+		fetched  []Resource
 		fetchErr error
 	)
 	if isScopedParent(parent) {
@@ -280,7 +279,7 @@ func (s *service) FetchChildren(ctx context.Context, parent manifest.Resource, c
 // level below the realm, so `fetch realm --depth N` reaches identity providers
 // but not their mappers, clients but not their roles or protocol mappers, and
 // groups but not their subgroups (ISSUE 0009).
-func isScopedParent(parent manifest.Resource) bool {
+func isScopedParent(parent Resource) bool {
 	return parent.ParentType != "" &&
 		parent.ParentType != parent.Type &&
 		parent.ParentType != "realm"
@@ -294,7 +293,7 @@ func isScopedParent(parent manifest.Resource) bool {
 // data would win via camel-case lookup and re-fetch the parent's children
 // (the ISSUE 0005 Gap 3 hazard, on a collection path). Children are identified by
 // (orgId, own id, ParentType).
-func (s *service) fetchScopedChildren(ctx context.Context, childType, path string, parent manifest.Resource, inherited []string, params ...map[string]string) ([]manifest.Resource, error) {
+func (s *service) fetchScopedChildren(ctx context.Context, childType, path string, parent Resource, inherited []string, params ...map[string]string) ([]Resource, error) {
 	contract := kcapi.OperationContract{Path: path, Method: http.MethodGet}
 	scope, err := s.Spec().Resolver().PathParams(parent, contract)
 	if err != nil {
@@ -329,14 +328,14 @@ func (s *service) fetchScopedChildren(ctx context.Context, childType, path strin
 		}
 	}
 
-	resources := make([]manifest.Resource, len(raw))
+	resources := make([]Resource, len(raw))
 	for i, item := range raw {
 		for field, value := range inheritedVals {
 			if _, ok := item[field]; !ok {
 				item[field] = value
 			}
 		}
-		resources[i] = manifest.Resource{
+		resources[i] = Resource{
 			Type:       childType,
 			Realm:      parent.Realm,
 			ParentType: parent.ParentType,
@@ -346,10 +345,10 @@ func (s *service) fetchScopedChildren(ctx context.Context, childType, path strin
 	return resources, nil
 }
 
-func (s *service) fetchRealms(ctx context.Context, realm string) ([]manifest.Resource, error) {
+func (s *service) fetchRealms(ctx context.Context, realm string) ([]Resource, error) {
 	realm = strings.TrimSpace(realm)
 	if realm != "" {
-		return []manifest.Resource{{
+		return []Resource{{
 			Type:  "realm",
 			Realm: realm,
 			Data:  map[string]interface{}{"realm": realm},
@@ -366,7 +365,7 @@ func (s *service) fetchRealms(ctx context.Context, realm string) ([]manifest.Res
 	return realms, nil
 }
 
-func (s *service) fetchRealmScopedResources(ctx context.Context, resource, realm string, params []map[string]string) ([]manifest.Resource, error) {
+func (s *service) fetchRealmScopedResources(ctx context.Context, resource, realm string, params []map[string]string) ([]Resource, error) {
 	fetched, err := s.fetchResourceCollection(ctx, resource, map[string]string{"realm": realm}, "", params...)
 	if err != nil {
 		return nil, err
@@ -377,13 +376,13 @@ func (s *service) fetchRealmScopedResources(ctx context.Context, resource, realm
 	return fetched, nil
 }
 
-func (s *service) fetchAuthenticationExecutions(ctx context.Context, realm, parent string) ([]manifest.Resource, error) {
+func (s *service) fetchAuthenticationExecutions(ctx context.Context, realm, parent string) ([]Resource, error) {
 	flows, err := s.fetchRealmScopedResources(ctx, "authenticationflow", realm, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var results []manifest.Resource
+	var results []Resource
 	for _, flow := range flows {
 		alias := ""
 		if s, ok := flow.Data["alias"].(string); ok {
@@ -408,7 +407,7 @@ func (s *service) fetchAuthenticationExecutions(ctx context.Context, realm, pare
 
 		for _, raw := range fetched {
 			raw["flowAlias"] = alias
-			results = append(results, manifest.Resource{
+			results = append(results, Resource{
 				Type:  "authenticationexecution",
 				Realm: realm,
 				Data:  raw,
@@ -418,7 +417,7 @@ func (s *service) fetchAuthenticationExecutions(ctx context.Context, realm, pare
 	return results, nil
 }
 
-func (s *service) fetchResourceCollection(ctx context.Context, resource string, scope map[string]string, realmFilter string, params ...map[string]string) ([]manifest.Resource, error) {
+func (s *service) fetchResourceCollection(ctx context.Context, resource string, scope map[string]string, realmFilter string, params ...map[string]string) ([]Resource, error) {
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 
@@ -431,7 +430,7 @@ func (s *service) fetchResourceCollection(ctx context.Context, resource string, 
 		return fetched, nil
 	}
 
-	filtered := make([]manifest.Resource, 0)
+	filtered := make([]Resource, 0)
 	for _, item := range fetched {
 		if item.Realm == realmFilter {
 			filtered = append(filtered, item)
@@ -502,7 +501,7 @@ func buildNestedQueryParams(query FetchQuery) []map[string]string {
 	return []map[string]string{{"briefRepresentation": "false"}}
 }
 
-func realmNamesFromResources(realms []manifest.Resource) []string {
+func realmNamesFromResources(realms []Resource) []string {
 	names := make([]string, 0, len(realms))
 	for _, realm := range realms {
 		if name := realmName(realm); name != "" {
@@ -512,7 +511,7 @@ func realmNamesFromResources(realms []manifest.Resource) []string {
 	return names
 }
 
-func realmName(realm manifest.Resource) string {
+func realmName(realm Resource) string {
 	if name := strings.TrimSpace(realm.Realm); name != "" {
 		return name
 	}
@@ -543,7 +542,7 @@ func requestedResources(resourceList string) ([]string, bool) {
 	return resources, includeRelationships
 }
 
-func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []string, seeds []manifest.Resource, nestedParams []map[string]string) ([]manifest.Resource, map[string]struct{}, []FetchFailure) {
+func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []string, seeds []Resource, nestedParams []map[string]string) ([]Resource, map[string]struct{}, []FetchFailure) {
 	downward, err := s.Spec().BuildDownwardGraph()
 	if err != nil {
 		return nil, nil, []FetchFailure{{Resource: "depth-graph", Err: err}}
@@ -559,7 +558,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 	}
 
 	resourcesByTypeRealm := indexResourcesByTypeRealm(seeds)
-	var results []manifest.Resource
+	var results []Resource
 	var failures []FetchFailure
 	seen := make(map[string]struct{})
 	for _, r := range seeds {
@@ -568,7 +567,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 
 	frontier := seeds
 	for level := 0; level < depth; level++ {
-		var levelResources []manifest.Resource
+		var levelResources []Resource
 
 		for _, parent := range frontier {
 			children := downward[parent.Type]
@@ -585,7 +584,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 			// scope for the scoped case); do not overwrite, or a scoped child would
 			// lose its organization marker and the next level would resolve to the
 			// realm children path.
-			collect := func(childType string, fetched []manifest.Resource, fetchErr error) {
+			collect := func(childType string, fetched []Resource, fetchErr error) {
 				if fetchErr != nil {
 					failures = append(failures, fetchFailure(childType, parent.Type+":"+parent.Identifier(), fetchErr))
 					return
@@ -640,7 +639,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 		for _, r := range levelResources {
 			byRealm, ok := resourcesByTypeRealm[r.Type]
 			if !ok {
-				byRealm = make(map[string][]manifest.Resource)
+				byRealm = make(map[string][]Resource)
 				resourcesByTypeRealm[r.Type] = byRealm
 			}
 			byRealm[r.Realm] = append(byRealm[r.Realm], r)
@@ -656,7 +655,7 @@ func (s *service) fetchDepthLevels(ctx context.Context, depth int, realmNames []
 	return results, childTypes, failures
 }
 
-func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, path, parentType string, parent manifest.Resource, params ...map[string]string) ([]manifest.Resource, error) {
+func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, path, parentType string, parent Resource, params ...map[string]string) ([]Resource, error) {
 	contract := kcapi.OperationContract{Path: path, Method: http.MethodGet}
 	scope, err := s.Spec().Resolver().PathParams(parent, contract)
 	if err != nil {
@@ -673,14 +672,14 @@ func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, 
 
 	parentFields := s.Spec().Resolver().ParentReferenceFields(path, parentType, parent)
 
-	resources := make([]manifest.Resource, len(fetched))
+	resources := make([]Resource, len(fetched))
 	for i, raw := range fetched {
 		for field, value := range parentFields {
 			if _, ok := raw[field]; !ok {
 				raw[field] = value
 			}
 		}
-		resources[i] = manifest.Resource{
+		resources[i] = Resource{
 			Type:       childType,
 			Realm:      parent.Realm,
 			ParentType: parentType,
@@ -690,12 +689,12 @@ func (s *service) fetchNestedResourceCollection(ctx context.Context, childType, 
 	return resources, nil
 }
 
-func indexResourcesByTypeRealm(resources []manifest.Resource) map[string]map[string][]manifest.Resource {
-	index := make(map[string]map[string][]manifest.Resource)
+func indexResourcesByTypeRealm(resources []Resource) map[string]map[string][]Resource {
+	index := make(map[string]map[string][]Resource)
 	for _, r := range resources {
 		byRealm, ok := index[r.Type]
 		if !ok {
-			byRealm = make(map[string][]manifest.Resource)
+			byRealm = make(map[string][]Resource)
 			index[r.Type] = byRealm
 		}
 		byRealm[r.Realm] = append(byRealm[r.Realm], r)
@@ -703,7 +702,7 @@ func indexResourcesByTypeRealm(resources []manifest.Resource) map[string]map[str
 	return index
 }
 
-func resourceKey(r manifest.Resource) string {
+func resourceKey(r Resource) string {
 	key := strings.Join([]string{r.Type, r.Realm, r.Identifier()}, "|")
 	// A member is a membership edge, not a unique resource: the same user can
 	// belong to several org groups, so key it by its group too, otherwise depth
@@ -716,9 +715,9 @@ func resourceKey(r manifest.Resource) string {
 	return key
 }
 
-func filterResources(resources []manifest.Resource, filter string) []manifest.Resource {
+func filterResources(resources []Resource, filter string) []Resource {
 	needle := strings.ToLower(strings.TrimSpace(filter))
-	out := make([]manifest.Resource, 0, len(resources))
+	out := make([]Resource, 0, len(resources))
 	for _, r := range resources {
 		if strings.ToLower(r.Name()) == needle || strings.ToLower(r.Identifier()) == needle {
 			out = append(out, r)

@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -61,7 +60,7 @@ func TestApplyCreatePopulatesCreatedID(t *testing.T) {
 				Type:  "user",
 				Realm: "demo",
 				Data:  map[string]interface{}{"username": "newuser"},
-			}}, nil, admin.ApplyOptions{})
+			}}, nil, manifest.ApplyOptions{})
 			require.NoError(t, err)
 			require.Len(t, report.Results, 1)
 			assert.Equal(t, "created", report.Results[0].Action)
@@ -90,7 +89,7 @@ func TestApplyUpdateDoesNotPopulateCreatedID(t *testing.T) {
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"username": "alice"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "updated", report.Results[0].Action)

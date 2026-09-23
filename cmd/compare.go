@@ -8,7 +8,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/output"
@@ -54,7 +53,7 @@ func (c *CompareCmd) Run(ctx *kong.Context, cli *CLI) error {
 		return err
 	}
 
-	fetched, err := svc.Fetch(commandCtx, admin.FetchQuery{
+	fetched, err := svc.Fetch(commandCtx, manifest.FetchQuery{
 		Realm:                realm,
 		Resources:            compareFetchResources(loaded),
 		IncludeRelationships: len(loaded.Relationships) > 0,

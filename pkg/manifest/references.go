@@ -1,17 +1,15 @@
-package admin
+package manifest
 
 import (
 	"context"
 	"strings"
-
-	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // resolveReferences scans the provided resources for UUID-shaped string values
 // and fetches any referenced resources that are not already present in the
 // result set. This makes manifests self-contained when importing into a
 // different Keycloak server.
-func (s *service) resolveReferences(ctx context.Context, realmNames []string, resources []manifest.Resource) ([]manifest.Resource, []FetchFailure) {
+func (s *service) resolveReferences(ctx context.Context, realmNames []string, resources []Resource) ([]Resource, []FetchFailure) {
 	if len(resources) == 0 || len(realmNames) == 0 {
 		return nil, nil
 	}
@@ -26,7 +24,7 @@ func (s *service) resolveReferences(ctx context.Context, realmNames []string, re
 		return nil, nil
 	}
 
-	var results []manifest.Resource
+	var results []Resource
 	var failures []FetchFailure
 
 	for _, realm := range realmNames {
@@ -54,7 +52,7 @@ func (s *service) resolveReferences(ctx context.Context, realmNames []string, re
 // extractReferencedIDs walks all resource Data maps and returns, per resource
 // type, the IDs that appear as UUID-shaped strings but whose target resource is
 // not already present in the result set.
-func extractReferencedIDs(resources []manifest.Resource, seen map[string]struct{}) map[string]map[string]struct{} {
+func extractReferencedIDs(resources []Resource, seen map[string]struct{}) map[string]map[string]struct{} {
 	idsByType := make(map[string]map[string]struct{})
 
 	for _, r := range resources {
@@ -114,13 +112,13 @@ func candidateResourceTypes(value, sourceType string) []string {
 // fetchResourcesByIDs fetches resources of the given type in the realm and
 // returns only those whose ID is in the requested set. It avoids fetching the
 // same collection multiple times by caching per realm.
-func (s *service) fetchResourcesByIDs(ctx context.Context, resourceType, realm string, ids map[string]struct{}) ([]manifest.Resource, error) {
+func (s *service) fetchResourcesByIDs(ctx context.Context, resourceType, realm string, ids map[string]struct{}) ([]Resource, error) {
 	all, err := s.fetchResourceCollection(ctx, resourceType, map[string]string{"realm": realm}, "")
 	if err != nil {
 		return nil, err
 	}
 
-	var results []manifest.Resource
+	var results []Resource
 	for _, r := range all {
 		id := fetchStringID(r.Data, "id")
 		if id == "" {

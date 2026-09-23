@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -35,7 +34,7 @@ func TestFetchChildrenReadsOrgGroupMembers(t *testing.T) {
 	orgGroup := manifest.Resource{Type: "group", Realm: "demo", ParentType: "organization",
 		Data: map[string]interface{}{"id": "g1", "orgId": org, "name": "orggroup"}}
 
-	report, err := service.FetchChildren(context.Background(), orgGroup, "member", admin.ChildFetchQuery{})
+	report, err := service.FetchChildren(context.Background(), orgGroup, "member", manifest.ChildFetchQuery{})
 	require.NoError(t, err)
 	require.Empty(t, report.Failures)
 

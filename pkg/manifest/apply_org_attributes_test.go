@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -73,7 +72,7 @@ func TestApplyOrganizationCreatePersistsAttributes(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Apply(context.Background(), []manifest.Resource{orgResourceWithAttributes()}, nil, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), []manifest.Resource{orgResourceWithAttributes()}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "created", report.Results[0].Action)
@@ -94,7 +93,7 @@ func TestApplyOrganizationUpdatePersistsAttributes(t *testing.T) {
 	resource.Data["id"] = "org-1"
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Apply(context.Background(), []manifest.Resource{resource}, nil, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), []manifest.Resource{resource}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "updated", report.Results[0].Action)

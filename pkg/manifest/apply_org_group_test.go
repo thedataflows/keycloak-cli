@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -82,7 +81,7 @@ func TestApplyOrgScopedGroupCreatesViaOrganizationEndpoint(t *testing.T) {
 		Realm:      "demo",
 		ParentType: "organization",
 		Data:       map[string]interface{}{"name": "acme-engineering", "orgId": "org-1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)
@@ -103,7 +102,7 @@ func TestApplyOrgScopedGroupUpdatesViaOrganizationEndpoint(t *testing.T) {
 		Realm:      "demo",
 		ParentType: "organization",
 		Data:       map[string]interface{}{"id": "group-1", "name": "acme-engineering", "path": "/acme-engineering", "orgId": "org-1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)
@@ -125,7 +124,7 @@ func TestApplyOrgScopedGroupDeletesViaOrganizationEndpoint(t *testing.T) {
 		ParentType: "organization",
 		Delete:     true,
 		Data:       map[string]interface{}{"id": "group-1", "name": "acme-engineering", "path": "/acme-engineering", "orgId": "org-1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)
@@ -144,7 +143,7 @@ func TestApplyRealmGroupStillUsesRealmEndpoint(t *testing.T) {
 		Type:  "group",
 		Realm: "demo",
 		Data:  map[string]interface{}{"name": "realm-engineering"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)

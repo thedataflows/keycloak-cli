@@ -13,8 +13,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 const (
@@ -83,8 +83,8 @@ func (g *Globals) effectiveTimeout() time.Duration {
 	return g.Timeout
 }
 
-func (cli *CLI) adminClient() (admin.Service, error) {
-	return admin.New(admin.Config{
+func (cli *CLI) adminClient() (manifest.Service, error) {
+	return manifest.NewService(manifest.Config{
 		BaseURL:  cli.KeycloakBaseURL,
 		SpecPath: cli.SpecPath,
 		Timeout:  cli.effectiveTimeout(),

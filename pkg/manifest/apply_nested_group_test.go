@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -55,7 +54,7 @@ func TestApplyNestedRealmGroupStripsParentBindingFromBody(t *testing.T) {
 		Realm:      "demo",
 		ParentType: "group",
 		Data:       map[string]interface{}{"name": "platform", "groupId": "parent-1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)
@@ -114,7 +113,7 @@ func TestApplyNestedRealmGroupUpdateAddressesChildAndStripsParentBinding(t *test
 		Realm:      "demo",
 		ParentType: "group",
 		Data:       map[string]interface{}{"id": "child-1", "name": "platform", "groupId": "parent-1"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Zero(t, report.Failed)

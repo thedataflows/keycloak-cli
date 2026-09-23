@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -15,12 +15,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestNewRejectsMissingBaseURL(t *testing.T) {
-	service, err := admin.New(admin.Config{SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json")})
+	service, err := manifest.NewService(manifest.Config{SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json")})
 	require.Error(t, err)
 	assert.Nil(t, service)
 }
@@ -29,7 +28,7 @@ func TestNewBuildsClient(t *testing.T) {
 	server := httptest.NewServer(http.NotFoundHandler())
 	defer server.Close()
 
-	service, err := admin.New(admin.Config{
+	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 	})
@@ -60,7 +59,7 @@ func TestApplyCreatesResource(t *testing.T) {
 		Type:  "realm",
 		Realm: "demo",
 		Data:  map[string]interface{}{"realm": "demo"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "created", report.Results[0].Action)
@@ -86,7 +85,7 @@ func TestApplyFailureUsesTypedErrorText(t *testing.T) {
 		Type:  "user",
 		Realm: "demo",
 		Data:  map[string]interface{}{"username": "alice"},
-	}}, nil, admin.ApplyOptions{ContinueOnError: true})
+	}}, nil, manifest.ApplyOptions{ContinueOnError: true})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, http.StatusBadRequest, report.Results[0].Status)
@@ -106,7 +105,7 @@ func TestApplyRelationshipConflictHandledAsSuccess(t *testing.T) {
 	service := newServiceForTest(t, server.URL)
 	report, err := service.Apply(context.Background(), nil, []manifest.RelationshipOperation{{
 		Path: "demo/users/user-1/groups/group-1",
-	}}, admin.ApplyOptions{})
+	}}, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "unchanged", report.Results[0].Action)
@@ -128,7 +127,7 @@ func TestFetchBuildsRealmScopedResults(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "user"})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "user"})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 1)
 	assert.Equal(t, "demo", report.Resources[0].Realm)
@@ -151,7 +150,7 @@ func TestApplyRejectsInvalidResourceBeforeNetwork(t *testing.T) {
 			"username": "alice",
 			"enabled":  "yes",
 		},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.Error(t, err)
 	assert.Zero(t, requestCount)
 }
@@ -208,7 +207,7 @@ func TestFetchIncludesRelationships(t *testing.T) {
 	defer server.Close()
 
 	service := newServiceForTest(t, server.URL)
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "user", IncludeRelationships: true})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "user", IncludeRelationships: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, report.Relationships)
 	kinds := relationshipKinds(report.Relationships)
@@ -230,7 +229,7 @@ func TestFetchIncludesRelationships(t *testing.T) {
 	})
 }
 
-func newServiceForTest(t *testing.T, baseURL string) admin.Service {
+func newServiceForTest(t *testing.T, baseURL string) manifest.Service {
 	t.Helper()
 	previousAccessToken, hadAccessToken := os.LookupEnv("KEYCLOAK_ACCESS_TOKEN")
 	previousRefreshToken, hadRefreshToken := os.LookupEnv("KEYCLOAK_REFRESH_TOKEN")
@@ -249,7 +248,7 @@ func newServiceForTest(t *testing.T, baseURL string) admin.Service {
 	require.NoError(t, os.Setenv("KEYCLOAK_ACCESS_TOKEN", validAccessToken()))
 	require.NoError(t, os.Setenv("KEYCLOAK_REFRESH_TOKEN", ""))
 
-	service, err := admin.New(admin.Config{
+	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
 		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
 		Timeout:  time.Second,
@@ -286,7 +285,7 @@ func TestApplyUpdateWhenResourceExists(t *testing.T) {
 		Type:  "group",
 		Realm: "demo",
 		Data:  map[string]interface{}{"id": "group-1", "name": "devs"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "updated", report.Results[0].Action)
@@ -309,7 +308,7 @@ func TestApplyDeleteNotFoundIsIdempotent(t *testing.T) {
 		Realm:  "demo",
 		Data:   map[string]interface{}{"username": "alice"},
 		Delete: true,
-	}}, nil, admin.ApplyOptions{Delete: true})
+	}}, nil, manifest.ApplyOptions{Delete: true})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "not-found", report.Results[0].Action)
@@ -344,10 +343,10 @@ func TestApplyPopulatesIDMapFromCreateResponse(t *testing.T) {
 		Path:   "demo/users/alice/groups/client-group-id",
 		Method: "PUT",
 	}}
-	report, err := service.Apply(context.Background(), resources, relationships, admin.ApplyOptions{})
+	report, err := service.Apply(context.Background(), resources, relationships, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	assert.Zero(t, report.Failed)
-	var relResult *admin.ApplyResult
+	var relResult *manifest.ApplyResult
 	for i := range report.Results {
 		if report.Results[i].Resource == "relationship" {
 			relResult = &report.Results[i]
@@ -396,7 +395,7 @@ func TestApplyResolvesRoleClientUuidFromManifest(t *testing.T) {
 			ParentType: "client",
 			Data:       map[string]interface{}{"name": "admin", "clientUuid": "app"},
 		},
-	}, nil, admin.ApplyOptions{})
+	}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Zero(t, report.Failed)
 	assert.Equal(t, "/admin/realms/demo/clients/"+targetClientUUID+"/roles", receivedPath)
@@ -430,7 +429,7 @@ func TestApplyResolvesRoleClientUuidFromServer(t *testing.T) {
 		Realm:      "demo",
 		ParentType: "client",
 		Data:       map[string]interface{}{"name": "admin", "clientUuid": "app"},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Zero(t, report.Failed)
 	assert.Equal(t, "/admin/realms/demo/clients/"+clientUUID+"/roles", receivedPath)
@@ -457,7 +456,7 @@ func TestApplySkipsOrganizationWhenDisabled(t *testing.T) {
 		Type:  "organization",
 		Realm: "demo",
 		Data:  map[string]interface{}{"id": "org-1", "name": "Org One"},
-	}}, nil, admin.ApplyOptions{ContinueOnError: true})
+	}}, nil, manifest.ApplyOptions{ContinueOnError: true})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "skipped", report.Results[0].Action)
@@ -482,7 +481,7 @@ func TestApplySingletonSkipsCreateAndGoesToUpdate(t *testing.T) {
 		Type:  "clientpolicies",
 		Realm: "demo",
 		Data:  map[string]interface{}{"policies": []interface{}{}},
-	}}, nil, admin.ApplyOptions{})
+	}}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "updated", report.Results[0].Action)
@@ -531,7 +530,7 @@ func TestApplyRemapsInlineIDsInResourceData(t *testing.T) {
 				},
 			},
 		},
-	}, nil, admin.ApplyOptions{})
+	}, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Zero(t, report.Failed)
 
@@ -588,11 +587,11 @@ func TestApplyInlineIDRemappingIsIdempotent(t *testing.T) {
 		},
 	}
 
-	first, err := service.Apply(context.Background(), resources, nil, admin.ApplyOptions{})
+	first, err := service.Apply(context.Background(), resources, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Zero(t, first.Failed)
 
-	second, err := service.Apply(context.Background(), resources, nil, admin.ApplyOptions{})
+	second, err := service.Apply(context.Background(), resources, nil, manifest.ApplyOptions{})
 	require.NoError(t, err)
 	require.Zero(t, second.Failed)
 }
@@ -613,7 +612,7 @@ func TestApplySingletonDeleteReportsNotSupported(t *testing.T) {
 		Realm:  "demo",
 		Data:   map[string]interface{}{"policies": []interface{}{}},
 		Delete: true,
-	}}, nil, admin.ApplyOptions{Delete: true})
+	}}, nil, manifest.ApplyOptions{Delete: true})
 	require.NoError(t, err, "Apply error: %v", err)
 	require.Len(t, report.Results, 1)
 	assert.Equal(t, "not-supported", report.Results[0].Action)

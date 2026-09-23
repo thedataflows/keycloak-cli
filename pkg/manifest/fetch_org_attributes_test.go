@@ -1,4 +1,4 @@
-package admin_test
+package manifest_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thedataflows/keycloak-cli/pkg/admin"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 // Keycloak's organizations list returns a brief representation that omits the
@@ -40,7 +40,7 @@ func TestFetchOrganizationAlwaysRequestsFullRepresentation(t *testing.T) {
 	service := newServiceForTest(t, server.URL)
 	// Note: FullRepresentation deliberately left false — organizations must opt
 	// into the full form on their own.
-	report, err := service.Fetch(context.Background(), admin.FetchQuery{Resources: "organization"})
+	report, err := service.Fetch(context.Background(), manifest.FetchQuery{Resources: "organization"})
 	require.NoError(t, err)
 	require.Len(t, report.Resources, 1)
 
