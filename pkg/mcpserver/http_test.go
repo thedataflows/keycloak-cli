@@ -8,15 +8,16 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/mcpserver"
 )
 
 // Scenario 12: the same server also speaks streamable HTTP — a remote MCP
 // client completes the initialize handshake over the handler's HTTP surface,
-// lists the five tools and calls kc_resolve end-to-end against the fake
+// lists the library tools and calls kc_resolve end-to-end against the fake
 // Keycloak. RunHTTP serves on an already-bound listener so tests pin the port.
 func TestServerServesToolsOverStreamableHTTP(t *testing.T) {
-	client, _ := newTestClient(t)
+	client, fake := newTestClient(t)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -25,7 +26,11 @@ func TestServerServesToolsOverStreamableHTTP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- mcpserver.RunHTTP(ctx, client, ln) }()
+	go func() {
+		done <- mcpserver.RunHTTP(ctx, client, func() (manifest.Service, error) {
+			return newManifestService(t, fake), nil
+		}, ln)
+	}()
 
 	mcpClient := mcp.NewClient(&mcp.Implementation{Name: "acceptance-test", Version: "0"}, nil)
 	session, err := mcpClient.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: "http://" + ln.Addr().String()}, nil)
@@ -34,7 +39,7 @@ func TestServerServesToolsOverStreamableHTTP(t *testing.T) {
 
 	result, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	assert.Len(t, result.Tools, 5, "streamable HTTP session must see the five tools")
+	assert.Len(t, result.Tools, 9, "streamable HTTP session must see the library tools")
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{
 		Name:      "kc_resolve",

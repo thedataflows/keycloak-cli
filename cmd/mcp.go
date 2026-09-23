@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"os"
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/mcpserver"
 )
 
@@ -25,14 +28,21 @@ func (c *McpCmd) Run(ctx *kong.Context, cli *CLI) error {
 	if err != nil {
 		return err
 	}
+	// The manifest tools (kc_fetch/kc_apply) run on a manifest.Service built
+	// from the same flags as the kcapi client; kc_reload rebuilds it.
+	newManifest := func() (manifest.Service, error) { return cli.adminClient() }
 	if c.Transport == "http" {
 		ln, err := net.Listen("tcp", c.HTTPAddr)
 		if err != nil {
 			return err
 		}
+		// The quick guide goes to stderr: stdout is protocol surface in stdio
+		// mode, and the HTTP surface never carries it either.
+		fmt.Fprintln(os.Stderr, mcpserver.Guide("http", ln.Addr().String()))
 		log.Logger.Info().Str("pkg", PKG_CMD).Str("addr", ln.Addr().String()).Msg("Serving MCP over streamable HTTP")
-		return mcpserver.RunHTTP(context.Background(), client, ln)
+		return mcpserver.RunHTTP(context.Background(), client, newManifest, ln)
 	}
+	fmt.Fprintln(os.Stderr, mcpserver.Guide("stdio", ""))
 	log.Logger.Info().Str("pkg", PKG_CMD).Msg("Serving MCP over stdio")
-	return mcpserver.Run(context.Background(), client)
+	return mcpserver.Run(context.Background(), client, newManifest)
 }

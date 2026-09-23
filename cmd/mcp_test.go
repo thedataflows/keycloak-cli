@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/thedataflows/keycloak-cli/internal/testutil"
@@ -56,7 +58,8 @@ func mcpSpecFlag(t *testing.T) string {
 }
 
 // Scenario 11: the built binary completes an MCP initialize handshake over
-// stdio and lists the five tools.
+// stdio and lists the library tools. The startup quick guide lands on stderr
+// while stdout stays protocol-clean.
 func TestMcpStdioHandshake(t *testing.T) {
 	cmd := exec.Command(mcpBinary, "mcp", "--spec-path", mcpSpecFlag(t))
 	stdin, err := cmd.StdinPipe()
@@ -67,7 +70,8 @@ func TestMcpStdioHandshake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd.Stderr = os.Stderr
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -129,15 +133,21 @@ func TestMcpStdioHandshake(t *testing.T) {
 	for _, tool := range list.Result.Tools {
 		names = append(names, tool.Name)
 	}
-	if len(names) != 5 {
-		t.Fatalf("tools/list returned %d tools (%v), want 5", len(names), names)
+	if len(names) != 9 {
+		t.Fatalf("tools/list returned %d tools (%v), want 9", len(names), names)
 	}
 	_ = stdin.Close()
 	_ = cmd.Wait()
+
+	for _, want := range []string{"kc_apply", "kc_fetch", "claude mcp add", `"mcpServers"`} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("startup guide on stderr missing %q", want)
+		}
+	}
 }
 
-// Scenario 13: the built binary serves the same five tools over streamable
-// HTTP when launched with --transport=http.
+// Scenario 13: the built binary serves the same library tools over streamable
+// HTTP when launched with --transport=http, and the guide names the endpoint.
 func TestMcpHTTPHandshake(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -149,7 +159,8 @@ func TestMcpHTTPHandshake(t *testing.T) {
 	cmd := exec.Command(mcpBinary, "mcp", "--transport", "http",
 		"--http-addr", fmt.Sprintf("127.0.0.1:%d", port),
 		"--spec-path", mcpSpecFlag(t))
-	cmd.Stderr = os.Stderr
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +195,16 @@ func TestMcpHTTPHandshake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Tools) != 5 {
-		t.Fatalf("tools/list over HTTP returned %d tools, want 5", len(result.Tools))
+	if len(result.Tools) != 9 {
+		t.Fatalf("tools/list over HTTP returned %d tools, want 9", len(result.Tools))
+	}
+
+	// The guide prints before Serve starts, so it is in the buffer once the
+	// endpoint has answered. Kill and Wait first: Wait joins the stderr copy
+	// goroutine, which would otherwise race the buffer read below.
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+	if !strings.Contains(stderr.String(), fmt.Sprintf("http://127.0.0.1:%d", port)) {
+		t.Errorf("startup guide on stderr must name the HTTP endpoint, got: %s", stderr.String())
 	}
 }

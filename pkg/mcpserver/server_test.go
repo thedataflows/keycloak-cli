@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
+	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 	"github.com/thedataflows/keycloak-cli/pkg/mcpserver"
 	"golang.org/x/oauth2"
 )
@@ -127,10 +128,39 @@ func newSession(t *testing.T, srv *mcp.Server) *mcp.ClientSession {
 	return session
 }
 
-// Scenario 1: the server exposes exactly the five approved tools.
-func TestServerExposesFiveTools(t *testing.T) {
-	client, _ := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+// newManifestService builds a manifest service pointing at the same fake
+// Keycloak as the kcapi client, so the manifest tools and the raw tools see
+// one backend. The static token provider satisfies auth.Service, keeping the
+// fake auth-free.
+func newManifestService(t *testing.T, fake *fakeKeycloak) manifest.Service {
+	t.Helper()
+	svc, err := manifest.NewService(manifest.Config{
+		BaseURL:  fake.server.URL,
+		SpecPath: testutil.KeycloakSpecPath(t),
+		Timeout:  5 * time.Second,
+		Auth:     staticTokenProvider("test-token"),
+	})
+	require.NoError(t, err)
+	return svc
+}
+
+// newTestServer builds the MCP server with the manifest service alongside the
+// kcapi client — the production wiring, against the fake Keycloak.
+func newTestServer(t *testing.T, client *kcapi.Client, fake *fakeKeycloak) *mcp.Server {
+	t.Helper()
+	srv, err := mcpserver.New(client, func() (manifest.Service, error) {
+		return newManifestService(t, fake), nil
+	})
+	require.NoError(t, err)
+	return srv
+}
+
+// Scenario 1: the server exposes the kcapi library surface — the five raw
+// tools plus the paging walk, the edge vocabulary, and both manifest
+// directions.
+func TestServerExposesAllLibraryTools(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
 
 	result, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
@@ -140,15 +170,18 @@ func TestServerExposesFiveTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	assert.ElementsMatch(t,
-		[]string{"kc_invoke", "kc_neighbors", "kc_operations", "kc_reload", "kc_resolve"},
+		[]string{
+			"kc_invoke", "kc_neighbors", "kc_operations", "kc_reload", "kc_resolve",
+			"kc_list", "kc_edges", "kc_fetch", "kc_apply",
+		},
 		names)
 }
 
 // Scenario 2: kc_operations lists spec operations narrowed by resource and
 // method filters, as JSON the agent can parse.
 func TestKcOperationsFiltersByResourceAndMethod(t *testing.T) {
-	client, _ := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_operations", Arguments: map[string]any{"resource": "users", "method": "GET"}})
 	require.NoError(t, err)
@@ -166,7 +199,7 @@ func TestKcOperationsFiltersByResourceAndMethod(t *testing.T) {
 // Scenario 3: kc_invoke GET needs no confirmation and reaches Keycloak.
 func TestKcInvokeGetWithoutConfirm(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_invoke", Arguments: map[string]any{
 		"resource": "users",
@@ -187,7 +220,7 @@ func TestKcInvokeGetWithoutConfirm(t *testing.T) {
 // sent.
 func TestKcInvokeWriteWithoutConfirmIsRejected(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_invoke", Arguments: map[string]any{
 		"resource": "users",
@@ -206,7 +239,7 @@ func TestKcInvokeWriteWithoutConfirmIsRejected(t *testing.T) {
 // Scenario 5: kc_invoke POST with confirm:true performs the write.
 func TestKcInvokeWriteWithConfirmPasses(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_invoke", Arguments: map[string]any{
 		"resource": "users",
@@ -234,7 +267,7 @@ func toolText(t *testing.T, res *mcp.CallToolResult) string {
 // flow and returns the resource object.
 func TestKcResolveByName(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
 		"type":  "users",
@@ -254,7 +287,7 @@ func TestKcResolveByName(t *testing.T) {
 // returns the fetched children plus the edges used.
 func TestKcNeighborsWalksChildCollection(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_neighbors", Arguments: map[string]any{
 		"type":  "organizations",
@@ -279,8 +312,8 @@ func TestKcNeighborsWalksChildCollection(t *testing.T) {
 
 // Scenario 8: kc_reload completes and keeps the tools working afterwards.
 func TestKcReloadCompletes(t *testing.T) {
-	client, _ := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_reload"})
 	require.NoError(t, err)
@@ -294,8 +327,8 @@ func TestKcReloadCompletes(t *testing.T) {
 // Scenario 9: kcapi failures surface as tool error results carrying kind and
 // status, so the agent can self-correct.
 func TestKcapiErrorsBecomeToolErrors(t *testing.T) {
-	client, _ := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
 		"type": "nosuchtype",
@@ -314,7 +347,7 @@ func TestKcapiErrorsBecomeToolErrors(t *testing.T) {
 // no collection search.
 func TestKcResolveRealmByName(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_resolve", Arguments: map[string]any{
 		"type":  "realms",
@@ -334,7 +367,7 @@ func TestKcResolveRealmByName(t *testing.T) {
 // hanging off the realm root, anchored by the realm's own identifier.
 func TestKcNeighborsFromRealmNode(t *testing.T) {
 	client, fake := newTestClient(t)
-	session := newSession(t, mcpserver.New(client))
+	session := newSession(t, newTestServer(t, client, fake))
 
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_neighbors", Arguments: map[string]any{
 		"type":  "realms",
@@ -355,4 +388,182 @@ func TestKcNeighborsFromRealmNode(t *testing.T) {
 	require.NotEmpty(t, out.Edges)
 	assert.Equal(t, "users", out.Edges[0]["Child"])
 	assert.Contains(t, fake.requests(), "GET /admin/realms/master/users")
+}
+
+// Scenario 14: kc_list walks a GET collection and returns every item as a
+// JSON array — the agent does not hand-page kc_invoke.
+func TestKcListWalksCollection(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_list", Arguments: map[string]any{
+		"resource": "users",
+		"verb":     "GET",
+		"realm":    "master",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var users []map[string]any
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &users), "result must be a JSON array")
+	require.Len(t, users, 1)
+	assert.Equal(t, "alice", users[0]["username"])
+	assert.Contains(t, fake.requests(), "GET /admin/realms/master/users")
+}
+
+// Scenario 15: kc_list is read-only by construction — it refuses any verb a
+// GET collection walk cannot serve, before anything is sent.
+func TestKcListRefusesNonGet(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_list", Arguments: map[string]any{
+		"resource": "users",
+		"verb":     "POST",
+		"realm":    "master",
+	}})
+	require.NoError(t, err, "refusal is a tool error, not a transport failure")
+	require.True(t, res.IsError, "non-GET must be refused, got: %v", res.Content)
+	assert.Contains(t, toolText(t, res), "GET")
+	assert.Contains(t, toolText(t, res), "kc_invoke")
+	for _, req := range fake.requests() {
+		assert.NotEqual(t, "POST /admin/realms/master/users", req, "nothing may reach Keycloak")
+	}
+}
+
+// Scenario 16: kc_edges exposes the relationship vocabulary so an agent can
+// plan walks without guessing path shapes.
+func TestKcEdgesListsVocabulary(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_edges"})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var edges []map[string]any
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &edges), "result must be a JSON array")
+	require.NotEmpty(t, edges, "vendored spec implies parent-child edges")
+
+	kinds := make(map[string]bool, len(edges))
+	for _, e := range edges {
+		kinds[e["Parent"].(string)+">"+e["Child"].(string)] = true
+	}
+	assert.Contains(t, kinds, "realms>users", "realm-rooted user collection must be an edge")
+}
+
+// Scenario 17: kc_fetch returns the manifest export — resources plus readable
+// failures — that kc_apply can consume.
+func TestKcFetchReturnsManifestReport(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_fetch", Arguments: map[string]any{
+		"realm":     "master",
+		"resources": "realm,user",
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var out struct {
+		Resources     []map[string]any `json:"resources"`
+		Relationships []map[string]any `json:"relationships"`
+		Failures      []map[string]any `json:"failures"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &out))
+	types := make(map[string]bool, len(out.Resources))
+	for _, r := range out.Resources {
+		types[r["type"].(string)] = true
+	}
+	assert.True(t, types["realm"] && types["user"], "fetch must return realm and user, got %v", types)
+	assert.Empty(t, out.Failures, "fake serves both collections")
+	assert.Contains(t, fake.requests(), "GET /admin/realms/master/users")
+}
+
+// Scenario 18: kc_apply is gated like kc_invoke — without confirm:true
+// nothing is sent.
+func TestKcApplyRequiresConfirm(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_apply", Arguments: map[string]any{
+		"resources": []map[string]any{
+			{"type": "user", "realm": "master", "data": map[string]any{"username": "bob"}},
+		},
+	}})
+	require.NoError(t, err, "refusal is a tool error, not a transport failure")
+	require.True(t, res.IsError, "apply without confirm must be a tool error, got: %v", res.Content)
+	assert.Contains(t, toolText(t, res), "confirm")
+	for _, req := range fake.requests() {
+		assert.NotEqual(t, "POST /admin/realms/master/users", req, "nothing may reach Keycloak without confirm")
+	}
+}
+
+// Scenario 19: kc_apply with confirm:true applies the manifest and returns
+// the per-resource report.
+func TestKcApplyAppliesWithConfirm(t *testing.T) {
+	client, fake := newTestClient(t)
+	session := newSession(t, newTestServer(t, client, fake))
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_apply", Arguments: map[string]any{
+		"resources": []map[string]any{
+			{"type": "user", "realm": "master", "data": map[string]any{"username": "bob"}},
+		},
+		"confirm": true,
+	}})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	var report struct {
+		Results []struct {
+			Resource string `json:"resource"`
+			Action   string `json:"action"`
+			Status   int    `json:"status"`
+		} `json:"results"`
+		Failed int `json:"failed"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(toolText(t, res)), &report))
+	require.Len(t, report.Results, 1)
+	assert.Equal(t, "user", report.Results[0].Resource)
+	assert.Equal(t, "created", report.Results[0].Action)
+	assert.Zero(t, report.Failed)
+	assert.Contains(t, fake.requests(), "POST /admin/realms/master/users")
+}
+
+// Scenario 20: kc_reload rebuilds the manifest service too — otherwise
+// kc_fetch/kc_apply would keep serving the stale spec after a reload.
+func TestKcReloadRebuildsManifestService(t *testing.T) {
+	client, fake := newTestClient(t)
+	builds := 0
+	srv, err := mcpserver.New(client, func() (manifest.Service, error) {
+		builds++
+		return newManifestService(t, fake), nil
+	})
+	require.NoError(t, err)
+	session := newSession(t, srv)
+
+	require.Equal(t, 1, builds, "manifest service builds once at startup")
+
+	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "kc_reload"})
+	require.NoError(t, err)
+	require.False(t, res.IsError, toolText(t, res))
+
+	assert.Equal(t, 2, builds, "kc_reload must rebuild the manifest service")
+}
+
+// Scenario 21: the startup guide tells a fresh operator what the server
+// exposes, what the safety rule is, and how to wire it into the common
+// harnesses — without reading the docs.
+func TestGuideNamesToolsAndSetup(t *testing.T) {
+	stdio := mcpserver.Guide("stdio", "")
+	for _, tool := range []string{"kc_operations", "kc_invoke", "kc_list", "kc_resolve", "kc_neighbors", "kc_edges", "kc_fetch", "kc_apply", "kc_reload"} {
+		assert.Contains(t, stdio, tool, "guide must name every tool")
+	}
+	assert.Contains(t, stdio, `"confirm": true`, "guide must state the safety rule")
+	assert.Contains(t, stdio, "claude mcp add", "guide must show the Claude Code wiring")
+	assert.Contains(t, stdio, `"mcpServers"`, "guide must show the generic mcp.json wiring")
+
+	httpGuide := mcpserver.Guide("http", "127.0.0.1:8081")
+	assert.Contains(t, httpGuide, "http://127.0.0.1:8081", "guide must name the HTTP endpoint")
+	assert.Contains(t, httpGuide, "loopback", "guide must carry the no-auth caveat")
 }
