@@ -173,7 +173,13 @@ func New(client *kcapi.Client, newManifest func() (manifest.Service, error)) (*m
 	}
 	deps := &manifestDeps{build: newManifest, svc: svc}
 
-	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: "dev"}, nil)
+	// The tool catalog is static (kc_reload swaps the spec, not the tools), so
+	// list results may be cached by clients — the 2026-07-28 ttl hint.
+	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: "dev"}, &mcp.ServerOptions{
+		SetCacheable: func(ctx context.Context, req mcp.Request, c *mcp.Cacheable) {
+			c.TTLMs = 5 * 60 * 1000
+		},
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kc_operations",
@@ -497,16 +503,22 @@ func Run(ctx context.Context, client *kcapi.Client, newManifest func() (manifest
 
 // RunHTTP serves the same server over the streamable HTTP transport on an
 // already-bound listener until ctx is cancelled or the listener fails. The
-// server is built once and shared across HTTP sessions — the tools' shared
-// state (the kcapi client, the manifest service) is built for the process,
-// not per connection. Sessions carry the SDK's default localhost DNS-rebinding
-// protection; authentication is out of scope — bind to loopback.
+// server is built once and shared — the tools' shared state (the kcapi
+// client, the manifest service) is built for the process, not per connection.
+// The transport runs in the 2026-07-28 stateless mode: no initialize
+// handshake and no sessions — every POST is self-describing via its
+// MCP-Protocol-Version header and any server instance can answer it, while
+// old-protocol clients that still initialize are served via the SDK's
+// compatibility path. GET/DELETE return 405 (POST only). The SDK's default
+// localhost DNS-rebinding protection applies; authentication is out of scope
+// — bind to loopback.
 func RunHTTP(ctx context.Context, client *kcapi.Client, newManifest func() (manifest.Service, error), ln net.Listener) error {
 	srv, err := New(client, newManifest)
 	if err != nil {
 		return err
 	}
-	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv },
+		&mcp.StreamableHTTPOptions{Stateless: true})
 	// BaseContext ties request lifetimes — the client's SSE streams included —
 	// to ctx, so cancellation ends streams at once and Shutdown never waits
 	// behind an open session.

@@ -302,7 +302,7 @@ keycloak-cli version
 
 ### `mcp`
 
-Serve the same capabilities to LLM agents as an MCP (Model Context Protocol) server — nine tools: `kc_operations`, `kc_invoke`, `kc_list`, `kc_resolve`, `kc_neighbors`, `kc_edges`, `kc_fetch`, `kc_apply`, `kc_reload` — over stdio (for locally-launched agents) or streamable HTTP (for remote ones). `kc_list` is GET-only by construction; state-changing work (`kc_invoke` non-GET verbs, every `kc_apply`) always requires an explicit `confirm: true` tool argument. On startup the server prints a quick guide to stderr: the tool list, the safety rule, and wiring snippets for Claude Code and generic `mcp.json` harnesses. See [docs/design/mcp-server.md](docs/design/mcp-server.md) for the full design.
+Serve the same capabilities to LLM agents as an MCP (Model Context Protocol) server — nine tools: `kc_operations`, `kc_invoke`, `kc_list`, `kc_resolve`, `kc_neighbors`, `kc_edges`, `kc_fetch`, `kc_apply`, `kc_reload` — over stdio (for locally-launched agents) or streamable HTTP (for remote ones). The HTTP transport implements the [2026-07-28](https://blog.modelcontextprotocol.io/posts/2026-07-28/) stateless core: no initialize handshake, no sessions — point a harness at the URL and POST. `kc_list` is GET-only by construction; state-changing work (`kc_invoke` non-GET verbs, every `kc_apply`) always requires an explicit `confirm: true` tool argument. On startup the server prints a quick guide to stderr: the tool list, the safety rule, and wiring snippets for Claude Code and generic `mcp.json` harnesses. See [docs/design/mcp-server.md](docs/design/mcp-server.md) for the full design.
 
 ```bash
 # stdio (default; stdout carries protocol frames, the startup guide and logging go to stderr)

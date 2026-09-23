@@ -24,8 +24,15 @@ adapter: every tool is one kcapi call; no business logic lives here.
   a secret on its command line.
 - One `kcapi.Client` is constructed at startup and shared by all tools; the
   manifest tools run on a `manifest.Service` built from the same flags and
-  rebuilt by `kc_reload`. The server is built once and shared across HTTP
-  sessions.
+  rebuilt by `kc_reload`. The server is built once and shared.
+- The HTTP transport runs the MCP **2026-07-28 stateless core**: no
+  `initialize` handshake and no sessions on the wire — every POST declares its
+  protocol version (header + per-request `_meta`) and any request can be
+  served by any instance, so a plain round-robin load balancer works. GET and
+  DELETE return `405` with `Allow: POST`. Old-protocol clients that still
+  handshake are served through the SDK's compatibility path. The tool catalog
+  is static, so list results advertise the cacheable ttl hint (5 min,
+  scope `public`).
 - On startup the command prints an operator quick guide to stderr: the tool
   list, the safety rule, and wiring snippets for Claude Code, generic
   `mcp.json` harnesses, and the HTTP transport (`mcpserver.Guide`).
@@ -96,12 +103,16 @@ Official SDK `github.com/modelcontextprotocol/go-sdk` v1.8.0, vendored.
 11. Stdio smoke: the built binary completes an MCP initialize handshake over
     stdin/stdout, lists the nine tools, and prints the quick guide to stderr
     while stdout stays protocol-clean.
-12. Streamable HTTP: an MCP client connects to `mcpserver.RunHTTP`'s listener,
-    completes the initialize handshake, lists the tools and calls
-    `kc_resolve` end-to-end against the fake Keycloak; ctx cancellation shuts
-    the server down cleanly despite open sessions.
+12. Streamable HTTP speaks the 2026-07-28 stateless core: a raw POST of
+    `tools/list` with the protocol-version header + `_meta` is answered
+    without any initialize handshake and without a session id; GET and DELETE
+    are refused with `405` + `Allow: POST`; an old-protocol client that still
+    initializes is served unchanged. `tools/list` advertises
+    `ttlMs: 300000` / `cacheScope: "public"`.
 13. HTTP smoke: the built binary with `mcp --transport=http` opens the
-    listener and serves the nine tools to a streamable-HTTP MCP client.
+    listener and serves the nine tools to a streamable-HTTP MCP client;
+    ctx cancellation shuts the server down cleanly despite open client
+    sessions.
 14. `kc_list` walks a GET collection into one JSON array and refuses non-GET.
 15. `kc_edges` lists the parent→child vocabulary (realms>users present).
 16. `kc_fetch` returns `{resources, relationships, failures}` for a realm.
