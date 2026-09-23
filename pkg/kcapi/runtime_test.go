@@ -10,7 +10,7 @@ import (
 )
 
 func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 	client := &RuntimeClient{spec: spec}
 

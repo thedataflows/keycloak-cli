@@ -113,7 +113,7 @@ func (p staticTokenProvider) SetEnvToken(string, string, string) error { return 
 // realSpecBytes loads the vendored Keycloak spec for resource+verb tests.
 func realSpecBytes(t *testing.T) []byte {
 	t.Helper()
-	raw, err := os.ReadFile("../../keycloak-oapi/26.6.2.spec.json")
+	raw, err := os.ReadFile("../../keycloak-oapi/26.7.4.spec.json")
 	if err != nil {
 		t.Skipf("repo spec not available: %v", err)
 	}

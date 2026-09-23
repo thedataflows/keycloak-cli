@@ -190,7 +190,9 @@ func TestInvokeCmdParsesFlags(t *testing.T) {
 			parser, err := kong.New(&cli, kong.Name("keycloak-cli"), kong.Exit(func(int) {}))
 			require.NoError(t, err)
 
-			_, err = parser.Parse(tt.args)
+			// SpecPath is required; parsing never loads it, so any value works.
+			args := append([]string{"--spec-path", "spec.json"}, tt.args...)
+			_, err = parser.Parse(args)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

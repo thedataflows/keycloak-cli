@@ -29,7 +29,7 @@ func TestServiceGenerateUsesGeneratorBoundary(t *testing.T) {
 	}}
 	service := &Service{generator: fake}
 
-	result, err := service.Generate(filepath.Join("..", "..", "..", "keycloak-oapi", "26.6.2.spec.json"), Options{Realm: "demo", WithUsers: 2})
+	result, err := service.Generate(filepath.Join("..", "..", "..", "keycloak-oapi", "26.7.4.spec.json"), Options{Realm: "demo", WithUsers: 2})
 	require.NoError(t, err)
 	assert.Equal(t, "demo", result.Summary.Realm)
 	assert.Equal(t, 2, result.Summary.ResourceCounts["user"])
@@ -37,5 +37,5 @@ func TestServiceGenerateUsesGeneratorBoundary(t *testing.T) {
 	require.Len(t, result.Relationships, 1)
 	assert.Equal(t, "demo", fake.seen.Realm)
 	assert.Equal(t, 2, fake.seen.WithUsers)
-	assert.Contains(t, fake.path, "26.6.2.spec.json")
+	assert.Contains(t, fake.path, "26.7.4.spec.json")
 }

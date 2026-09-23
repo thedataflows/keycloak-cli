@@ -128,7 +128,7 @@ func newServiceForReferencesTest(t *testing.T, baseURL string) *service {
 
 	svc, err := NewService(Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 		Timeout:  time.Second,
 	})
 	require.NoError(t, err)

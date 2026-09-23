@@ -95,7 +95,7 @@ func TestDownwardGraphExposesOrgScopedGroups(t *testing.T) {
 
 func loadOrgGroupSpec(t *testing.T) *kcapi.Spec {
 	t.Helper()
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 	return spec
 }

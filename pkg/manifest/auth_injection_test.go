@@ -61,7 +61,7 @@ func TestNewWithCustomAuth(t *testing.T) {
 	recorder := &recordingAuth{}
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 		Auth:     recorder,
 	})
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestNewWithoutAuthKeepsBackwardCompat(t *testing.T) {
 
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, svc)

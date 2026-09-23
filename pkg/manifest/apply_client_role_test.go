@@ -87,7 +87,7 @@ func TestApplyClientRoleCreatesViaClientEndpoint(t *testing.T) {
 	assert.NotContains(t, body, "clientUuid", "parent binding must be stripped from the body")
 	assert.Equal(t, "r1", body["name"])
 
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/clients/{client-uuid}/roles", http.MethodPost,

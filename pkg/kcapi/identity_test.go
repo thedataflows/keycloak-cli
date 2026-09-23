@@ -84,7 +84,7 @@ overrides:
 `)
 	require.NoError(t, os.WriteFile(path, data, 0o644))
 
-	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(dir, "26.6.2.spec.json")))
+	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(dir, "26.7.4.spec.json")))
 
 	stripped := StripVolatileFields(Resource{Type: "user", Data: map[string]interface{}{
 		"username":    "alice",
@@ -96,7 +96,7 @@ overrides:
 }
 
 func TestInstallDefaultFieldOverridesWiresDefaultsWhenFileMissing(t *testing.T) {
-	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(t.TempDir(), "26.6.2.spec.json")))
+	require.NoError(t, InstallDefaultFieldOverrides(filepath.Join(t.TempDir(), "26.7.4.spec.json")))
 
 	stripped := StripVolatileFields(Resource{Type: "identityprovider", Data: map[string]interface{}{
 		"alias": "idp-1",

@@ -19,7 +19,7 @@ import (
 // disables a kind with no error. Assert that every registered ReadPath still
 // resolves to a GET path in the embedded spec.
 func TestEveryRegistryReadPathResolvesAgainstSpec(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 
 	specGetPaths := make(map[string]struct{})
@@ -198,7 +198,7 @@ func TestApplyRelationshipOverridesRequiresWriteTemplate(t *testing.T) {
 // discovered as relationship patterns and must expose the owning client as a
 // path parameter so the (parent x client) fetch iteration can render it.
 func TestClientRoleMappingKindsDiscovered(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 
 	patterns, err := spec.DiscoverRelationshipPatterns()

@@ -4,7 +4,7 @@ Status: **shipped.** The design below was implemented on `feat/kcapi-library` (p
 `docs/superpowers/plans/2026-09-22-kcapi-library.md`); the body remains as originally written for
 historical context. Deviations from the design as actually built:
 
-- The vendored `keycloak-oapi/26.6.2.spec.json` defines **no operationIds**, so resource+verb is
+- The vendored `keycloak-oapi/${KEYCLOAK_VERSION}.spec.json` defines **no operationIds**, so resource+verb is
   the primary resolution mode everywhere (`Call{Resource, Verb}`, `invoke --resource --verb`,
   `graph` types). `Op` mode still works for specs that carry operationIds.
 - `Neighbors` traversal instantiates each edge's **collection prefix** — the spec path ending
@@ -26,7 +26,7 @@ historical context. Deviations from the design as actually built:
 
 Today the repo is a CLI whose intelligence lives in `pkg/admin` (runtime client, apply/fetch flows)
 and `pkg/catalog` (contracts, identity resolution, relationship patterns). A full Keycloak OpenAPI
-spec ships at `keycloak-oapi/26.6.2.spec.json` and is updated over time. The ponytail audit found
+spec ships at `keycloak-oapi/${KEYCLOAK_VERSION}.spec.json` and is updated over time. The ponytail audit found
 dead code (`pkg/models/models.gen.go`, `cmd/gen-rel-schema` + `generated/relationships.json`
 schema output) and duplicated logic inside `pkg/catalog` and `pkg/admin`.
 
@@ -73,7 +73,7 @@ Deleted in phase 0: `pkg/models/`, `cmd/gen-rel-schema/`, `generated/relationshi
 ```go
 client, err := kcapi.New(kcapi.Config{
     BaseURL: "https://kc.example.com",
-    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/26.6.2.spec.json"}, // Path, URL, or Raw bytes
+    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/${KEYCLOAK_VERSION}.spec.json"}, // Path, URL, or Raw bytes
     Auth:    kcapi.Credentials{ClientID: "...", ClientSecret: "..."}, // client-credentials or password grant
 })
 

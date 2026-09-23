@@ -19,7 +19,7 @@ import (
 )
 
 func TestNewRejectsMissingBaseURL(t *testing.T) {
-	service, err := manifest.NewService(manifest.Config{SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json")})
+	service, err := manifest.NewService(manifest.Config{SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json")})
 	require.Error(t, err)
 	assert.Nil(t, service)
 }
@@ -30,7 +30,7 @@ func TestNewBuildsClient(t *testing.T) {
 
 	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, service)
@@ -250,7 +250,7 @@ func newServiceForTest(t *testing.T, baseURL string) manifest.Service {
 
 	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 		Timeout:  time.Second,
 	})
 	require.NoError(t, err)

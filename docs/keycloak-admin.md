@@ -51,6 +51,7 @@ Table of Contents
     - [Edit mode](#edit-mode)
     - [Other configuration options](#other-configuration-options)
     - [Connecting to LDAP over SSL](#connecting-to-ldap-over-ssl)
+    - [Connecting to multiple LDAP servers for failover](#connecting-to-multiple-ldap-servers-for-failover)
     - [Synchronizing LDAP users to Keycloak](#synchronizing-ldap-users-to-keycloak)
     - [LDAP mappers](#_ldap_mappers)
     - [Password hashing](#_ldap_password_hashing)
@@ -86,6 +87,7 @@ Table of Contents
     - [Setting a password for a user](#proc-setting-password-user_server_administration_guide)
     - [Requesting a user reset a password](#requesting-a-user-reset-a-password)
     - [Creating an OTP](#proc_creating-otp_server_administration_guide)
+    - [Verifying a user’s email address](#proc-verify-user-email_server_administration_guide)
   - [Allowing users to self-register](#con-user-registration_server_administration_guide)
     
     - [Enabling user registration](#proc-enabling-user-registration_server_administration_guide)
@@ -104,6 +106,7 @@ Table of Contents
   - [Searching for a user](#proc-searching-user_server_administration_guide)
     
     - [Default search](#default-search)
+    - [Search by fields](#search-by-fields)
     - [Attribute search](#attribute-search)
   - [Deleting a user](#proc-deleting-user_server_administration_guide)
   - [Enabling account deletion by users](#proc-allow-user-to-delete-account_server_administration_guide)
@@ -191,9 +194,8 @@ Table of Contents
     
     - [Passkey Authentication with Conditional UI or autofill](#_passkeys-conditional-ui)
     - [Passkeys Authentication with Modal UI](#passkeys-authentication-with-modal-ui)
+    - [Passkey Mediation](#_passkeys-mediation)
     - [Setup](#setup-4)
-  - [Recovery Codes](#_recovery-codes)
-    
     - [Check Recovery Codes required action is enabled](#check-recovery-codes-required-action-is-enabled)
     - [Configure the Recovery Codes required action](#configure-the-recovery-codes-required-action)
     - [Adding Recovery Codes to the browser flow](#adding-recovery-codes-to-the-browser-flow)
@@ -249,6 +251,7 @@ Table of Contents
     - [Post login flow examples](#post-login-flow-examples)
     - [Requesting additional authentication steps for the dedicated clients](#requesting-additional-authentication-steps-for-the-dedicated-clients)
   - [Retrieving external IDP tokens](#retrieving-external-idp-tokens)
+  - [Link existing user to the identity provider](#link-existing-user-to-the-identity-provider)
   - [Identity broker logout](#identity-broker-logout)
 - [SSO protocols](#sso-protocols)
   
@@ -272,11 +275,13 @@ Table of Contents
     
     - [Global roles](#global-roles)
     - [Realm specific roles](#realm-specific-roles)
+    - [Granting admin roles to users](#granting-admin-roles-to-users)
+    - [Multi-realm administration considerations](#multi-realm-administration-considerations)
   - [Dedicated realm admin consoles](#_per_realm_admin_permissions)
   - [Delegating realm administration using permissions](#_fine_grained_permissions)
     
     - [Understanding the different types of realm administrators](#_understanding_different_types_realm_admins_)
-    - [Understanding the Realm Resource Types](#understanding-the-realm-resource-types)
+    - [Understanding the Realm Resource Types](#_understanding_realm_resource_types)
     - [Understanding the scopes of access](#understanding-the-scopes-of-access)
     - [Enabling admin permissions to a realm](#enabling-admin-permissions-to-a-realm)
     - [Managing Permissions](#_managing-permissions)
@@ -284,6 +289,7 @@ Table of Contents
     - [Evaluating Permissions](#_evaluating-permissions)
     - [Accessing a Realm administration console as a Realm Administrator](#_realm_access_control)
     - [Understanding some common use cases](#understanding-some-common-use-cases)
+    - [Managing permissions using the Admin REST API](#_managing-permissions-rest-api)
     - [Performance considerations](#performance-considerations)
   - [Fine grained admin permissions V1](#fine-grained-admin-permissions-v1)
     
@@ -296,9 +302,15 @@ Table of Contents
   - [Managing an organization](#managing-an-organization)
     
     - [Creating an organization](#creating-an-organization)
-    - [Understanding organization domains](#understanding-organization-domains)
     - [Disabling an organization](#disabling-an-organization)
     - [Deleting an organization](#deleting-an-organization)
+  - [Managing organization domains](#managing-organization-domains_server_administration_guide)
+    
+    - [Assigning domains](#assigning-domains)
+    - [Domain types](#domain-types)
+    - [Mapping email addresses to organizations](#mapping-email-addresses-to-organizations)
+    - [Validation rules](#validation-rules)
+    - [Considerations](#considerations)
   - [Managing attributes](#_managing_attributes_)
   - [Managing members](#_managing_members_)
     
@@ -317,6 +329,7 @@ Table of Contents
     - [Understanding group paths](#understanding-group-paths)
     - [Mapping groups to tokens](#mapping-groups-to-tokens)
     - [Managing group attributes](#managing-group-attributes)
+    - [Assigning roles to groups](#assigning-roles-to-groups)
     - [Important distinctions](#important-distinctions)
     - [Deleting groups](#deleting-groups)
   - [Managing identity providers](#_managing_identity_provider_)
@@ -357,6 +370,13 @@ Table of Contents
     - [Configuring the task execution timeout](#configuring-the-task-execution-timeout)
     - [Performance considerations](#performance-considerations-2)
   - [Handling failures](#_handling_failures_)
+  - [Listening to workflow provider events](#_workflow_provider_events_)
+    
+    - [Common event fields](#common-event-fields)
+    - [Event types](#_workflow_provider_event_types_)
+    - [Event lifecycle](#event-lifecycle)
+    - [Implementing a listener](#implementing-a-listener)
+    - [Use cases](#use-cases)
   - [Troubleshooting workflows](#_troubleshooting_workflows_)
     
     - [Enabling workflow debug logging](#enabling-workflow-debug-logging)
@@ -367,6 +387,76 @@ Table of Contents
     - [User Onboarding](#user-onboarding)
     - [User Offboarding](#user-offboarding)
     - [Tracking user activity and taking actions on inactivity](#tracking-user-activity-and-taking-actions-on-inactivity)
+- [Managing users and groups through SCIM](#_managing_scim)
+  
+  - [Enabling SCIM for a realm](#_enabling_scim_)
+    
+    - [Using the Admin Console](#using-the-admin-console-2)
+    - [Obtaining the SCIM API base URL](#obtaining-the-scim-api-base-url)
+  - [Accessing the SCIM endpoints](#_scim_accessing_endpoints_)
+    
+    - [Setting up a service account client](#setting-up-a-service-account-client)
+    - [Assigning permissions](#assigning-permissions)
+    - [Configuring the token audience](#configuring-the-token-audience)
+    - [Obtaining an access token](#obtaining-an-access-token)
+  - [Protection of administrative resources](#_scim_admin_resource_protection_)
+    
+    - [Why this protection exists](#why-this-protection-exists)
+    - [Protected admin users](#protected-admin-users)
+    - [Protected admin groups](#protected-admin-groups)
+  - [Understanding the SCIM endpoints](#_understanding_scim_endpoints_)
+    
+    - [Available endpoints](#available-endpoints)
+    - [HTTP methods](#http-methods)
+    - [Query parameters](#query-parameters)
+    - [Resource metadata](#resource-metadata)
+  - [Accessing the SCIM service provider configuration](#_accessing_scim_service_provider_config_)
+  - [Managing users](#_scim_managing_users_)
+    
+    - [Core user attributes](#core-user-attributes)
+    - [Creating a user](#creating-a-user)
+    - [Retrieving a user](#retrieving-a-user)
+    - [Listing users](#listing-users)
+    - [Selecting attributes](#selecting-attributes)
+    - [Updating a user](#updating-a-user)
+    - [Partially updating a user](#partially-updating-a-user)
+    - [Managing group membership](#managing-group-membership)
+    - [Deleting a user](#deleting-a-user)
+  - [Managing groups](#_scim_managing_groups_)
+    
+    - [Group attributes](#group-attributes)
+    - [Creating a group](#creating-a-group)
+    - [Retrieving a group](#retrieving-a-group)
+    - [Listing groups](#listing-groups)
+    - [Updating a group](#updating-a-group)
+    - [Partially updating a group](#partially-updating-a-group)
+    - [Managing group members](#managing-group-members)
+    - [Deleting a group](#deleting-a-group)
+  - [Filtering resources](#_scim_filtering_resources)
+    
+    - [Using filters](#using-filters)
+    - [Comparison operators](#comparison-operators)
+    - [Logical operators](#logical-operators)
+    - [Filtering by sub-attributes](#filtering-by-sub-attributes)
+    - [Value path filters](#value-path-filters)
+    - [Filtering by group membership](#filtering-by-group-membership)
+    - [Filtering by extension attributes](#filtering-by-extension-attributes)
+    - [Using POST-based search](#using-post-based-search)
+    - [Pagination](#pagination)
+    - [Error responses](#error-responses)
+  - [Mapping user attributes to SCIM schemas](#_scim_mapping_attributes_)
+    
+    - [Default attribute mappings](#default-attribute-mappings)
+    - [Adding custom attribute mappings](#adding-custom-attribute-mappings)
+    - [Mapping additional name attributes](#mapping-additional-name-attributes)
+    - [Mapping the externalId attribute](#mapping-the-externalid-attribute)
+    - [Schema discovery](#schema-discovery)
+  - [Managing schema extensions](#_scim_managing_schema_extensions_)
+    
+    - [Enterprise User extension](#enterprise-user-extension)
+    - [Custom schema extensions](#custom-schema-extensions)
+    - [Keycloak realm extension](#keycloak-realm-extension)
+    - [Schema discovery](#schema-discovery-2)
 - [Managing OpenID Connect and SAML Clients](#assembly-managing-clients_server_administration_guide)
   
   - [Managing OpenID Connect clients](#_oidc_clients)
@@ -407,47 +497,70 @@ Table of Contents
     - [Client scopes permissions](#client-scopes-permissions)
     - [Realm default client scopes](#realm-default-client-scopes)
     - [Downscoping](#_downscoping)
+    - [Parameterized client scopes](#_parameterized_client_scopes)
     - [Scopes explained](#scopes-explained)
   - [Client Policies](#_client_policies)
     
-    - [Use-cases](#use-cases)
+    - [Use-cases](#use-cases-2)
     - [Protocol](#protocol)
     - [Architecture](#architecture)
     - [Configuration](#configuration)
+    - [Conditions evaluation](#_client_policy_conditions_evaluation)
+    - [Troubleshooting](#troubleshooting-2)
     - [Backward Compatibility](#backward-compatibility)
     - [Client Secret Rotation Example](#client-secret-rotation-example)
     - [Securing Client URIs](#securing-client-uris)
 - [Configuring Keycloak as a Verifiable Credential Issuer](#_oid4vci)
   
-  - [Introduction](#introduction)
-  - [What are Verifiable Credentials (VCs)?](#what-are-verifiable-credentials-vcs)
-  - [What is OID4VCI?](#what-is-oid4vci)
-  - [Scope of This Chapter](#scope-of-this-chapter)
+  - [What are Verifiable Credentials?](#what-are-verifiable-credentials)
+    
+    - [Verifiable Credential Formats](#verifiable-credential-formats)
+  - [The Issuer-Holder-Verifier Model](#the-issuer-holder-verifier-model)
+  - [Why Use OpenID4VCI](#why-use-openid4vci)
+  - [Real-World Applications](#real-world-applications)
+  - [How Credential Issuance Works: Two Core Flows](#how-credential-issuance-works-two-core-flows)
+    
+    - [Authorization Code Flow](#authorization-code-flow)
+    - [Pre-Authorized Code Flow](#pre-authorized-code-flow)
+  - [What This Chapter Covers](#what-this-chapter-covers)
   - [Prerequisites](#prerequisites)
-  - [Keycloak Instance](#keycloak-instance)
   - [Configuring Credential Issuance in Keycloak](#configuring-credential-issuance-in-keycloak)
   - [Authentication](#authentication)
   - [Configuration Steps](#configuration-steps)
-  - [Creating a Realm](#creating-a-realm)
+  - [Configuring OpenID4VCI at the Realm Level](#configuring-openid4vci-at-the-realm-level)
+    
+    - [Creating a Realm](#creating-a-realm)
+    - [Key Management Configuration](#key-management-configuration)
+    - [Configuring Realm-Level OID4VCI Attributes](#configuring-realm-level-oid4vci-attributes)
   - [Creating a User Account](#creating-a-user-account)
-  - [Key Management Configuration](#key-management-configuration)
+  - [Create Client Scopes with Mappers](#_oid4vci_client_scope)
     
-    - [Configuring Key Providers](#configuring-key-providers)
-  - [Registering Realm Attributes](#registering-realm-attributes)
+    - [Creating a Client Scope via the Admin Console](#creating-a-client-scope-via-the-admin-console)
+    - [Adding Protocol Mappers](#adding-protocol-mappers)
+  - [Create and Configure the Client](#create-and-configure-the-client)
     
-    - [Define Realm Attributes](#define-realm-attributes)
-    - [Attribute Breakdown](#attribute-breakdown)
-    - [Import Realm Attributes](#import-realm-attributes)
-    - [Time-claim correlation mitigation](#time-claim-correlation-mitigation)
-  - [Create Client Scopes with Mappers](#create-client-scopes-with-mappers)
-    
-    - [Define a Client Scope with a Mapper](#define-a-client-scope-with-a-mapper)
-    - [Attribute Breakdown - ClientScope](#client-scope-attribute-breakdown)
-    - [Attribute Breakdown - ProtocolMappers](#attribute-breakdown-protocolmappers)
-    - [Import the Client Scope](#import-the-client-scope)
-  - [Create the Client](#create-the-client)
-  - [Verify the Configuration](#verify-the-configuration)
+    - [Enabling OID4VCI for the Client](#enabling-oid4vci-for-the-client)
+    - [Assigning Credential Scopes](#assigning-credential-scopes)
+    - [Creating a Client via the REST API](#creating-a-client-via-the-rest-api)
+  - [Verifying the Configuration](#verifying-the-configuration)
   - [Conclusion](#conclusion)
+  - [Requesting Credentials](#_oid4vci_credential_request)
+    
+    - [1. Discovering Issuer Metadata](#1-discovering-issuer-metadata)
+    - [2. OIDC Authorization Request](#2-oidc-authorization-request)
+    - [3. OIDC Token Request](#3-oidc-token-request)
+    - [4. Requesting the Credential](#4-requesting-the-credential)
+    - [Requesting an SD-JWT Credential](#requesting-an-sd-jwt-credential)
+  - [Proof Types and Key Binding in OID4VCI](#_oid4vci_proofs)
+    
+    - [Supported Proof Types](#supported-proof-types)
+    - [Configuring Trusted Attester Keys](#configuring-trusted-attester-keys)
+    - [Creating and Sending JWT Proofs](#creating-and-sending-jwt-proofs)
+    - [Using Attestation Proofs](#using-attestation-proofs)
+    - [Key Binding in Credentials](#key-binding-in-credentials)
+    - [Complete Example: Credential Request with JWT Proof](#complete-example-credential-request-with-jwt-proof)
+    - [Client Scope Configuration for Proof Types](#client-scope-configuration-for-proof-types)
+    - [Related Configuration](#related-configuration)
 - [Using a vault to obtain secrets](#_vault-administration)
   
   - [Key resolvers](#_vault-key-resolvers)
@@ -527,22 +640,22 @@ Table of Contents
 
 - [Getting Started](https://www.keycloak.org/guides#getting-started)
 - [Securing applications](https://www.keycloak.org/guides#securing-apps)
-- [Server Developer](https://www.keycloak.org/docs/26.6.3/server_development/)
-- [Authorization Services](https://www.keycloak.org/docs/26.6.3/authorization_services/)
-- [Upgrading](https://www.keycloak.org/docs/26.6.3/upgrading/)
-- [Release Notes](https://www.keycloak.org/docs/26.6.3/release_notes/)
+- [Server Developer](https://www.keycloak.org/docs/26.7.4/server_development/)
+- [Authorization Services](https://www.keycloak.org/docs/26.7.4/authorization_services/)
+- [Upgrading](https://www.keycloak.org/docs/26.7.4/upgrading/)
+- [Release Notes](https://www.keycloak.org/docs/26.7.4/release_notes/)
 
-Version **26.6.3**
+Version **26.7.4**
 
 ## [](#keycloak-features-and-concepts)Keycloak features and concepts
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak is a single sign on solution for web apps and RESTful web services. The goal of Keycloak is to make security simple so that it is easy for application developers to secure the apps and services they have deployed in their organization. Security features that developers normally have to write for themselves are provided out of the box and are easily tailorable to the individual requirements of your organization. Keycloak provides customizable user interfaces for login, registration, administration, and account management. You can also use Keycloak as an integration platform to hook it into existing LDAP and Active Directory servers. You can also delegate authentication to third party identity providers like Facebook and Google.
 
 ### [](#features)Features
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/features.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Ffeatures.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Ffeatures.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/features.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Ffeatures.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Ffeatures.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak provides the following features:
 
@@ -569,13 +682,13 @@ Keycloak provides the following features:
 
 ### [](#basic-keycloak-operations)Basic Keycloak operations
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/how.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Fhow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Fhow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/how.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Fhow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Fhow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
-Keycloak is a separate server that you manage on your network. Applications are configured to point to and be secured by this server. Keycloak uses open protocol standards like [OpenID Connect](https://openid.net/developers/how-connect-works/) or [SAML 2.0](https://saml.xml.org/saml-specifications) to secure your applications. Browser applications redirect a user’s browser from the application to the Keycloak authentication server where they enter their credentials. This redirection is important because users are completely isolated from applications and applications never see a user’s credentials. Applications instead are given an identity token or assertion that is cryptographically signed. These tokens can have identity information like username, address, email, and other profile data. They can also hold permission data so that applications can make authorization decisions. These tokens can also be used to make secure invocations on REST-based services.
+Keycloak is a separate server that you manage on your network. Applications are configured to point to and be secured by this server. Keycloak uses open protocol standards like [OpenID Connect](https://openid.net/developers/how-connect-works/) or [SAML 2.0](https://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html) to secure your applications. Browser applications redirect a user’s browser from the application to the Keycloak authentication server where they enter their credentials. This redirection is important because users are completely isolated from applications and applications never see a user’s credentials. Applications instead are given an identity token or assertion that is cryptographically signed. These tokens can have identity information like username, address, email, and other profile data. They can also hold permission data so that applications can make authorization decisions. These tokens can also be used to make secure invocations on REST-based services.
 
 ### [](#core-concepts-and-terms)Core concepts and terms
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/concepts.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Fconcepts.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Fconcepts.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/overview/concepts.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foverview%2Fconcepts.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foverview%2Fconcepts.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Consider these core concepts and terms before attempting to use Keycloak to secure your web applications and REST services.
 
@@ -697,7 +810,7 @@ Every screen provided by Keycloak is backed by a theme. Themes define HTML templ
 
 ## [](#creating-first-admin_server_administration_guide)Creating the first administrator
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-creating-first-admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-creating-first-admin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-creating-first-admin.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-creating-first-admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-creating-first-admin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-creating-first-admin.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 After installing Keycloak, you need an administrator account that can act as a *super* admin with full permissions to manage Keycloak. With this account, you can log in to the Keycloak Admin Console where you create realms and users and register applications that are secured by Keycloak.
 
@@ -729,13 +842,13 @@ bin/kc.[sh|bat] start
 
 ## [](#_configuring-realms)Configuring realms
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Once you have an administrative account for the Admin Console, you can configure realms. A realm is a space where you manage objects, including users, applications, roles, and groups. A user belongs to and logs into a realm. One Keycloak deployment can define, store, and manage as many realms as there is space for in the database.
 
 ### [](#using-the-admin-console)Using the Admin Console
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-using-admin-console.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-using-admin-console.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-using-admin-console.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-using-admin-console.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-using-admin-console.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-using-admin-console.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You configure realms and perform most administrative tasks in the Keycloak Admin Console.
 
@@ -779,7 +892,7 @@ Export files from the Admin Console are not suitable for backups or data transfe
 
 ### [](#the-master-realm)The master realm
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/master.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fmaster.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fmaster.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/master.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fmaster.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fmaster.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 In the Admin Console, two types of realms exist:
 
@@ -798,7 +911,7 @@ Additional resources
 
 ### [](#proc-creating-a-realm_server_administration_guide)Creating a realm
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-creating-a-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-creating-a-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-creating-a-realm.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-creating-a-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-creating-a-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-creating-a-realm.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You create a realm to provide a management space where you can create users and give them permissions to use applications. At first login, you are typically in the *master* realm, the top-level realm from which you create other realms.
 
@@ -818,7 +931,7 @@ Procedure
 
 ### [](#_ssl_modes)Configuring SSL for a realm
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/ssl.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fssl.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fssl.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/ssl.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fssl.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fssl.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Each realm has an associated SSL Mode, which defines the SSL/HTTPS requirements for interacting with the realm. Browsers and applications that interact with the realm honor the SSL/HTTPS requirements defined by the SSL Mode or they cannot interact with the server.
 
@@ -838,7 +951,7 @@ Procedure
 
 ### [](#_email)Configuring email for a realm
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/email.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Femail.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Femail.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/email.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Femail.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Femail.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak sends emails to users to verify their email addresses, when they forget their passwords, or when an administrator needs to receive notifications about a server event. To enable Keycloak to send emails, you provide Keycloak with your SMTP server settings.
 
@@ -993,7 +1106,7 @@ XOAUTH2 is not supported by the AWS-SMTP service. The AWS-service requires the u
 
 ### [](#_themes)Configuring themes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/themes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fthemes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fthemes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/themes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fthemes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fthemes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 For a given realm, you can change the appearance of any UI in Keycloak by using themes.
 
@@ -1029,7 +1142,7 @@ Additional resources
 
 ### [](#enabling-internationalization)Enabling internationalization
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-configuring-internationalization.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-configuring-internationalization.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-configuring-internationalization.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/proc-configuring-internationalization.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fproc-configuring-internationalization.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fproc-configuring-internationalization.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Every UI screen is internationalized in Keycloak. The default language is English, but you can choose which locales you want to support and what the default locale will be.
 
@@ -1048,7 +1161,7 @@ Procedure
 
 Additional resources
 
-- The [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) explains how you can offer additional languages. All internationalized texts which are provided by the theme can be overwritten by realm-specific texts on the **Localization** tab.
+- The [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) explains how you can offer additional languages. All internationalized texts which are provided by the theme can be overwritten by realm-specific texts on the **Localization** tab.
 
 #### [](#_user_locale_selection)User locale selection
 
@@ -1070,13 +1183,13 @@ If you want to change the logic for selecting the locale, you have an option to 
 
 ### [](#controlling-login-options)Controlling login options
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes several built-in login page features.
 
 #### [](#enabling-forgot-password)Enabling forgot password
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/forgot-password.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fforgot-password.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fforgot-password.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/forgot-password.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fforgot-password.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fforgot-password.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If you enable `Forgot password`, users can reset their login credentials if they forget their passwords or lose their OTP generator.
 
@@ -1102,7 +1215,7 @@ Procedure
    
    ![Forgot Password Page](./images/forgot-password-page.png)
 
-The text sent in the email is configurable. See [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information.
+The text sent in the email is configurable. See [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information.
 
 When users click the email link, Keycloak asks them to update their password, and if they have set up an OTP generator, Keycloak asks them to reconfigure the OTP generator. For security reasons, the flow forces federated users to login again after the reset credentials and keeps internal database users logged in if the same authentication session (same browser) is used. Depending on the security requirements of your organization, you can change the default behavior.
 
@@ -1135,7 +1248,7 @@ Procedure
 
 #### [](#enabling-remember-me)Enabling Remember Me
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/remember-me.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fremember-me.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fremember-me.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/remember-me.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fremember-me.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fremember-me.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A logged-in user closing their browser destroys their session, and that user must log in again. You can set Keycloak to keep the user’s login session open if that user clicks the *Remember Me* checkbox upon login. This action turns the login cookie from a session-only cookie to a persistence cookie.
 
@@ -1161,7 +1274,7 @@ The sessions will not be invalidated immediately when the switch is disabled, bu
 
 #### [](#_mapping-acr-to-loa-realm)ACR to Level of Authentication (LoA) Mapping
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/acr-to-loa-mapping.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Facr-to-loa-mapping.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Facr-to-loa-mapping.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/acr-to-loa-mapping.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Facr-to-loa-mapping.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Facr-to-loa-mapping.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 In the general settings of a realm, you can define which `Authentication Context Class Reference (ACR)` value is mapped to which `Level of Authentication (LoA)`. The ACR can be any value, whereas the LoA must be numeric. The acr claim can be requested in the `claims` or `acr_values` parameter sent in the OIDC request and it is also included in the access token and ID token. The mapped number is used in the authentication flow conditions.
 
@@ -1181,7 +1294,7 @@ ACR/URI to LoA mapping
 
 #### [](#_update-email-workflow)Update Email Workflow (UpdateEmail)
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/update-email-workflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fupdate-email-workflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fupdate-email-workflow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/login-settings/update-email-workflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Flogin-settings%2Fupdate-email-workflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Flogin-settings%2Fupdate-email-workflow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 With this workflow, users will have to use an `UPDATE_EMAIL` action to change their own email address.
 
@@ -1248,7 +1361,7 @@ All messages displayed in this workflow, including admin console messages, verif
 
 ### [](#realm_keys)Configuring realm keys
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/keys.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fkeys.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fkeys.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/realms/keys.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Frealms%2Fkeys.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Frealms%2Fkeys.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The authentication protocols that are used by Keycloak require cryptographic signatures and sometimes encryption. Keycloak uses asymmetric key pairs, a private and public key, to accomplish this.
 
@@ -1369,7 +1482,13 @@ Procedure
 05. Click **Add provider** and select **java-keystore**.
 06. Enter a number in the **Priority** field. This number determines if the new key pair becomes the active key pair.
 07. Enter the desired **Algorithm**. Note that the algorithm should match the key type (for example `RS256` requires a RSA private key, `ES256` a EC private key or `AES` an AES secret key).
-08. Enter a value for **Keystore**. Path to the keystore file.
+08. Enter a value for **Keystore**. Path to the keystore file. The keystore should be located inside a folder named like the realm name inside the main keystores directory (by default `data` directory under Keycloak’s installation folder). For a realm called `test` the keystore file should located inside `${kc.home.dir}/data/test`. This way the keystore file is isolated between realms. If the path is relative, the file will be located from that folder.
+    
+    The keystores directory can be customized using the startup option `spi-keys--java-keystore--keystores-path`. For example:
+    
+    ```
+    kc.[sh|bat] start --spi-keys--java-keystore--keystores-path /path/to/keystores
+    ```
 09. Enter the **Keystore Password**. The option can refer a value from an external [vault](#_vault-administration).
 10. Enter a value for **Keystore Type** (`JKS`, `PKCS12` or `BCFKS`).
 11. Enter a value for the **Key Alias** to load from the keystore.
@@ -1425,7 +1544,7 @@ REST and confidential clients must set **Admin URL** so Keycloak can send client
 
 ## [](#_user-storage-federation)Using external storage
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Organizations can have databases containing information, passwords, and other credentials. Typically, you cannot migrate existing data storage to a Keycloak deployment so Keycloak can federate existing external user databases. Keycloak supports LDAP and Active Directory, but you can also code extensions for any custom user database by using the Keycloak User Storage SPI.
 
@@ -1460,7 +1579,7 @@ When a Storage Provider lookup fails, Keycloak does not fail over because user d
 
 ### [](#_ldap)Lightweight Directory Access Protocol (LDAP) and Active Directory
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/ldap.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fldap.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fldap.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/ldap.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fldap.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fldap.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes an LDAP/AD provider. You can federate multiple different LDAP servers in one Keycloak realm and map LDAP user attributes into the Keycloak common user model.
 
@@ -1558,6 +1677,35 @@ Hover the mouse pointer over the tooltips in the Admin Console to see more detai
 When you configure a secure connection URL to your LDAP store (for example,`ldaps://myhost.com:636`), Keycloak uses SSL to communicate with the LDAP server. Configure a truststore on the Keycloak server side so that Keycloak can trust the SSL connection to LDAP - see [Configuring a Truststore](https://www.keycloak.org/server/keycloak-truststore) guide.
 
 The `Use Truststore SPI` configuration property is deprecated. It should normally be left as `Always`.
+
+#### [](#connecting-to-multiple-ldap-servers-for-failover)Connecting to multiple LDAP servers for failover
+
+You can configure multiple LDAP server URLs for failover by entering them as a **space-separated** list in the **Connection URL** field. For example:
+
+```
+ldap://server1:389 ldap://server2:389
+```
+
+or for SSL connections:
+
+```
+ldaps://server1:636 ldaps://server2:636
+```
+
+When multiple URLs are configured, the underlying Java JNDI provider tries each URL in order from left to right. If a connection to the first URL fails, it tries the next URL, and so on until a connection succeeds. This is a sequential failover mechanism, not load balancing — the first reachable server is always used.
+
+Failover occurs at connection creation time. If a server becomes unreachable after a connection has been established, the current operation may fail, but subsequent operations create new connections and go through the failover list again.
+
+All configured LDAP servers must be **replicas of the same directory** (for example, Active Directory domain controllers in the same domain, or replicated OpenLDAP instances). Each LDAP entry must have the same unique identifier (such as `entryUUID` or `objectGUID`) across all servers. If the servers are independent instances loaded with the same data, each server generates its own unique identifiers, which will cause synchronization and authentication failures when failover switches to a different server.
+
+URLs must be separated by **spaces only**. Do not use commas as separators:
+
+- `ldap://server1,ldap://server2` results in a connection error.
+- `ldap://server1, ldap://server2` (comma followed by a space) silently discards the first URL due to the trailing comma, leaving you with no failover and no warning.
+
+The **Connection Timeout** setting controls how long Keycloak waits for a TCP connection to each URL before trying the next one. The default is 5000 milliseconds (5 seconds). If a server is unreachable (for example, due to a network partition or a firewall silently dropping packets), the full timeout is spent on each unreachable URL before failover proceeds. Adjust this value based on your network environment to balance between fast failover and tolerance for slow connections.
+
+If a server is cleanly stopped (the port is closed), the connection is refused immediately and failover to the next URL occurs with no noticeable delay.
 
 #### [](#synchronizing-ldap-users-to-keycloak)Synchronizing LDAP users to Keycloak
 
@@ -1725,7 +1873,7 @@ If no more messages appear for connection pooling even after server restart, it 
 
 ### [](#_sssd)SSSD and FreeIPA Identity Management integration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/sssd.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fsssd.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fsssd.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/sssd.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fsssd.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fsssd.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes the [System Security Services Daemon (SSSD)](https://fedoraproject.org/wiki/Features/SSSD) plugin. SSSD is part of the Fedora and Red Hat Enterprise Linux (RHEL), and it provides access to multiple identities and authentication providers. SSSD also provides benefits such as failover and offline support. For more information, see [the Red Hat Enterprise Linux Identity Management documentation](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/system-level_authentication_guide/sssd).
 
@@ -1873,19 +2021,19 @@ You can now authenticate against Keycloak using a FreeIPA/IdM user and credentia
 
 ### [](#custom-providers)Custom providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/custom.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fcustom.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fcustom.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/user-federation/custom.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fuser-federation%2Fcustom.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fuser-federation%2Fcustom.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
-Keycloak does have a Service Provider Interface (SPI) for User Storage Federation to develop custom providers. You can find documentation on developing customer providers in the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/).
+Keycloak does have a Service Provider Interface (SPI) for User Storage Federation to develop custom providers. You can find documentation on developing customer providers in the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/).
 
 ## [](#assembly-managing-users_server_administration_guide)Managing users
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-users.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-users.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-users.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-users.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-users.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-users.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 From the Admin Console, you have a wide range of actions you can perform to manage users.
 
 ### [](#proc-creating-user_server_administration_guide)Creating users
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-creating-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-user.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-creating-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-user.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You create users in the realm where you intend to have applications needed by those users. Avoid creating users in the master realm, which is only intended for creating other realms.
 
@@ -1904,7 +2052,7 @@ Procedure
 
 ### [](#user-profile)Managing user attributes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/user-profile.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fuser-profile.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fuser-profile.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/user-profile.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fuser-profile.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fuser-profile.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 In Keycloak a user is associated with a set of attributes. These attributes are used to better describe and identify users within Keycloak as well as to pass over additional information about them to applications.
 
@@ -2468,7 +2616,7 @@ Options provided by custom validator
 
 You can enable additional client-side behavior by setting annotations with the `kc` prefix. These annotations are going to translate into an HTML attribute in the corresponding element of an attribute, prefixed with `data-`, and a script with the same name will be loaded to the dynamic pages so that you can select elements from the DOM based on the custom `data-` attribute and decorate them accordingly by modifying their DOM representation.
 
-For instance, if you add a `kcMyCustomValidation` annotation to an attribute, the HTML attribute `data-kcMyCustomValidation` is added to the corresponding HTML element for the attribute, and a JavaScript module is loaded from your custom theme at `<THEME TYPE>/resources/js/kcMyCustomValidation.js`. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information about how to deploy a custom JavaScript module to your theme.
+For instance, if you add a `kcMyCustomValidation` annotation to an attribute, the HTML attribute `data-kcMyCustomValidation` is added to the corresponding HTML element for the attribute, and a JavaScript module is loaded from your custom theme at `<THEME TYPE>/resources/js/kcMyCustomValidation.js`. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information about how to deploy a custom JavaScript module to your theme.
 
 The JavaScript module can run any code to customize the DOM and the elements rendered for each attribute. For that, you can use the `userProfile.js` module to register an annotation descriptor for your custom annotation as follows:
 
@@ -2754,7 +2902,7 @@ For that, you can use a placeholder to resolve messages keys such as `${myAttrib
 
 ### [](#ref-user-credentials_server_administration_guide)Defining user credentials
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/ref-user-credentials.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fref-user-credentials.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fref-user-credentials.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/ref-user-credentials.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fref-user-credentials.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fref-user-credentials.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can manage credentials of a user in the **Credentials** tab.
 
@@ -2786,7 +2934,7 @@ You can delete the credentials of a user in the event a user loses an OTP device
 
 #### [](#proc-setting-password-user_server_administration_guide)Setting a password for a user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-password-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-password-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-password-user.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-password-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-password-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-password-user.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If a user does not have a password, or if the password has been deleted, the **Set Password** section is displayed.
 
@@ -2818,7 +2966,7 @@ Procedure
 
 #### [](#proc_creating-otp_server_administration_guide)Creating an OTP
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-creating-otp.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-otp.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-otp.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-creating-otp.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-otp.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-creating-otp.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If OTP is conditional in your realm, the user must navigate to Keycloak Account Console to reconfigure a new OTP generator. If OTP is required, then the user must reconfigure a new OTP generator when logging in.
 
@@ -2837,9 +2985,35 @@ Procedure
 5. Set **Reset Actions** to **Configure OTP**.
 6. Click **Send Email**. The sent email contains a link that directs the user to the **OTP setup page**.
 
+#### [](#proc-verify-user-email_server_administration_guide)Verifying a user’s email address
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-verify-user-email.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-verify-user-email.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-verify-user-email.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+Keycloak can send a verification email to a user to confirm that the email address they registered is valid and accessible. This is useful when onboarding new users or when an administrator wants to ensure a user’s email address is correct.
+
+Prerequisites
+
+- Email is configured for the realm. See [Configuring email for a realm](#_email).
+
+Procedure
+
+1. Click **Users** in the menu.
+2. Select the user whose email address you want to verify.
+3. Click the **Credentials** tab.
+4. Click **Credential Reset** in the top right corner.
+5. In the **Credentials Reset** dialog, click the **Reset action** dropdown and select **Verify Email**.
+   
+   ![Credentials Reset dialog with Verify Email action selected](./images/user-verify-email-credentials-reset.png)
+6. Optional: Set the expiry duration in the **Expires In** field.
+7. Click **Send Email**.
+   
+   Keycloak sends an email to the user containing a link. The user must click the link to confirm ownership of the email address.
+
+If the user does not receive the verification email, check that the realm’s SMTP settings are correctly configured and that the user’s email address is valid.
+
 ### [](#con-user-registration_server_administration_guide)Allowing users to self-register
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-user-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-registration.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-user-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-registration.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can use Keycloak as a third-party authorization server to manage application users, including users who self-register. If you enable self-registration, the login page displays a registration link so that user can create an account.
 
@@ -2858,13 +3032,25 @@ Even when self-registrations is disabled, new users can be still added to Keyclo
 
 Also users coming from the [3rd-party user storage](#_user-storage-federation) (for example LDAP) are automatically available in Keycloak when the particular user storage is enabled
 
+Clarification on verify email
+
+When self-registrations is enabled together with **Verify email** realm switch, then password will not be set by default on the registration form. User will need first to verify his email and he will be able to setup his password on the subsequent screen. This is recommended for security reason, so that self-registered user can set his password or other credentials after verifying email. Note it is also recommended to enable [Forget password](#enabling-forgot-password), so that if user fails to verify his email during self-registration, he can do it later by following **Forget password** flow without being stuck.
+
+If you still prefer to keep password on the initial registration form and make email verification to be done once user self-registers with his password, you can setup the configuration option on the [Registration authentication flow](#_authentication-flows). It can be done in the admin console by following tab **Authentication** → flow **registration** (or other flow, which you bind as registration flow) → Settings of **Password validation** → Enable **Always set password on register form**.
+
+Note that this option is deprecated and exists mostly for the backwards compatibility. It may be removed in the future.
+
+Registration validation configuration
+
+![registration always set password on register form config](./images/registration-always-set-password-on-register-form-config.png)
+
 Additional resources
 
-- For more information on customizing user registration, see the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/).
+- For more information on customizing user registration, see the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/).
 
 #### [](#proc-enabling-user-registration_server_administration_guide)Enabling user registration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-user-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-user-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-user-registration.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-user-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-user-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-user-registration.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Enable users to self-register.
 
@@ -2878,7 +3064,7 @@ After you enable this setting, a **Register** link displays on the login page of
 
 #### [](#proc-registering-new-user_server_administration_guide)Registering as a new user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-registering-new-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-registering-new-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-registering-new-user.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-registering-new-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-registering-new-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-registering-new-user.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 As a new user, you must complete a registration form to log in for the first time. You add profile information and a password to register.
 
@@ -2899,7 +3085,7 @@ Procedure
 
 #### [](#proc-requiring-tac-agreement-at-registration_server_administration_guide)Requiring user to agree to terms and conditions during registration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-requiring-tac-agreement-at-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-requiring-tac-agreement-at-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-requiring-tac-agreement-at-registration.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-requiring-tac-agreement-at-registration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-requiring-tac-agreement-at-registration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-requiring-tac-agreement-at-registration.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 For a user to register, you can require agreement to your terms and conditions.
 
@@ -2924,7 +3110,7 @@ Procedure
 
 ### [](#con-required-actions_server_administration_guide)Defining actions required at login
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-required-actions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-required-actions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can set the actions that a user must perform at the first login. These actions are required after the user provides credentials. After the first login, these actions are no longer required. You add required actions on the **Details** tab of that user.
 
@@ -2952,7 +3138,7 @@ Some actions do not makes sense to be added to the user account directly. For ex
 
 #### [](#proc-setting-required-actions_server_administration_guide)Setting required actions for one user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-required-actions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-required-actions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can set the actions that are required for any user.
 
@@ -2969,7 +3155,7 @@ Procedure
 
 #### [](#proc-setting-default-required-actions_server_administration_guide)Setting required actions for all users
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-default-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-default-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-default-required-actions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-setting-default-required-actions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-default-required-actions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-setting-default-required-actions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can specify what actions are required before the first login of all new users. The requirements apply to a user created by the **Add User** button on the **Users** page or the **Register** link on the login page.
 
@@ -2981,7 +3167,7 @@ Procedure
 
 #### [](#proc-enabling-terms-conditions_server_administration_guide)Enabling terms and conditions as a required action
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-terms-conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-terms-conditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-terms-conditions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-terms-conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-terms-conditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-terms-conditions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can enable a required action that new users must accept the terms and conditions before logging in to Keycloak for the first time.
 
@@ -2994,11 +3180,11 @@ Procedure
 
 Additional resources
 
-- For more information on extending and creating themes, see the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/).
+- For more information on extending and creating themes, see the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/).
 
 ### [](#con-aia_server_administration_guide)Application initiated actions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-aia.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-aia.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-aia.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-aia.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-aia.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-aia.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Application initiated actions (AIA) allow client applications to request a user to perform an action on the Keycloak side. Usually, when an OIDC client application wants a user to log in, it redirects that user to the login URL as described in the [OIDC section](#con-oidc_server_administration_guide). After login, the user is redirected back to the client application. The user performs the actions that were required by the administrator as described in the [previous section](#proc-setting-required-actions_server_administration_guide) and then is immediately redirected back to the application. However, AIA allows the client application to request some required actions from the user during login. This can be done even if the user is already authenticated on the client and has an active SSO session. It is triggered by adding the `kc_action` parameter to the OIDC login URL with the value containing the requested action. For instance `kc_action=UPDATE_PASSWORD` parameter.
 
@@ -3041,7 +3227,7 @@ To see all available actions, log in to the Admin Console and select `master` re
 
 ### [](#proc-searching-user_server_administration_guide)Searching for a user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-searching-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-searching-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-searching-user.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-searching-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-searching-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-searching-user.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Search for a user to view detailed information about the user, such as the user’s groups and roles.
 
@@ -3062,6 +3248,16 @@ Procedure
    2. `*somevalue*` → performs infix search, akin to a `LIKE '%somevalue%'` DB query;
    3. `somevalue*` or `somevalue` → performs prefix search, akin to a `LIKE 'somevalue%'` DB query.
 
+#### [](#search-by-fields)Search by fields
+
+Keycloak supports direct user lookups for selected fields by prefixing the search term in the search box:
+
+- `id:myUUID` → performs an exact user lookup by id for `"myUUID"`;
+- `username:myuser` → performs an exact user lookup by username for `"myuser"`;
+- `email:myuser@domain.org` → performs an exact user lookup by email for `"myuser@domain.org"`.
+
+Multiple values can be supplied separated by whitespace (for example `id:uuid1 uuid2`) to look up several users in a single request.
+
 #### [](#attribute-search)Attribute search
 
 Procedure
@@ -3080,7 +3276,7 @@ Additional Resources
 
 ### [](#proc-deleting-user_server_administration_guide)Deleting a user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-deleting-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-deleting-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-deleting-user.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-deleting-user.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-deleting-user.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-deleting-user.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can delete a user, who no longer needs access to applications. If a user is deleted, the user profile and data is also deleted.
 
@@ -3094,7 +3290,7 @@ Procedure
 
 ### [](#proc-allow-user-to-delete-account_server_administration_guide)Enabling account deletion by users
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-allow-user-to-delete-account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-allow-user-to-delete-account.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-allow-user-to-delete-account.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-allow-user-to-delete-account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-allow-user-to-delete-account.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-allow-user-to-delete-account.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 End users and applications can delete their accounts in the Account Console if you enable this capability in the Admin Console. Once you enable this capability, you can give that capability to specific users.
 
@@ -3149,7 +3345,7 @@ Once you have the **delete-account** role, you can delete your own account.
 
 ### [](#con-user-impersonation_server_administration_guide)Impersonating a user
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-user-impersonation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-impersonation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-impersonation.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/con-user-impersonation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-impersonation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fcon-user-impersonation.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An administrator with the appropriate permissions can impersonate a user. For example, if a user experiences a bug in an application, an administrator can impersonate the user to investigate or duplicate the issue.
 
@@ -3174,7 +3370,7 @@ Additional resources
 
 ### [](#proc-enabling-recaptcha_server_administration_guide)Enabling reCAPTCHA
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-recaptcha.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-recaptcha.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-recaptcha.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/proc-enabling-recaptcha.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-recaptcha.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fproc-enabling-recaptcha.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To safeguard registration against bots, Keycloak has integration with Google reCAPTCHA (see [Setting up Google reCAPTCHA](#procedure_recaptcha)) and reCAPTCHA Enterprise (see [Setting up Google reCAPTCHA Enterprise](#procedure_recaptcha_enterprise)). The default theme (`register.ftl`) supports both v2 (visible, checkbox-based) and v3 (score-based, invisible) reCAPTCHA (see [Choose the appropriate reCAPTCHA key type](https://docs.cloud.google.com/recaptcha/docs/choose-key-type)).
 
@@ -3251,11 +3447,11 @@ To safeguard registration against bots, Keycloak has integration with Google reC
 
 Additional resources
 
-- For more information on extending and creating themes, see the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/).
+- For more information on extending and creating themes, see the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/).
 
 ### [](#ref-personal-data-collected_server_administration_guide)Personal data collected by Keycloak
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/ref-personal-data-collected.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fref-personal-data-collected.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fref-personal-data-collected.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/users/ref-personal-data-collected.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fusers%2Fref-personal-data-collected.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fusers%2Fref-personal-data-collected.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 By default, Keycloak collects the following data:
 
@@ -3271,7 +3467,7 @@ The information collected in Keycloak is highly customizable. The following guid
 
 ## [](#managing-user-sessions)Managing user sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When users log into realms, Keycloak maintains a user session for each user and remembers each client visited by the user within the session. Realm administrators can perform multiple actions on each user session:
 
@@ -3284,7 +3480,7 @@ When users log into realms, Keycloak maintains a user session for each user and 
 
 ### [](#administering-sessions)Administering sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/administering.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Fadministering.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Fadministering.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/administering.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Fadministering.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Fadministering.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To see a top-level view of the active clients and sessions in Keycloak, click **Sessions** from the menu.
 
@@ -3324,7 +3520,7 @@ Procedure
 
 ### [](#_revocation-policy)Revoking active sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/revocation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Frevocation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Frevocation.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/revocation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Frevocation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Frevocation.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If your system is compromised, you can revoke all active sessions and access tokens.
 
@@ -3343,7 +3539,7 @@ Procedure
 
 ### [](#_timeouts)Session and token timeouts
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/timeouts.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Ftimeouts.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Ftimeouts.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/timeouts.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Ftimeouts.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Ftimeouts.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes control of the session, cookie, and token timeouts through the **Sessions** and **Tokens** tabs in the **Realm settings** menu.
 
@@ -3469,7 +3665,7 @@ This action is necessary for some scenarios in cluster and cross-data center env
 
 ### [](#_offline-access)Offline access
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/offline.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Foffline.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Foffline.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/offline.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Foffline.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Foffline.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 During [offline access](https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess) logins, the client application requests an offline token instead of a refresh token. The client application saves this offline token and can use it for future logins if the user logs out. This action is useful if your application needs to perform offline actions on behalf of the user even when the user is not online. For example, a regular data backup.
 
@@ -3493,7 +3689,7 @@ Keycloak will limit its internal cache for offline user and offline client sessi
 
 ### [](#_transient-session)Transient sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/transient.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Ftransient.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Ftransient.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sessions/transient.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsessions%2Ftransient.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsessions%2Ftransient.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can conduct transient sessions in Keycloak. When using transient sessions, Keycloak does not create a user session after successful authentication. Keycloak creates a temporary, transient session for the scope of the current request that successfully authenticates the user. Keycloak can run [protocol mappers](#_protocol-mappers) using transient sessions after authentication.
 
@@ -3503,7 +3699,7 @@ At this moment, transient sessions are automatically used just during [service a
 
 ## [](#assigning-permissions-using-roles-and-groups)Assigning permissions using roles and groups
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-roles-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-roles-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-roles-groups.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-roles-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-roles-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-roles-groups.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Roles and groups have a similar purpose, which is to give users access and permissions to use applications. Groups are a collection of users to which you apply roles and attributes. Roles define specific applications permissions and access control.
 
@@ -3513,7 +3709,7 @@ There is a global namespace for roles and each client also has its own dedicated
 
 ### [](#proc-creating-realm-roles_server_administration_guide)Creating a realm role
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-creating-realm-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-creating-realm-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-creating-realm-roles.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-creating-realm-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-creating-realm-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-creating-realm-roles.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Realm-level roles are a namespace for defining your roles. To see the list of roles, click **Realm Roles** in the menu.
 
@@ -3526,17 +3722,17 @@ Procedure
 3. Enter a **Description**.
 4. Click **Save**.
 
-The **description** field can be localized by specifying a substitution variable with `${var-name}` strings. The localized value is configured to your theme within the themes property files. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more details.
+The **description** field can be localized by specifying a substitution variable with `${var-name}` strings. The localized value is configured to your theme within the themes property files. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more details.
 
 ### [](#con-client-roles_server_administration_guide)Client roles
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-client-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-client-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-client-roles.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-client-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-client-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-client-roles.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Client roles are namespaces dedicated to clients. Each client gets its own namespace. Client roles are managed under the **Roles** tab for each client. You interact with this UI the same way you do for realm-level roles.
 
 ### [](#_composite-roles)Converting a role to a composite role
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-converting-composite-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-converting-composite-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-converting-composite-roles.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-converting-composite-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-converting-composite-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-converting-composite-roles.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Any realm or client level role can become a *composite role*. A *composite role* is a role that has one or more additional roles associated with it. When a composite role is mapped to a user, the user gains the roles associated with the composite role. This inheritance is recursive so users also inherit any composite of composites. However, we recommend that composite roles are not overused.
 
@@ -3558,7 +3754,7 @@ When creating tokens and SAML assertions, any composite also has its associated 
 
 ### [](#proc-assigning-role-mappings_server_administration_guide)Assigning role mappings
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-assigning-role-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-assigning-role-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-assigning-role-mappings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-assigning-role-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-assigning-role-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-assigning-role-mappings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can assign role mappings to a user through the **Role Mappings** tab for that user.
 
@@ -3585,7 +3781,7 @@ When the **developer** role is assigned, the **employee** role associated with t
 
 ### [](#_default_roles)Using default roles
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-using-default-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-using-default-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-using-default-roles.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-using-default-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-using-default-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-using-default-roles.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Use default roles to automatically assign user role mappings when a user is created or imported through [Identity Brokering](#_identity_broker).
 
@@ -3602,7 +3798,7 @@ This screenshot shows that some *default roles* already exist.
 
 ### [](#_role_scope_mappings)Role scope mappings
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-role-scope-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-role-scope-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-role-scope-mappings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-role-scope-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-role-scope-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-role-scope-mappings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 On creation of an OIDC access token or SAML assertion, the user role mappings become claims within the token or assertion. Applications use these claims to make access decisions on the resources controlled by the application. Keycloak digitally signs access tokens and applications reuse them to invoke remotely secured REST services. However, these tokens have an associated risk. An attacker can obtain these tokens and use their permissions to compromise your networks. To prevent this situation, use *Role Scope Mappings*.
 
@@ -3632,7 +3828,7 @@ See the [Token Role mappings section](#_oidc_token_role_mappings) for details ab
 
 ### [](#proc-managing-groups_server_administration_guide)Groups
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-managing-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-managing-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-managing-groups.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-managing-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-managing-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-managing-groups.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Groups in Keycloak manage a common set of attributes and role mappings for each user. Users can be members of any number of groups and inherit the attributes and role mappings assigned to each group.
 
@@ -3700,7 +3896,7 @@ Group membership
 
 #### [](#con-comparing-groups-roles_server_administration_guide)Groups compared to roles
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-comparing-groups-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-comparing-groups-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-comparing-groups-roles.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/con-comparing-groups-roles.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-comparing-groups-roles.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fcon-comparing-groups-roles.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Groups and roles have some similarities and differences. In Keycloak, groups are a collection of users to which you apply roles and attributes. Roles define types of users, and applications assign permissions and access control to roles.
 
@@ -3710,7 +3906,7 @@ Groups focus on collections of users and their roles in an organization. Use gro
 
 #### [](#proc-specifying-default-groups_server_administration_guide)Using default groups
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-specifying-default-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-specifying-default-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-specifying-default-groups.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/roles-groups/proc-specifying-default-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-specifying-default-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Froles-groups%2Fproc-specifying-default-groups.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To automatically assign group membership to any users who is created or who is imported through [Identity Brokering](#_identity_broker), you use default groups.
 
@@ -3726,7 +3922,7 @@ This screenshot shows that some *default groups* already exist.
 
 ## [](#configuring-authentication_server_administration_guide)Configuring authentication
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 This chapter covers several authentication topics. These topics include:
 
@@ -3737,7 +3933,7 @@ This chapter covers several authentication topics. These topics include:
 
 ### [](#_password-policies)Password policies
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/password-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fpassword-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fpassword-policies.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/password-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fpassword-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fpassword-policies.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When Keycloak creates a realm, it does not associate password policies with the realm. You can set a simple password with no restrictions on its length, security, or complexity. Simple passwords are unacceptable in production environments. Keycloak has a set of password policies available through the Admin Console.
 
@@ -3789,7 +3985,7 @@ The default password hashing algorithm for the server can be configured with `--
 
 To prevent excessive memory and CPU usage, the parallel computation of hashes by Argon2 is by default limited to the number of cores available to the JVM. To configure the Argon2 hashing provider, use its provider options.
 
-See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) on how to add your own hashing algorithm.
+See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) on how to add your own hashing algorithm.
 
 If you change the hashing algorithm, password hashes in storage will not change until the user logs in.
 
@@ -3880,6 +4076,22 @@ The current implementation uses a BloomFilter for fast and memory efficient cont
 - By default a false positive probability of `0.01%` is used.
 - To change the false positive probability by CLI configuration, use `--spi-password-policy--password-blacklist--false-positive-probability=0.00001`.
 
+Pre-computing the Bloom filter
+
+For large denylist files, Keycloak builds the Bloom filter from the plaintext file on every startup or reload, which can take several seconds. To reduce load time to milliseconds, pre-compute the Bloom filter once using the `build-password-denylist` CLI command:
+
+```
+bin/kc.sh tools build-password-denylist /path/to/100k_passwords
+```
+
+This generates a `100k_passwords.bloom` file next to the input file. Place it in the password-blacklists folder and configure the realm password policy to use the `.bloom` filename (for example, `100k_passwords.bloom`) instead of the plaintext file. Keycloak detects the file type by extension: files ending in `.bloom` are loaded as pre-computed Bloom filter binaries; all other files are read as plaintext. Re-run the command and update the policy value each time the denylist is updated.
+
+You can also control the false positive probability for the pre-computed filter:
+
+```
+bin/kc.sh tools build-password-denylist /path/to/100k_passwords --fpp 0.00001
+```
+
 ##### [](#maximum-authentication-age)Maximum Authentication Age
 
 Specifies the maximum age of a user authentication in seconds with which the user can update a password without re-authentication. A value of `0` indicates that the user has to always re-authenticate with their current password before they can update the password. See [AIA section](#con-aia-reauth_server_administration_guide) for some additional details about this policy.
@@ -3888,7 +4100,7 @@ The Maximum Authentication Age is configurable also when configuring the require
 
 ### [](#one-time-password-otp-policies)One Time Password (OTP) policies
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/otp-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fotp-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fotp-policies.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/otp-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fotp-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fotp-policies.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak has several policies for setting up a FreeOTP or Google Authenticator One-Time Password generator.
 
@@ -3958,7 +4170,7 @@ The value of the initial counter.
 
 ### [](#_authentication-flows)Authentication flows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/flows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fflows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/flows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fflows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An *authentication flow* is a container of authentications, screens, and actions, during log in, registration, and other Keycloak workflows.
 
@@ -4352,10 +4564,6 @@ Note when the login request initiates a request with the `claims` parameter requ
 
 #### [](#_step-up-authentication-saml)Step-up authentication for SAML
 
-Step-up Authentication for SAML is **Preview** and is not fully supported. This feature is disabled by default.
-
-To enable start the server with `--features=preview` or `--features=step-up-authentication-saml`
-
 For the SAML protocol, the step-up authentication uses the `<AuthnContextClassRef>` element (Authentication Context Class Reference or ACR) to map the Level of Authentication (LoA). This element is a URI reference that identifies an authentication context declaration. The LoA is requested by the client in the SAML request via the `<RequestedAuthnContext>` element.
 
 ```
@@ -4420,11 +4628,11 @@ In summary, when the step-up authentication is configured for SAML, Keycloak wil
 
 In order to maintain backwards compatibility, Keycloak does not return an error and continues adding the previous ACR `urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified` to the response in the following situations:
 
-- The new feature `step-up-authentication-saml` is not enabled in Keycloak.
+- The feature `step-up-authentication-saml` is not enabled in Keycloak.
 - The SAML client does not define any mapping between context URI and LoA. Use the client mapping instead of the general realm mapping when you just need to apply the step-up for some specific SAML clients.
 - The `AuthnContextClassRef mapper` is not executed. This mapper is provided by a new default client scope `AuthnContextClassRef` which is now added to SAML clients by default. It is in charge of adding the resulting `<AuthnContextClassRef>` to the response.
   
-  For new realms created with the `step-up-authentication-saml` feature enabled, the mapper and the client scope `AuthnContextClassRef` are automatically created and assigned to SAML clients. But, for exiting realms, if you want to use this preview feature, the client scope and the mapper should be created and assigned to the client manually. When the feature is promoted to supported, the migration will also create the client scope for existing realms if the feature is not disabled at startup.
+  The mapper and the client scope `AuthnContextClassRef` are automatically created and assigned to SAML clients when the `step-up-authentication-saml` feature is enabled (for new and migrated realms). If the feature was disabled at creation or migration time and want to be used afterwards, the client scope with the mapper should be created and assigned to the client manually.
 - The LoA calculated at request time is not achieved by the authentication flow. For example, if the authentication flow used for authentication is not a step-up flow, or there is a misconfiguration between the URI/LoA mapping and the final level reached in the step-up authentication flow.
 
 #### [](#_registration-rc-client-flows)Registration or Reset credentials requested by client
@@ -4478,11 +4686,11 @@ User session limit feature is not available for CIBA.
 
 Ability to upload scripts through the Admin Console and REST endpoints is deprecated.
 
-For more details see [JavaScript Providers](https://www.keycloak.org/docs/26.6.3/server_development/#_script_providers).
+For more details see [JavaScript Providers](https://www.keycloak.org/docs/26.7.4/server_development/#_script_providers).
 
 ### [](#_kerberos)Kerberos
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/kerberos.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fkerberos.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fkerberos.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/kerberos.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fkerberos.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fkerberos.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak supports login with a Kerberos ticket through the Simple and Protected GSSAPI Negotiation Mechanism (SPNEGO) protocol. SPNEGO authenticates transparently through the web browser after the user authenticates the session. For non-web cases, or when a ticket is not available during login, Keycloak supports login with Kerberos username and password.
 
@@ -4497,7 +4705,7 @@ A typical use case for web authentication is the following:
 7. If using LDAPFederationProvider with Kerberos authentication support, Keycloak provisions user data from LDAP. If using KerberosFederationProvider, Keycloak lets the user update the profile and pre-fill login data.
 8. Keycloak returns to the application. Keycloak and the application communicate through OpenID Connect or SAML messages. Keycloak acts as a broker to Kerberos/SPNEGO login. Therefore Keycloak authenticating through Kerberos is hidden from the application.
 
-The [Negotiate](https://www.ietf.org/rfc/rfc4559.txt) www-authenticate scheme allows NTLM as a fallback to Kerberos and on some web browsers in Windows NTLM is supported by default. If a www-authenticate challenge comes from a server outside a browsers permitted list, users may encounter an NTLM dialog prompt. A user would need to click the cancel button on the dialog to continue as Keycloak does not support this mechanism. This situation can happen if Intranet web browsers are not strictly configured or if Keycloak serves users in both the Intranet and Internet. A [custom authenticator](https://github.com/keycloak/keycloak/issues/8989) can be used to restrict Negotiate challenges to a whitelist of hosts.
+The [Negotiate](https://datatracker.ietf.org/doc/html/rfc4559) www-authenticate scheme allows NTLM as a fallback to Kerberos and on some web browsers in Windows NTLM is supported by default. If a www-authenticate challenge comes from a server outside a browsers permitted list, users may encounter an NTLM dialog prompt. A user would need to click the cancel button on the dialog to continue as Keycloak does not support this mechanism. This situation can happen if Intranet web browsers are not strictly configured or if Keycloak serves users in both the Intranet and Internet. A [custom authenticator](https://github.com/keycloak/keycloak/issues/8989) can be used to restrict Negotiate challenges to a whitelist of hosts.
 
 Perform the following steps to set up Kerberos authentication:
 
@@ -4531,11 +4739,11 @@ Ensure the keytab file `/tmp/http.keytab` is accessible on the host where Keyclo
 
 #### [](#setup-and-configuration-of-keycloak-server)Setup and configuration of Keycloak server
 
-Install a Kerberos client on your machine.
+Configure a Kerberos client on your machine.
 
 Procedure
 
-1. Install a Kerberos client. If your machine runs Fedora, Ubuntu, or RHEL, install the [freeipa-client](https://www.freeipa.org/page/Downloads) package, containing a Kerberos client and other utilities.
+1. Optionally, install a Kerberos client. If your machine runs Fedora, Ubuntu, or RHEL, install the [freeipa-client](https://www.freeipa.org/page/Downloads) package, containing a Kerberos client and other utilities. Installing this package will supply you with tools and sensible defaults, but it is not required for JGSS Kerberos to function within Keycloak.
 2. Configure the Kerberos client (on Linux, the configuration settings are in the [/etc/krb5.conf](https://web.mit.edu/kerberos/krb5-1.21/doc/admin/conf_files/krb5_conf.html) file ).
    
    Add your Kerberos realm to the configuration and configure the HTTP domains your server runs on.
@@ -4672,7 +4880,7 @@ If you have issues, enable additional logging to debug the problem:
 
 ### [](#_x509)X.509 client certificate user authentication
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/x509.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fx509.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fx509.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/x509.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fx509.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fx509.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak supports logging in with an X.509 client certificate if you have configured the server to use mutual SSL authentication.
 
@@ -4913,13 +5121,13 @@ If it is possible, it is preferred to use [Service accounts](#_service_accounts)
 
 ### [](#webauthn_server_administration_guide)W3C Web Authentication (WebAuthn)
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/webauthn.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fwebauthn.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fwebauthn.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/webauthn.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fwebauthn.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fwebauthn.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak provides support for [W3C Web Authentication (WebAuthn)](https://www.w3.org/TR/webauthn/). Keycloak works as a WebAuthn’s [Relying Party (RP)](https://www.w3.org/TR/webauthn/#webauthn-relying-party).
 
 WebAuthn’s operations success depends on the user’s WebAuthn supporting authenticator, browser, and platform. Make sure your authenticator, browser, and platform support the WebAuthn specification.
 
-WebAuthn’s specification uses a `user.id` to map a public key credential to a specific user account in the Relying Party. This user ID handle is an opaque byte sequence with a maximum size of 64 bytes. Keycloak passes the internal database ID to the registration, which in common users is an UUID of 36 characters. But, if the user is from a external user federation provider, the internal Keycloak ID is an [storage ID](https://www.keycloak.org/docs/26.6.3/server_development/#storage-ids) in the form `f:<provider-id>:<user-id>` that can exceed the 64 byte limitation. Please take this into account and use short IDs for the federation provider component and for the users coming from that provider when combining the Storage SPI and WebAuthn.
+WebAuthn’s specification uses a `user.id` to map a public key credential to a specific user account in the Relying Party. This user ID handle is an opaque byte sequence with a maximum size of 64 bytes. Keycloak passes the internal database ID to the registration, which in common users is an UUID of 36 characters. But, if the user is from a external user federation provider, the internal Keycloak ID is an [storage ID](https://www.keycloak.org/docs/26.7.4/server_development/#storage-ids) in the form `f:<provider-id>:<user-id>` that can exceed the 64 byte limitation. Please take this into account and use short IDs for the federation provider component and for the users coming from that provider when combining the Storage SPI and WebAuthn.
 
 #### [](#setup)Setup
 
@@ -5021,9 +5229,13 @@ Authenticator Attachment
 
 The acceptable attachment pattern of a WebAuthn authenticator for the WebAuthn Client. This pattern is an optional configuration item applying to the registration of the WebAuthn authenticator. For more details, see [WebAuthn Specification](https://www.w3.org/TR/webauthn/#enumdef-authenticatorattachment).
 
+Discoverable Credential
+
+The extent to which the WebAuthn authenticator should generate the Public Key Credential as a [Client-side discoverable Credential](https://www.w3.org/TR/webauthn-3/). The accepted values are `required`, `preferred` and `discouraged`. This option applies to the registration of the WebAuthn authenticator and replaces, and takes precedence over, the deprecated `Require Discoverable Credential` option. If left blank ("not specified"), the deprecated `Require Discoverable Credential` option is used instead. For more details, see [WebAuthn Specification](https://www.w3.org/TR/webauthn/#dom-authenticatorselectioncriteria-residentkey).
+
 Require Discoverable Credential
 
-The option requiring that the WebAuthn authenticator generates the Public Key Credential as [Client-side discoverable Credential](https://www.w3.org/TR/webauthn-3/). This option applies to the registration of the WebAuthn authenticator. If left blank, its behavior is the same as selecting "No". For more details, see [WebAuthn Specification](https://www.w3.org/TR/webauthn/#dom-authenticatorselectioncriteria-requireresidentkey).
+**Deprecated**, use `Discoverable Credential` instead. This option is planned to be removed in the future and is only used when `Discoverable Credential` is left as "not specified". The option requiring that the WebAuthn authenticator generates the Public Key Credential as [Client-side discoverable Credential](https://www.w3.org/TR/webauthn-3/). This option applies to the registration of the WebAuthn authenticator. If left blank, its behavior is the same as selecting "No". For more details, see [WebAuthn Specification](https://www.w3.org/TR/webauthn/#dom-authenticatorselectioncriteria-requireresidentkey).
 
 User Verification Requirement
 
@@ -5129,7 +5341,7 @@ Procedure
 Set up WebAuthn Loginless support as follows:
 
 1. (If not already done) Check the required action for **WebAuthn Register Passwordless** is enabled. Use the steps described in [Enable WebAuthn Authenticator Registration](#_webauthn-register), but using **WebAuthn Register Passwordless** instead of **WebAuthn Register**.
-2. Configure the `WebAuthn Passwordless Policy` if needed. Perform the configuration in the Admin Console, `Authentication` section, in the `Policies` → `WebAuthn Passwordless Policy` tab. By default, Keycloak sets **User Verification Requirement** to **required** and **Require Discoverable Credential** to **Yes** for the passwordless scenario to work properly. Storage capacity is usually very limited on Passkeys meaning that you won’t be able to store many discoverable credentials on your Passkey.
+2. Configure the `WebAuthn Passwordless Policy` if needed. Perform the configuration in the Admin Console, `Authentication` section, in the `Policies` → `WebAuthn Passwordless Policy` tab. By default, Keycloak sets **User Verification Requirement** to **required** and **Discoverable Credential** to **required** for the passwordless scenario to work properly. Storage capacity is usually very limited on Passkeys meaning that you won’t be able to store many discoverable credentials on your Passkey.
 3. Configure the authentication flow. Create a new authentication flow, add the "WebAuthn Passwordless" execution and set the Requirement setting of the execution to **Required**
 
 The final configuration of the flow looks similar to this:
@@ -5164,13 +5376,15 @@ The following Passkeys have been successfully tested for loginless authenticatio
 
 ### [](#passkeys_server_administration_guide)Passkeys
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/passkeys.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fpasskeys.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fpasskeys.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/passkeys.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fpasskeys.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fpasskeys.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak provides support for [Passkeys](https://fidoalliance.org/passkeys/). Keycloak works as a Passkeys Relying Party (RP).
 
 Passkey registration and authentication are performed using the same features of [WebAuthn](#webauthn_server_administration_guide). More specifically **Passkeys** are related to [LoginLess WebAuthn](#_webauthn_loginless) as they try to avoid any password during login. Therefore, users of Keycloak can do Passkey registration and authentication by existing [WebAuthn registration and authentication](#webauthn_server_administration_guide), using the **passwordless** variants.
 
-The **Passkeys** feature has been integrated seamlessly in the default authentication forms in two different ways. When activated, both conditional UI and modal UI are available in the forms in which the username input is displayed (for example **Username Password Form** or **Username Form**). Besides, the password forms, when the username was already selected, always show the modal UI button to login by passkey if the current user has passwordless WebAuthn credentials associated. This way modal and conditional UI can be used to perform a complete login from scratch that needs username and password, and only modal UI is presented when the username is already selected in the authentication process (because of re-authentication or because the user was selected before in the process not using a passkey).
+The **Passkeys** feature has been integrated seamlessly in the default authentication forms in two different ways. When activated, both conditional UI and modal UI are available in the forms in which the username input is displayed (for example **Username Password Form** or **Username Form**). The exact behavior on page load — whether a passkey selection dialog appears automatically or credentials are offered only through browser autofill — is controlled by the **Passkey Mediation** setting in the **WebAuthn Passwordless Policy**.
+
+Besides, the password forms, when the username was already selected, always show the modal UI button to login by passkey if the current user has passwordless WebAuthn credentials associated. This way modal and conditional UI can be used to perform a complete login from scratch that needs username and password, and only modal UI is presented when the username is already selected in the authentication process (because of re-authentication or because the user was selected before in the process not using a passkey).
 
 **Passkeys** have been added to the following authenticator implementations:
 
@@ -5206,19 +5420,50 @@ Passkey Authentication with Modal UI using Chrome browser
 
 ![Passkey Authentication with Modal UI using Chrome browser](./images/passkey-modal-ui.png)
 
+#### [](#_passkeys-mediation)Passkey Mediation
+
+The **Passkey Mediation** setting in the **WebAuthn Passwordless Policy** controls how the browser interacts with the user’s passkeys when the login page loads. It maps directly to the [`mediation` parameter of the WebAuthn `navigator.credentials.get()` API](https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer/get#mediation).
+
+Table 1. Passkey Mediation options   Value Behavior
+
+`conditional` (default)
+
+No dialog is shown on page load. Passkeys are offered only through the browser’s autofill dropdown when the user focuses the username input field. This is the least intrusive option and corresponds to the [Conditional UI](#_passkeys-conditional-ui) behavior. If the browser does not support conditional mediation, the behaviour is the same as `none`.
+
+`none`
+
+No automatic passkey action is taken on page load. The user can still authenticate using a passkey by clicking the **Sign in with Passkey** button. Use this option when you want passkeys to be available but prefer not to display any prompt automatically.
+
+`optional`
+
+A passkey selection dialog is shown automatically on page load. The browser may skip the prompt if no credentials are found. Use this to invite the user to use a passkey without strictly enforcing it.
+
+`required`
+
+A passkey selection dialog is shown immediately on page load. The user is forced to authenticate or manually dismiss the prompt to proceed. Use this when passkey verification is a mandatory requirement for the current action.
+
+`silent`
+
+The browser attempts to authenticate without any user interaction or visible UI. Authentication fails silently if user interaction is required. This is intended for advanced scenarios and is unlikely to succeed for most passkey types.
+
+The behavior of the `mediation` option, although defined in the specification, can vary between browsers and authenticators. Keycloak simply passes this option during the registration process. The actual final behavior is beyond its control. For example, the support for `required` and `silent` mediation are known to be different among browsers. Refer to your target browser’s documentation before relying on these values in production.
+
+When the **Authenticator Attachment** in the policy is set to `platform` and the device does not have a user-verifying platform authenticator available, the automatic passkey flow on page load is skipped regardless of the mediation value. The user can still authenticate using the **Sign in with Passkey** button or fall back to password login.
+
 #### [](#setup-4)Setup
 
 Set up Passkey Authentication for the default forms as follows:
 
 1. (If not already done) Check the required action for **WebAuthn Register Passwordless** is enabled. Use the steps described in [Enable WebAuthn Authenticator Registration](#_webauthn-register), but using **WebAuthn Register Passwordless** instead of **WebAuthn Register**.
-2. Configure the **WebAuthn Passwordless Policy** in the same way that is explained in [LoginLess WebAuthn](#_webauthn_loginless). Perform the configuration in the Admin Console, `Authentication` section, in the tab `Policies` → `WebAuthn Passwordless Policy`. The default configuration for the passwordless policy is usually enough for correct passkeys integration.
+2. Configure the **WebAuthn Passwordless Policy** in the same way that is explained in [LoginLess WebAuthn](#_webauthn_loginless). The default configuration for the passwordless policy is usually enough for correct passkeys integration.
+3. In the Admin Console, navigate to **Realm Settings** → **Login** tab. In the **Login Screen Customization** section, activate the **Enable Passkeys** switch. Use the settings icon next to the switch to navigate directly to the **WebAuthn Passwordless Policy** for additional configuration.
+4. Once **Enable Passkeys** is on, the **Passkey Mediation** select appears. Choose the value that best fits your use case. The default `conditional` value keeps behavior unobtrusive — passkeys are offered through autofill only. Switch to `optional` if you want the browser to automatically open a passkey selection dialog on page load while still allowing the user to dismiss it and fall back to autofill. See [Passkey Mediation](#_passkeys-mediation) for a description of all available values.
    
    Storage capacity is usually very limited on hardware passkeys meaning that you cannot store many discoverable credentials on your passkey. However, this limitation may be mitigated for instance if you use an Android phone backed by a Google account as a passkey device or an iPhone backed by Bitwarden.
-3. In the **WebAuthn Passwordless Policy** tab, activate the **Enable Passkeys** option at the bottom. This switch is the one that really enables passkeys in the realm.
+   
+   === Recovery Codes
 
-### [](#_recovery-codes)Recovery Codes
-
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/recovery-codes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Frecovery-codes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Frecovery-codes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/recovery-codes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Frecovery-codes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Frecovery-codes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The Recovery Codes are a number of sequential one-time passwords (currently 12) auto-generated by Keycloak. The codes can be used as a 2nd Factor Authentication (2FA) by adding the `Recovery Authentication Code Form` authenticator to your authentication flow. When configured in the flow, Keycloak asks the user for the next generated code in order. When the current code is introduced by the user, it is removed and the next code will be required for the next login.
 
@@ -5275,7 +5520,7 @@ The Recovery Codes can be re-created at any moment.
 
 ### [](#conditions-in-conditional-flows)Conditions in conditional flows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fconditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fconditions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fconditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fconditions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 As was mentioned in [Execution requirements](#_execution-requirements), *Condition* executions can be only contained in *Conditional* subflow. If all *Condition* executions evaluate as true, then the *Conditional* sub-flow acts as *Required*. You can process the next execution in the *Conditional* sub-flow. If some executions included in the *Conditional* sub-flow evaluate as false, then the whole sub-flow is considered as *Disabled*.
 
@@ -5441,7 +5686,7 @@ With this flow, if the user has none of the 2FA methods configured, the OTP setu
 
 ### [](#_authentication-sessions)Authentication sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/authentication-sessions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fauthentication-sessions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fauthentication-sessions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/authentication/authentication-sessions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fauthentication%2Fauthentication-sessions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fauthentication%2Fauthentication-sessions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When a login page is opened for the first time in a web browser, Keycloak creates an object called authentication session that stores some useful information about the request. Whenever a new login page is opened from a different tab in the same browser, Keycloak creates a new record called authentication sub-session that is stored within the authentication session. Authentication requests can come from any type of clients such as the Admin CLI. In that case, a new authentication session is also created with one authentication sub-session. Please note that authentication sessions can be created also in other ways than using a browser flow.
 
@@ -5455,7 +5700,7 @@ In some rare cases, it can happen that after authentication in the first browser
 
 ## [](#_identity_broker)Integrating identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An Identity Broker is an intermediary service connecting service providers with identity providers. The identity broker creates a relationship with an external identity provider to use the provider’s identities to access the internal services the service provider exposes.
 
@@ -5475,7 +5720,7 @@ Typically, Keycloak bases identity providers on the following protocols:
 
 ### [](#_identity_broker_overview)Brokering overview
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/overview.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foverview.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foverview.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/overview.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foverview.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foverview.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When using Keycloak as an identity broker, Keycloak does not force users to provide their credentials to authenticate in a specific realm. Keycloak displays a list of identity providers from which they can authenticate.
 
@@ -5504,7 +5749,7 @@ At the end of the authentication process, Keycloak issues its token to client ap
 
 ### [](#default_identity_provider)Default Identity Provider
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/default-provider.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fdefault-provider.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fdefault-provider.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/default-provider.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fdefault-provider.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fdefault-provider.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak can redirect to an identity provider rather than displaying the login form. To enable this redirection:
 
@@ -5523,7 +5768,7 @@ The authenticator will redirect to the identity provider and authentication is d
 
 ### [](#_general-idp-config)General configuration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/configuration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fconfiguration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fconfiguration.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/configuration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fconfiguration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fconfiguration.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The foundations of the identity broker configuration are identity providers (IDPs). Keycloak creates identity providers for each realm and enables them for every application by default. Users from a realm can use any of the registered identity providers when signing in to an application.
 
@@ -5556,7 +5801,7 @@ Procedure
 
 Although each type of identity provider has its configuration options, all share a common configuration. The following configuration options available:
 
-Table 1. Common Configuration   Configuration Description
+Table 2. Common Configuration   Configuration Description
 
 Alias
 
@@ -5624,13 +5869,13 @@ Defines how the identity provider will be available from the account console. If
 
 ### [](#social-identity-providers)Social Identity Providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social-login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial-login.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial-login.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social-login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial-login.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial-login.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A social identity provider can delegate authentication to a trusted, respected social media account. Keycloak includes support for social networks such as Google, Facebook, Twitter, GitHub, LinkedIn, Microsoft, and Stack Overflow.
 
 #### [](#bitbucket)Bitbucket
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/bitbucket.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fbitbucket.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fbitbucket.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/bitbucket.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fbitbucket.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fbitbucket.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To log in with Bitbucket, perform the following procedure.
 
@@ -5654,7 +5899,7 @@ Procedure
 
 #### [](#_facebook)Facebook
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/facebook.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ffacebook.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ffacebook.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/facebook.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ffacebook.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ffacebook.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5703,7 +5948,7 @@ Keycloak sends profile requests to `graph.facebook.com/me?fields=id,name,email,f
 
 #### [](#_github)GitHub
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/github.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgithub.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgithub.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/github.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgithub.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgithub.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To log in with GitHub, perform the following procedure.
 
@@ -5727,7 +5972,7 @@ Procedure
 
 #### [](#gitlab)GitLab
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/gitlab.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgitlab.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgitlab.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/gitlab.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgitlab.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgitlab.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5748,7 +5993,7 @@ Procedure
 
 #### [](#_google)Google
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/google.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgoogle.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgoogle.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/google.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgoogle.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fgoogle.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5778,7 +6023,7 @@ Procedure
 
 #### [](#instagram)Instagram
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/instagram.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Finstagram.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Finstagram.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/instagram.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Finstagram.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Finstagram.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The Instagram Identity Broker is deprecated for removal. Prefer using the Facebook Identity Broker instead. To enable it, start the server with `--features=instagram-broker`.
 
@@ -5844,7 +6089,7 @@ Procedure
 
 #### [](#_linkedin)LinkedIn
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/linked-in.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Flinked-in.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Flinked-in.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/linked-in.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Flinked-in.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Flinked-in.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5867,7 +6112,7 @@ Procedure
 
 #### [](#_microsoft)Microsoft
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/microsoft.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fmicrosoft.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fmicrosoft.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/microsoft.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fmicrosoft.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fmicrosoft.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5890,7 +6135,7 @@ Procedure
 
 #### [](#openshift-4)OpenShift 4
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/openshift.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fopenshift.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fopenshift.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/openshift.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fopenshift.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fopenshift.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Prerequisites
 
@@ -5943,7 +6188,7 @@ See [official OpenShift documentation](https://docs.okd.io/latest/authentication
 
 #### [](#paypal)PayPal
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/paypal.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fpaypal.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fpaypal.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/paypal.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fpaypal.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fpaypal.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -5969,7 +6214,7 @@ Procedure
 
 #### [](#_stackoverflow)Stack Overflow
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/stack-overflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fstack-overflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fstack-overflow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/stack-overflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fstack-overflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Fstack-overflow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Procedure
 
@@ -6000,7 +6245,9 @@ Procedure
 
 #### [](#_twitter)Twitter
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/twitter.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ftwitter.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ftwitter.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/social/twitter.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ftwitter.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsocial%2Ftwitter.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+The Twitter Identity Broker is deprecated for removal. It relies on Twitter’s legacy OAuth 1.0a endpoints. Configure the generic **OAuth v2** identity provider against the X (formerly Twitter) OAuth 2.0 endpoints instead, as described in [Using the generic OAuth v2 provider to connect to X/Twitter](#_twitter_oauth2_migration). The broker remains enabled by default, but is planned for removal in a future release.
 
 Prerequisites
 
@@ -6028,9 +6275,100 @@ Procedure
 6. In Keycloak, paste the value of the `API Key Secret` into the **Client Secret** field.
 7. Click **Add**.
 
+##### [](#_twitter_oauth2_migration)Using the generic OAuth v2 provider to connect to X/Twitter
+
+X (formerly Twitter) supports OAuth 2.0, so the built-in generic **OAuth v2** identity provider can be used as a replacement for the deprecated Twitter broker. See the [X OAuth 2.0 documentation](https://docs.x.com/fundamentals/authentication/oauth-2-0/overview) for details.
+
+As of 2026, you require a paid API V2 plan, for example pay-per-use. The original Free plan will not work, and you will see a `403 required_enrollment` error when Keycloak calls the user info endpoint. In early 2026, using the `https://api.x.com/2/users/me` API with the pay-per-use plan is free. Check with X as pricing might change.
+
+Procedure
+
+1. In the [X developer portal](https://developer.twitter.com/apps/), open your app and go to **User authentication settings**.
+   
+   1. Set the **Type of App** to a confidential client (for example **Web App**).
+   2. Note the **OAuth 2.0 Client ID** and **Client Secret**.
+2. Click **Identity Providers** in the Keycloak menu.
+3. From the **Add provider** list, select **OAuth v2**.
+4. Copy the value of **Redirect URI** and paste it into the **Callback URI / Redirect URL** field of your X app.
+5. Configure the provider with the following values:
+   
+     Setting Value
+   
+   Use discovery endpoint
+   
+   Off
+   
+   Authorization URL
+   
+   `https://x.com/i/oauth2/authorize`
+   
+   Token URL
+   
+   `https://api.x.com/2/oauth2/token`
+   
+   User Info URL
+   
+   `https://api.x.com/2/users/me?user.fields=confirmed_email`
+   
+   Use PKCE
+   
+   On
+   
+   PKCE Method
+   
+   S256
+   
+   Client ID
+   
+   The **OAuth 2.0 Client ID** of your X app
+   
+   Client Secret
+   
+   The **Client Secret** of your X app
+   
+   Client authentication
+   
+   **Client secret sent as basic auth**
+   
+   User ID Claim
+   
+   `data.id`
+   
+   Username Claim
+   
+   `data.username`
+   
+   Email Claim
+   
+   `data.confirmed_email`
+6. Click **Add**.
+7. Continue editing the provider to update the scopes:
+   
+     Setting Value
+   
+   Advanced → Scopes
+   
+   `users.read tweet.read`
+
+Specifying the scope `tweet.read` is necessary, otherwise the user info endpoint will return a 403 error.
+
+The X `/2/users/me` endpoint nests user attributes under a `data` object, so the claims above use the dotted path notation (for example `data.id`).
+
+##### [](#migrating-existing-users-from-the-old-provider-to-the-new-provider)Migrating existing users from the old provider to the new provider
+
+Users who have authenticated with the old Twitter provider will not be able to authenticate with the new OAuth 2.0 provider unless they enroll with it. If they enroll, they will need to link their existing account by authenticating with the new provider and with their existing account. Additionally, once you delete the old provider, all users will lose the identity provider link to Twitter and will not be able to log in with X anymore.
+
+To avoid this, migrate existing users as follows. As usual, verify the procedure in a test environment first.
+
+1. Create the new OAuth 2.0 identity provider for X/Twitter and verify it is working.
+2. Shut down Keycloak to prevent users from updating identity providers and to avoid stale caches (preferred). Alternatively, clear the user cache after the migration via the Admin REST API or Admin Console, or perform a rolling restart of all nodes.
+3. Create a database backup so you can restore if the migration fails.
+4. In the `FEDERATED_IDENTITY` table, update the `IDENTITY_PROVIDER` column to the alias of the new OAuth 2.0 identity provider for those entries pointing to the old alias for the affected `REALM_ID`.
+5. Start Keycloak and verify that users who used the old provider can log in with the new provider.
+
 ### [](#_identity_broker_oidc)OpenID Connect v1.0 identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foidc.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foidc.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak brokers identity providers based on the OpenID Connect protocol. These identity providers (IDPs) must support the [Authorization Code Flow](#con-oidc-auth-flows_server_administration_guide) defined in the specification to authenticate users and authorize access.
 
@@ -6044,7 +6382,7 @@ Procedure
    ![Add Identity Provider](./images/oidc-add-identity-provider.png)
 3. Enter your initial configuration options. See [General IDP Configuration](#_general-idp-config) for more information about configuration options.
    
-   Table 2. OpenID connect config   Configuration Description
+   Table 3. OpenID connect config   Configuration Description
    
    Authorization URL
    
@@ -6150,7 +6488,7 @@ If you want to use [Json Web Encryption (JWE)](https://datatracker.ietf.org/doc/
 
 ### [](#_identity_broker_oauth)OAuth v2 identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/oauth2.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foauth2.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foauth2.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/oauth2.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foauth2.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Foauth2.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak brokers identity providers based on the OAuth v2 protocol. These identity providers (IDPs) must support the [Authorization Code Flow](#con-oidc-auth-flows_server_administration_guide) defined in the specification to authenticate users and authorize access.
 
@@ -6160,7 +6498,7 @@ Procedure
 2. From the `Add provider` list, select `OAuth v2`.
 3. Enter your initial configuration options. See [General IDP Configuration](#_general-idp-config) for more information about configuration options.
    
-   Table 3. OAuth2 settings   Configuration Description
+   Table 4. OAuth2 settings   Configuration Description
    
    Authorization URL
    
@@ -6216,7 +6554,7 @@ After the user authenticates to the identity provider and is redirected back to 
 
 In order to map the claims from the JSON document returned by the user profile endpoint, you might want to set the following settings so that they are mapped to user attributes when federating the user:
 
-Table 4. User profile claims   Configuration Description
+Table 5. User profile claims   Configuration Description
 
 ID Claim
 
@@ -6246,7 +6584,7 @@ You can import all this configuration data by providing a URL or file that point
 
 ### [](#saml-v2-0-identity-providers)SAML v2.0 Identity Providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/saml.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsaml.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsaml.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/saml.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsaml.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsaml.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak can broker identity providers based on the SAML v2.0 protocol.
 
@@ -6260,7 +6598,7 @@ Procedure
    ![Add Identity Provider](./images/saml-add-identity-provider.png)
 3. Enter your initial configuration options. See [General IDP Configuration](#_general-idp-config) for more information about configuration options.
 
-Table 5. SAML Config   Configuration Description
+Table 6. SAML Config   Configuration Description
 
 Service Provider Entity ID
 
@@ -6352,7 +6690,7 @@ External URL where Identity Provider publishes the `IDPSSODescriptor` metadata. 
 
 Use metadata descriptor URL
 
-When **ON**, the certificates to validate signatures are automatically downloaded from the `Metadata descriptor URL` and cached in Keycloak. The SAML provider can validate signatures in two different ways. If a specific certificate is requested (usually in `POST` binding) and it is not in the cache, certificates are automatically refreshed from the URL. If all certificates are requested to validate the signature (`REDIRECT` binding) the refresh is only done after a max cache time. This maximum time can be specified in the descriptor itself, `cacheDuration` or `validUntil` attributes, or the cache provider defines one. See [public-key-storage](https://www.keycloak.org/server/all-provider-config) spi in the all provider config guide for more information about how the cache works.
+When **ON**, the certificates to validate signatures are automatically downloaded from the `Metadata descriptor URL` and cached in Keycloak. The SAML provider can validate signatures in two different ways. If a specific certificate is requested (usually in `POST` binding) and it is not in the cache, certificates are automatically refreshed from the URL. If all certificates are requested to validate the signature (`REDIRECT` binding) the refresh is only done after a max cache time. This maximum time can be specified in the descriptor itself, `cacheDuration` or `validUntil` attributes, or the cache provider defines one. See [public-key-storage](https://www.keycloak.org/server/all-provider-config) spi in the all provider config guide for more information about how the cache works. The default cache TTL for SAML metadata is 24 hours (86,400 seconds).
 
 When the option is **OFF**, the certificates in `Validating X509 Certificates` are used to validate signatures.
 
@@ -6384,7 +6722,7 @@ Identity Providers facilitate clients specifying constraints on the authenticati
 
 You can list the criteria your Service Provider requires by adding ClassRefs or DeclRefs in the Requested AuthnContext Constraints section. Usually, you need to provide either ClassRefs or DeclRefs, so check with your Identity Provider documentation which values are supported. If no ClassRefs or DeclRefs are present, the Identity Provider does not enforce additional constraints.
 
-Table 6. Requested AuthnContext Constraints   Configuration Description
+Table 7. Requested AuthnContext Constraints   Configuration Description
 
 Comparison
 
@@ -6424,7 +6762,7 @@ Enable the "Pass subject" option to send the subject in SAML requests.
 
 ### [](#_identity_broker_spiffe)SPIFFE identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/spiffe.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fspiffe.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fspiffe.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/spiffe.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fspiffe.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fspiffe.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 SPIFFE is **Preview** and is not fully supported. This feature is disabled by default.
 
@@ -6446,7 +6784,7 @@ Procedure
    ![Add SPIFFE Provider](./images/spiffe-add-identity-provider.png)
 3. Enter your initial configuration options.
    
-   Table 7. SPIFFE settings   Configuration Description
+   Table 8. SPIFFE settings   Configuration Description
    
    Alias
    
@@ -6462,7 +6800,7 @@ Procedure
 
 ### [](#_identity_broker_kubernetes)Kubernetes identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/kubernetes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fkubernetes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fkubernetes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/kubernetes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fkubernetes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fkubernetes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A Kubernetes identity provider supports authenticating clients with Kubernetes service account tokens.
 
@@ -6484,7 +6822,7 @@ Procedure
 2. From the `Add provider` list, select `Kubernetes`.
 3. Enter your initial configuration options or proceed with the defaults.
    
-   Table 8. Kubernetes settings   Configuration Description
+   Table 9. Kubernetes settings   Configuration Description
    
    Alias
    
@@ -6554,7 +6892,7 @@ While the service account functionality is helpful to test that the setup is wor
 
 ### [](#_client_suggested_idp)Client-suggested Identity Provider
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/suggested.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsuggested.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsuggested.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/suggested.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsuggested.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsuggested.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 OIDC applications can bypass the Keycloak login page by hinting at the identity provider they want to use. You can enable this by setting the `kc_idp_hint` query parameter in the Authorization Code Flow authorization endpoint.
 
@@ -6587,7 +6925,7 @@ With the `kc_idp_hint` query parameter, the client can override the default iden
 
 ### [](#_mappers)Mapping claims and assertions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fmappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fmappers.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fmappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fmappers.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can import the SAML and OpenID Connect metadata, provided by the external IDP you are authenticating with, into the realm. After importing, you can extract user profile metadata and other information, so you can make it available to your applications.
 
@@ -6622,7 +6960,7 @@ To investigate the structure of user profile JSON data provided by social provid
 
 ### [](#available-user-session-data)Available user session data
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/session-data.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsession-data.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsession-data.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/session-data.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsession-data.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fsession-data.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 After a user login from an external IDP, Keycloak stores user session note data that you can access. This data can be propagated to the client requesting log in using the token or SAML assertion passed back to the client using an appropriate client mapper.
 
@@ -6638,7 +6976,7 @@ You can use a [Protocol Mapper](#_protocol-mappers) of type `User Session Note` 
 
 ### [](#_identity_broker_first_login)First login flow
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/first-login-flow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ffirst-login-flow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ffirst-login-flow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/first-login-flow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ffirst-login-flow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ffirst-login-flow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When users log in through identity brokering, Keycloak imports and links aspects of the user within the realm’s local database. When Keycloak successfully authenticates users through an external identity provider, two situations can exist:
 
@@ -6649,7 +6987,7 @@ Different organizations have different requirements when dealing with some of th
 
 The flow is in the Admin Console under the **Authentication** tab. When you choose the `First Broker Login` flow, you see the authenticators used by default. You can re-configure the existing flow. For example, you can disable some authenticators, mark some of them as `required`, or configure some authenticators.
 
-You can also create a new authentication flow, write your own Authenticator implementations, and use it in your flow. See [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information.
+You can also create a new authentication flow, write your own Authenticator implementations, and use it in your flow. See [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information.
 
 #### [](#default-first-login-flow-authenticators)Default first login flow authenticators
 
@@ -6769,7 +7107,7 @@ When creating authentication flows with this authenticator, make sure to add thi
 
 ### [](#_identity_broker_post_login_flow)Post login flow
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/post-login-flow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fpost-login-flow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fpost-login-flow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/post-login-flow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fpost-login-flow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fpost-login-flow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Post login flow is useful for the situations when you want to trigger some additional authentication actions after every login with the particular identity provider. For example, you may want to trigger 2-factor authentication after every login of Keycloak to `Facebook` because `Facebook` does not provide 2-factor authentication during its login.
 
@@ -6808,37 +7146,39 @@ The requested clients need to have this client scope set on them either as defau
 
 ### [](#retrieving-external-idp-tokens)Retrieving external IDP tokens
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/tokens.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ftokens.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ftokens.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/tokens.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ftokens.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Ftokens.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 With Keycloak, you can store tokens and responses from the authentication process with the external IDP using the `Store Token` configuration option on the IDP’s settings page.
 
-Application code can retrieve these tokens and responses to import extra user information or to request the external IDP securely. For example, an application can use the Google token to use other Google services and REST APIs. To retrieve a token for a particular identity provider, send a request as follows:
+Application code can retrieve these tokens and responses to import extra user information or to request the external IDP securely. For example, an application can use the Google token to use other Google services and REST APIs.
 
-```
-GET /realms/{realm-name}/broker/{provider_alias}/token HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer <KEYCLOAK ACCESS TOKEN>
-```
+For the details on how to configure and use this functionality, please see the [section for retrieving external IDP tokens from Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/#_identity-brokering-apis-tokens).
 
-An application must authenticate with Keycloak and receive an access token. This access token must have the `broker` client-level role `read-token` set, so the user must have a role mapping for this role, and the client application must have that role within its scope. In this case, since you are accessing a protected service in Keycloak, send the access token issued by Keycloak during the user authentication. You can assign this role to newly imported users in the broker configuration page by setting the **Stored Tokens Readable** switch to **ON**.
+### [](#link-existing-user-to-the-identity-provider)Link existing user to the identity provider
 
-These external tokens can be re-established by logging in again through the provider or using the client-initiated account linking API.
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/client-initiated-account-linking.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fclient-initiated-account-linking.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Fclient-initiated-account-linking.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+In the typical usage, the identity provider will automatically register new user to the Keycloak storage once user is authenticated to the Keycloak with the identity provider for the first time. Details about this are described in the [First login flow](#_identity_broker_first_login).
+
+However in many cases, it may be desired to link existing Keycloak user to the identity provider. This is useful, so that user can login with the identity provider during his next authentication to Keycloak. Another use is, that application may need to use existing tokens from identity provider. For example application may want to use Facebook API, so it will need user to link his Keycloak user account with his Facebook account to be then able to retrieve Facebook token from Keycloak and use it as described in the [corresponding section from Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/#_identity-brokering-apis-tokens).
+
+The easiest is to use [Account console](#_account-service) from where the user can directly link his account to the particular identity provider. It is also possible to directly trigger process of linking user with the identity provider from your own application. This is possible with the use of Client initiated account linking API. This API is used under the covers by the built-in Keycloak account console. For the details about this API, see the [corresponding section from Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/#_client-initiated-account-linking).
 
 ### [](#identity-broker-logout)Identity broker logout
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/logout.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Flogout.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Flogout.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/identity-broker/logout.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fidentity-broker%2Flogout.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fidentity-broker%2Flogout.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When logging out, Keycloak sends a request to the external identity provider that is used to log in initially and logs the user out of this identity provider.
 
 ## [](#sso-protocols)SSO protocols
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 This section discusses authentication protocols, the Keycloak authentication server and how applications, secured by the Keycloak authentication server, interact with these protocols.
 
 ### [](#con-oidc_server_administration_guide)OpenID Connect
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 [OpenID Connect](https://openid.net/developers/how-connect-works/) (OIDC) is an authentication protocol that is an extension of [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749).
 
@@ -6858,7 +7198,7 @@ The second use case is a client accessing remote services.
 
 #### [](#con-oidc-auth-flows_server_administration_guide)OIDC auth flows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-oidc-auth-flows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc-auth-flows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc-auth-flows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-oidc-auth-flows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc-auth-flows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-oidc-auth-flows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 OIDC has several methods, or flows, that clients or applications can use to authenticate users and receive *identity* and *access* tokens. The method depends on the type of application or client requesting access.
 
@@ -7208,7 +7548,7 @@ When the client application supports backchannel logout, that logout is usually 
 
 #### [](#con-server-oidc-uri-endpoints_server_administration_guide)Keycloak server OIDC URI endpoints
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-server-oidc-uri-endpoints.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-server-oidc-uri-endpoints.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-server-oidc-uri-endpoints.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-server-oidc-uri-endpoints.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-server-oidc-uri-endpoints.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-server-oidc-uri-endpoints.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The following is a list of OIDC endpoints that Keycloak publishes. These endpoints can be used when a non-Keycloak client adapter uses OIDC to communicate with the authentication server. They are all relative URLs. The root of the URL consists of the HTTP(S) protocol, hostname, and optionally the path: For example
 
@@ -7256,9 +7596,9 @@ In all of these, replace {realm-name} with the name of the realm.
 
 ### [](#_saml)SAML
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-saml.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-saml.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
-[SAML 2.0](https://saml.xml.org/saml-specifications) is a similar specification to OIDC but more mature. It is descended from SOAP and web service messaging specifications so is generally more verbose than OIDC. SAML 2.0 is an authentication protocol that exchanges XML documents between authentication servers and applications. XML signatures and encryption are used to verify requests and responses.
+[SAML 2.0](https://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html) is a similar specification to OIDC but more mature. It is descended from SOAP and web service messaging specifications so is generally more verbose than OIDC. SAML 2.0 is an authentication protocol that exchanges XML documents between authentication servers and applications. XML signatures and encryption are used to verify requests and responses.
 
 In general, SAML implements two use cases.
 
@@ -7268,7 +7608,7 @@ The second use case is a client accessing remote services. The client requests a
 
 #### [](#con-saml-bindings_server_administration_guide)SAML bindings
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-saml-bindings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml-bindings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml-bindings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-saml-bindings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml-bindings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-saml-bindings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak supports three binding types.
 
@@ -7309,7 +7649,7 @@ All bindings use this endpoint.
 
 ### [](#ref-saml-vs-oidc_server_administration_guide)OpenID Connect compared to SAML
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/ref-saml-vs-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fref-saml-vs-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fref-saml-vs-oidc.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/ref-saml-vs-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fref-saml-vs-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fref-saml-vs-oidc.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The following lists a number of factors to consider when choosing a protocol.
 
@@ -7331,7 +7671,7 @@ For most purposes, Keycloak recommends using OIDC.
 
 ### [](#_docker)Distribution Registry v2 authentication
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-sso-dist-reg.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-sso-dist-reg.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-sso-dist-reg.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/sso-protocols/con-sso-dist-reg.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-sso-dist-reg.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fsso-protocols%2Fcon-sso-dist-reg.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Docker authentication is disabled by default. To enable docker authentication, see the [Enabling and disabling features](https://www.keycloak.org/server/features) guide.
 
@@ -7358,13 +7698,13 @@ Keycloak has one endpoint for all Docker auth v2 requests.
 
 ## [](#_admin_permissions)Managing access to realm resources
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Each realm created on the Keycloak has a dedicated Admin Console from which that realm can be managed. The `master` realm is a special realm that allows admins to manage more than one realm on the system. You can also define fine-grained access to users in different realms to manage the server. This chapter goes over all the scenarios for this.
 
 ### [](#_master_realm_access_control)Master realm access control
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/master-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fmaster-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fmaster-realm.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/master-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fmaster-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fmaster-realm.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The `master` realm in Keycloak is a special realm and treated differently than other realms. Users in the Keycloak `master` realm can be granted permission to manage zero or more realms that are deployed on the Keycloak server. When a realm is created, Keycloak automatically creates various roles that grant permissions to access that new realm. Access to The Admin Console and Admin REST endpoints can be controlled by mapping these roles to users in the `master` realm. It’s possible to create multiple superusers, as well as users that can only manage specific realms.
 
@@ -7391,16 +7731,19 @@ The roles available are:
 - manage-clients
 - manage-events
 - manage-identity-providers
+- manage-organizations
 - manage-realm
 - manage-users
 - query-clients
 - query-groups
+- query-organizations
 - query-realms
 - query-users
 - view-authorization
 - view-clients
 - view-events
 - view-identity-providers
+- view-organizations
 - view-realm
 - view-users
 
@@ -7408,9 +7751,39 @@ Assign the roles you want to your users and they will only be able to use that s
 
 Admins with the `manage-users` role will only be able to assign admin roles to users that they themselves have. So, if an admin has the `manage-users` role but doesn’t have the `manage-realm` role, they will not be able to assign this role.
 
+#### [](#granting-admin-roles-to-users)Granting admin roles to users
+
+When granting admin roles to users in a realm, you must explicitly assign these roles to the user, either by a direct role mapping (including roles granted via identity provider mappers) or by assigning the user to a group that has the appropriate role mappings. This is true even for users in the `master` realm.
+
+Even though you are able to create client protocol mappers for a client to map admin roles to tokens, the admin roles will be ignored when the user authenticates and will not be included in the token. This is because admin roles are only used for authorization to access the Admin Console and Admin REST endpoints, and are not intended to be used for application access control.
+
+Effectively, access to the Admin API is only granted to users with admin roles explicitly assigned through direct role mappings or group memberships, and not to users with admin roles mapped only through client protocol mappers.
+
+#### [](#multi-realm-administration-considerations)Multi-realm administration considerations
+
+The `admin` role in the `master` realm is a composite role. For every realm in the deployment, it includes the full set of admin roles from that realm’s `<realm name>-realm` client. For example, with 100 realms, the `admin` composite contains over 2,000 role mappings (approximately 21 roles per realm). This has implications for token size and performance.
+
+##### [](#token-size)Token size
+
+When using full (non-lightweight) access tokens, all admin roles from the `admin` composite are included in the token. With hundreds of realms, the token can exceed HTTP header size limits enforced by load balancers or reverse proxies.
+
+To mitigate this, use lightweight access tokens. The `security-admin-console` and `admin-cli` clients use lightweight access tokens by default since Keycloak 26. Lightweight tokens do not carry roles over the wire — the server resolves them from the user session when needed.
+
+##### [](#cache-sizing)Cache sizing
+
+Deployments with many realms should ensure that the `realms`, `users`, and `authorization` local caches are properly sized. Undersized caches lead to frequent evictions and cache misses, resulting in additional database round-trips that degrade performance. See the [server caching guide](https://www.keycloak.org/server/caching) for guidance on tuning cache sizes.
+
+##### [](#role-policies-and-fine-grained-admin-permissions)Role policies and fine-grained admin permissions
+
+When using [fine-grained admin permissions](https://www.keycloak.org/docs/26.7.4/server_admin/#_fine_grained_permissions), the effective admin roles considered by role policies are the intersection of the roles present in the token and the roles the user actually has. Because the token reflects the authenticating client’s scope and protocol mapper configuration, the same user can have different effective roles depending on which client they authenticate with.
+
+The **Fetch Roles** setting on role policies controls whether this intersection is applied. When **Fetch Roles** is disabled (the default), only roles that are both assigned to the user and present in the token are considered. When **Fetch Roles** is enabled, roles are resolved directly from the user’s role assignments, bypassing the token and any client scope filtering.
+
+For deployments where multiple clients authenticate administrators with different levels of access, keep **Fetch Roles** disabled on role policies so that client scope constrains which admin roles are considered for authorization decisions. This ensures that a client with a restricted scope cannot be used to exercise permissions beyond what its scope allows, even if the authenticating user holds broader role assignments.
+
 ### [](#_per_realm_admin_permissions)Dedicated realm admin consoles
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/per-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fper-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fper-realm.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/per-realm.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fper-realm.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Fper-realm.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Each realm has a dedicated Admin Console that can be accessed by going to the url `/admin/{realm-name}/console`. Users within that realm can be granted realm management permissions by assigning specific user role mappings.
 
@@ -7422,10 +7795,12 @@ Each realm has a built-in client called `realm-management`. You can view this cl
 - manage-clients
 - manage-events
 - manage-identity-providers
+- manage-organizations
 - manage-realm
 - manage-users
 - query-clients
 - query-groups
+- query-organizations
 - query-realms
 - query-users
 - realm-admin
@@ -7433,6 +7808,7 @@ Each realm has a built-in client called `realm-management`. You can view this cl
 - view-clients
 - view-events
 - view-identity-providers
+- view-organizations
 - view-realm
 - view-users
 
@@ -7440,7 +7816,7 @@ Assign the roles you want to your users and they will only be able to use that s
 
 ### [](#_fine_grained_permissions)Delegating realm administration using permissions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/fine-grain-v2.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain-v2.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain-v2.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/fine-grain-v2.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain-v2.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain-v2.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can delegate realm management to other administrators, the realm administrators, using the fine-grained admin permissions feature. Different from the Role-Based Access Control (RBAC) Mechanism provided through the [Global and Realm specific roles](#_master_realm_access_control), this feature provides a more fine-grained control over how realm resources can be accessed and managed based on a well-defined set of operations that can be performed on them.
 
@@ -7464,7 +7840,7 @@ Delegated realm administrators, on the other hand, can have limited access to a 
 
 Be aware that both server and realm administrators are not affected by the permissions you define when managing access to realm resources through this feature. Always make sure to review the users granted with the `admin` or `realm-admin` roles to avoid any potential privilege escalation.
 
-#### [](#understanding-the-realm-resource-types)Understanding the Realm Resource Types
+#### [](#_understanding_realm_resource_types)Understanding the Realm Resource Types
 
 In a realm, you can manage different types of resources such as users, groups, clients, client scopes, roles, and so on. As a realm administrator, you are constantly managing these resources when managing identities and how they authenticate and are authorized to access a realm and applications.
 
@@ -7474,6 +7850,7 @@ This feature provides the necessary mechanisms to enforce access controls when m
 - Groups
 - Clients
 - Roles
+- Organizations
 
 You can manage permissions for all resources of a given resource type, such as all users in a realm, or for a specific realm resource, such as a specific user or set of users in the realm.
 
@@ -7569,6 +7946,12 @@ Defines if a realm administrator can add or remove members from groups.
 
 Defines if a realm administrator can grant or deny `manage-group-membership` for members of a group.
 
+When a delegated administrator has `view` permission on a group but not on its ancestor groups, the Admin REST API returns the full group hierarchy so the administrator can understand where the group belongs. Ancestor groups without `view` permission are returned as stripped representations containing only `id`, `name`, `path`, `parentId`, and `description`. Sensitive fields such as `attributes`, `realmRoles`, `clientRoles`, and `access` are omitted from these ancestors.
+
+The `subGroupCount` field on stripped ancestors reflects the number of visible children included in the response rather than the total child count. In the admin console, non-viewable ancestor groups appear greyed out and are not clickable.
+
+When a delegated administrator has `view` permission only on groups that are not at the top level of the hierarchy, the admin console Groups page initially appears empty because only top-level groups are loaded on the initial page load. The administrator must use the search field to find their permitted groups. The search results then display the full hierarchy with stripped ancestors as described above.
+
 ##### [](#clients-resource-type)Clients Resource Type
 
 The **Clients** realm resource type represents the clients in a realm. You can manage permissions for clients based on the following set of management operations:
@@ -7619,6 +8002,22 @@ The **map-roles** operation does not grant the ability to manage users or assign
 
 If there is a client resource type permission for the **map-roles**, **map-roles-composite**, or **map-roles-client-scope** scopes, it will take precedence over any role resource type permission if the role is a client role.
 
+##### [](#organizations-resource-type)Organizations Resource Type
+
+The **Organizations** realm resource type represents the organizations in a realm. You can manage permissions for organizations based on the following set of management operations:
+
+  **Operation** **Description**
+
+**view**
+
+Defines if a realm administrator can view organizations. This scope should be set whenever you want to make organizations available from queries.
+
+**manage**
+
+Defines if a realm administrator can manage organizations, including updating and deleting them.
+
+Creating new organizations requires `manage` permission on all organizations (the resource type level), not just on a specific organization.
+
 #### [](#enabling-admin-permissions-to-a-realm)Enabling admin permissions to a realm
 
 To enable fine-grained admin permissions in a realm, follow these steps:
@@ -7668,7 +8067,9 @@ Permissions that grant access to `view` a realm resource of a certain type must 
 - `Role`
 - `Aggregated`
 
-In case of using an `Aggregated` policy, all the underlying policies must be of type `User`, `Group`, or `Role`. Otherwise, the policy will always evaluate to `DENY` when performing partial evaluation.
+When using an `Aggregated` policy, underlying policies that support partial evaluation (`User`, `Group`, `Role`, or nested `Aggregated`) are evaluated during partial evaluation. Underlying policies of other types (such as `Time` or `JavaScript`) are skipped because they cannot be pre-evaluated at the database level. If an aggregated policy contains only unsupported policy types, the entire aggregated policy is excluded from partial evaluation.
+
+When an aggregated policy contains a mix of supported and unsupported policy types, only the supported policies contribute to the decision. Unsupported policies do not count as grants but are still considered in the total policy count, which means `Unanimous` and `Consensus` decision strategies become more conservative. For best results, use only `User`, `Group`, `Role`, or nested `Aggregated` policies as the underlying policies of an aggregated policy used in view-related permissions.
 
 By using any of the policies above, Keycloak can pre-calculate the set of resources that a realm administration can view by looking for a direct (if using a user policy) or indirect (if using a role or group policy) reference to the realm administrator. Therefore, the partial evaluation mechanism involves decorating queries with access controls that will run at the database level. This capability is mainly important to properly allow paginating resources as well as avoid an additional overhead on the server-side when evaluating permissions for each realm resource returned by queries.
 
@@ -7712,7 +8113,7 @@ Keycloak provides a set of built-in policies that you can choose from:
 
 Once you have a well-defined and stable permission model for your realm, less need exists to create policies. You can instead reuse existing policies to create more permissions.
 
-For more details about each policy type, see [Managing policies](https://www.keycloak.org/docs/26.6.3/authorization_services/#_policy_overview).
+For more details about each policy type, see [Managing policies](https://www.keycloak.org/docs/26.7.4/authorization_services/#_policy_overview).
 
 #### [](#_evaluating-permissions)Evaluating Permissions
 
@@ -7760,6 +8161,7 @@ To access the administration console, a realm administrator must have at least o
 - **query-users** – Required to query realm users.
 - **query-groups** – Required to query realm groups.
 - **query-clients** – Required to query realm clients.
+- **query-organizations** – Required to query realm organizations.
 
 By granting any of these roles to a realm user, they will be able to access the administration console, but only for the areas that correspond to roles granted. For instance, if you assign the `query-users` role, the realm administrator will only have access to the `Users` section in the administration console. If an administrator is responsible for multiple resource types (such as both users and groups), they must have all the corresponding "query-\*" roles assigned.
 
@@ -7783,6 +8185,10 @@ A realm administrator can see the **Groups** section in administration console a
 
 A realm administrator can see the **Clients** section in administration console and can search for clients in the realm. It does not grant the ability to **view** clients.
 
+**query-organizations**
+
+A realm administrator can see the **Organizations** section in administration console and can search for organizations in the realm. It does not grant the ability to **view** organizations.
+
 **view-users**
 
 A realm administrator can **view** all users and groups in the realm.
@@ -7802,6 +8208,14 @@ A realm administrator can **view** all clients in the realm.
 **manage-clients**
 
 A realm administrator can **view** and **manage** all clients and client scopes in the realm.
+
+**view-organizations**
+
+A realm administrator can **view** all organizations in the realm.
+
+**manage-organizations**
+
+A realm administrator can **view** and **manage** all organizations in the realm.
 
 When this feature is enabled in a realm, only server and realm administrators with the corresponding admin roles can grant these roles to other realm administrators. Delegated realm administrators cannot assign administrative roles to other realm administrators.
 
@@ -7872,6 +8286,210 @@ Let’s exlude the members of the group itself, so that `test-admins` cannot man
 - Create a "Group Permission" with the **impersonate-members** for specific group `mygroup`.
 - Assign a "Group Policy" targeting `mygroup-helpdesk` to it.
 
+#### [](#_managing-permissions-rest-api)Managing permissions using the Admin REST API
+
+In addition to the Admin Console, you can manage fine-grained admin permissions programmatically using the Admin REST API.
+
+All permission and policy management is performed through the authorization endpoints of the `admin-permissions` client that is automatically created when you enable admin permissions for a realm.
+
+##### [](#enabling-admin-permissions-for-a-realm)Enabling admin permissions for a realm
+
+To enable admin permissions via the Admin REST API, update the realm representation:
+
+```
+PUT /admin/realms/{realm}
+Content-Type: application/json
+
+{
+  "adminPermissionsEnabled": true
+}
+```
+
+##### [](#discovering-the-admin-permissions-client)Discovering the admin-permissions client
+
+Once admin permissions are enabled, a special `admin-permissions` client is created in the realm. You need this client’s internal UUID to manage permissions and policies via the REST API.
+
+```
+GET /admin/realms/{realm}/clients?clientId=admin-permissions
+```
+
+The response contains the client representation with the `id` field you will use in subsequent requests. All permission and policy endpoints are under:
+
+```
+/admin/realms/{realm}/clients/{admin-permissions-client-uuid}/authz/resource-server
+```
+
+##### [](#creating-policies)Creating policies
+
+Before creating permissions, you must create one or more policies that define *who* should be granted or denied access. Policies are created under the `policy` sub-resource, with the policy type as a path segment.
+
+###### [](#user-policy)User policy
+
+A user policy grants or denies access based on specific users.
+
+```
+POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/user
+Content-Type: application/json
+
+{
+  "name": "my-user-policy",
+  "logic": "POSITIVE",
+  "users": ["{user-uuid}"]
+}
+```
+
+###### [](#group-policy)Group policy
+
+A group policy grants or denies access based on group membership.
+
+```
+POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/group
+Content-Type: application/json
+
+{
+  "name": "my-group-policy",
+  "logic": "POSITIVE",
+  "groups": [{"id": "{group-uuid}"}]
+}
+```
+
+###### [](#role-policy)Role policy
+
+A role policy grants or denies access based on role assignment.
+
+```
+POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/role
+Content-Type: application/json
+
+{
+  "name": "my-role-policy",
+  "logic": "POSITIVE",
+  "roles": [{"id": "{role-uuid}"}]
+}
+```
+
+For all policy types, set `logic` to `NEGATIVE` to invert the condition (deny when the condition is met).
+
+##### [](#creating-permissions)Creating permissions
+
+Permissions are scope-based and are created under the `permission/scope` sub-resource. A permission ties together a resource type, one or more scopes (operations), and one or more policies.
+
+###### [](#permission-for-all-resources-of-a-type)Permission for all resources of a type
+
+To grant access to all resources of a given type (for example, all groups):
+
+```
+POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope
+Content-Type: application/json
+
+{
+  "name": "manage-all-groups",
+  "resourceType": "Groups",
+  "scopes": ["manage", "view"],
+  "policies": ["my-group-policy"]
+}
+```
+
+###### [](#permission-for-specific-resources)Permission for specific resources
+
+To grant access to specific resources, provide the resource identifiers in the `resources` field. For users, groups, and clients, use the entity’s UUID. For roles, use the role UUID.
+
+```
+POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope
+Content-Type: application/json
+
+{
+  "name": "manage-engineering-group",
+  "resourceType": "Groups",
+  "scopes": ["manage", "view", "manage-members", "view-members"],
+  "resources": ["{group-uuid}"],
+  "policies": ["my-group-policy"]
+}
+```
+
+The `resourceType` field must be one of: `Users`, `Groups`, `Clients`, `Roles`, or `Organizations`. The `scopes` must be valid for the chosen resource type — see [Understanding the Realm Resource Types](#_understanding_realm_resource_types) for the available scopes.
+
+##### [](#listing-updating-and-deleting-permissions)Listing, updating, and deleting permissions
+
+To list all scope permissions:
+
+```
+GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope
+```
+
+To search for a permission by name:
+
+```
+GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope/search?name={name}
+```
+
+To update a permission:
+
+```
+PUT /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope/{permission-id}
+Content-Type: application/json
+
+{
+  "id": "{permission-id}",
+  "name": "updated-name",
+  "resourceType": "Groups",
+  "scopes": ["view"],
+  "policies": ["my-group-policy"]
+}
+```
+
+To delete a permission:
+
+```
+DELETE /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/scope/{permission-id}
+```
+
+The same CRUD operations are available for policies under the corresponding policy type path (for example, `/authz/resource-server/policy/user/{policy-id}`).
+
+##### [](#example-allowing-a-group-of-administrators-to-manage-specific-groups)Example: Allowing a group of administrators to manage specific groups
+
+The following example creates a policy and permission that allows members of an `admins` group to view and manage a specific group and its members.
+
+1. Enable admin permissions for the realm:
+   
+   ```
+   PUT /admin/realms/myrealm
+   Content-Type: application/json
+   
+   {"adminPermissionsEnabled": true}
+   ```
+2. Discover the `admin-permissions` client UUID:
+   
+   ```
+   GET /admin/realms/myrealm/clients?clientId=admin-permissions
+   ```
+3. Create a group policy referencing the `admins` group:
+   
+   ```
+   POST /admin/realms/myrealm/clients/{client-uuid}/authz/resource-server/policy/group
+   Content-Type: application/json
+   
+   {
+     "name": "admins-policy",
+     "logic": "POSITIVE",
+     "groups": [{"id": "{admins-group-uuid}"}]
+   }
+   ```
+4. Create a permission granting view and manage access to a target group:
+   
+   ```
+   POST /admin/realms/myrealm/clients/{client-uuid}/authz/resource-server/permission/scope
+   Content-Type: application/json
+   
+   {
+     "name": "manage-target-group",
+     "resourceType": "Groups",
+     "scopes": ["view", "manage", "view-members", "manage-members", "manage-membership"],
+     "resources": ["{target-group-uuid}"],
+     "policies": ["admins-policy"]
+   }
+   ```
+
 #### [](#performance-considerations)Performance considerations
 
 When enabling the feature to a realm, there is an additional overhead when realm administrators are managing any of the supported resource types. This is mainly true when performing these operations:
@@ -7903,7 +8521,7 @@ When filtering resources, the partial evaluation mechanism will eventually rely 
 
 ### [](#fine-grained-admin-permissions-v1)Fine grained admin permissions V1
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/fine-grain.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-console-permissions/fine-grain.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-console-permissions%2Ffine-grain.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Preview feature fine-grained admin permissions V1 has been replaced by a new [supported version](#_fine_grained_permissions). Version 1 of the feature is still available, but it has been deprecated and will be removed in future release. To enable it, start the server with `--features=admin-fine-grained-authz:v1`.
 
@@ -7921,7 +8539,7 @@ Sometimes roles like `manage-realm` or `manage-users` are too coarse grain and y
 
 There are some important things to note about fine grain admin permissions:
 
-- Fine grain admin permissions were implemented on top of [Authorization Services](https://www.keycloak.org/docs/26.6.3/authorization_services/). It is highly recommended that you read up on those features before diving into fine grain permissions.
+- Fine grain admin permissions were implemented on top of [Authorization Services](https://www.keycloak.org/docs/26.7.4/authorization_services/). It is highly recommended that you read up on those features before diving into fine grain permissions.
 - Fine grain permissions are only available within [dedicated admin consoles](#_per_realm_admin_permissions) and admins defined within those realms. You cannot define cross-realm fine grain permissions.
 - Fine grain permissions are used to grant additional permissions. You cannot override the default behavior of the built-in admin roles.
 
@@ -7953,7 +8571,7 @@ Client permissions tab
 
 ![Fine grain permission tab](./images/fine-grain-client-permissions-tab-on.png)
 
-When you switch `Permissions Enabled` to on, it initializes various permission objects behind the scenes using [Authorization Services](https://www.keycloak.org/docs/26.6.3/authorization_services/). For this example, we’re interested in the `manage` permission for the client. Clicking on that will redirect you to the permission that handles the `manage` permission for the client. All authorization objects are contained in the `realm-management` client’s `Authorization` tab.
+When you switch `Permissions Enabled` to on, it initializes various permission objects behind the scenes using [Authorization Services](https://www.keycloak.org/docs/26.7.4/authorization_services/). For this example, we’re interested in the `manage` permission for the client. Clicking on that will redirect you to the permission that handles the `manage` permission for the client. All authorization objects are contained in the `realm-management` client’s `Authorization` tab.
 
 Client manage permission
 
@@ -8161,7 +8779,7 @@ Policies that decide if an admin can change the membership of the group. Add or 
 
 ## [](#_managing_organizations)Managing organizations
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-organizations.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-organizations.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-organizations.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-organizations.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-organizations.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-organizations.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When integrating with a third party like a customer or business partner, you might want to manage their identities separately from others and build a unified and secure experience throughout your business ecosystem when they interact with a realm.
 
@@ -8178,11 +8796,11 @@ Keycloak Organizations is a feature that enables support for organizations in Ke
 - Identity-first login and organization-specific steps when authenticating in the scope of an organization
 - Propagate organization-specific claims to applications through tokens for authorization purposes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/intro.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fintro.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fintro.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/intro.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fintro.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fintro.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 ### [](#_enabling_organization_)Enabling organizations in Keycloak
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-organization.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-organization.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-organization.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-organization.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-organization.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-organization.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To use organizations, you have to enable the feature for the current realm.
 
@@ -8245,14 +8863,6 @@ Once you create an organization, you can manage the additional settings that are
 - [Manage groups](#_managing_groups_)
 - [Manage identity providers](#_managing_identity_provider_)
 
-#### [](#understanding-organization-domains)Understanding organization domains
-
-When managing an organization, the domain associated with an organization plays an important role in how organization members authenticate to a realm and how their profiles are validated.
-
-One of the key roles of a domain is to help to identify the organizations where a user is a member. By looking at their email address, Keycloak will match a corresponding organization using the same domain and eventually change the authentication flow based on the organization requirements.
-
-The domain also allows organizations to enforce that users are not allowed to use a domain in their emails other than those associated with an organization. This restriction is especially useful when users, and their identities, are federated from identity providers associated with an organization and you want to force a specific email domain for their email addresses.
-
 #### [](#disabling-an-organization)Disabling an organization
 
 To disable an organization, toggle **Enabled** to **Off**.
@@ -8281,9 +8891,70 @@ Unmanaged users and identity providers remain in the realm, but they are no long
 
 For more details about managed and unmanaged users, see [Managed and unmanaged members](#_managed_unmanaged_members_).
 
+### [](#managing-organization-domains_server_administration_guide)Managing organization domains
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-domains.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-domains.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-domains.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+The domain associated with an organization plays an important role in how organization members authenticate to a realm and how their profiles are validated.
+
+One of the key roles of a domain is to help to identify the organizations where a user is a member. By looking at their email address, Keycloak will match a corresponding organization using the same domain and eventually change the authentication flow based on the organization requirements.
+
+The domain also allows organizations to enforce that users are not allowed to use a domain in their emails other than those associated with an organization. This restriction is especially useful when users, and their identities, are federated from identity providers associated with an organization and you want to force a specific email domain for their email addresses.
+
+#### [](#assigning-domains)Assigning domains
+
+Domains are assigned through the **Domains** setting when creating or editing an organization. An organization can have zero, one, or multiple domains.
+
+When no domain is assigned, members are not validated against domain restrictions and email-based redirection to identity providers is unavailable.
+
+#### [](#domain-types)Domain types
+
+Exact
+
+Matches only the specified value. `example.com` matches `user@example.com` but not `user@sub.example.com`.
+
+Wildcard
+
+Prefix the base domain with `.` **to match the base domain and all its subdomains at any depth.** `.example.com` matches `user@example.com`, `user@sub.example.com`, and `user@deep.sub.example.com`.
+
+#### [](#mapping-email-addresses-to-organizations)Mapping email addresses to organizations
+
+Keycloak extracts the domain from the email address, normalizes it to lowercase, and selects the best-matching organization using the following rules:
+
+1. Matching is case-insensitive.
+2. The most specific match wins, measured by the number of domain parts. For example, when resolving `user@deep.sub.example.com`:
+   
+   - `deep.sub.example.com` (4 parts, exact) wins over `.sub.example.com` **(4 parts, wildcard) and** `.example.com` (3 parts, wildcard).
+   - `.sub.example.com` **(4 parts) wins over** `.example.com` (3 parts).
+3. When two domains have the same number of parts, an exact match wins over a wildcard.
+
+The same rules determine which domain is reported in token claims such as the `domain` claim from the organization membership mapper.
+
+#### [](#validation-rules)Validation rules
+
+- A domain cannot be shared across organizations in the same realm.
+- Domains are stored and compared in lowercase.
+- A domain must have at least 2 parts (e.g. `example.com`). Single-part domains such as `com`, `org`, or `*.com` are rejected.
+- A domain cannot have more than 10 parts.
+- The `.` **wildcard prefix may appear only once and only at the start of the value (e.g. `sub.`**`.example.com` is rejected).
+
+#### [](#considerations)Considerations
+
+Prefer the most specific value
+
+Use an exact domain for a single, well-known address. Use a wildcard when new subdomains may appear over time and should all map to the same organization.
+
+Overlapping domains across organizations are allowed but resolved deterministically
+
+An organization may own `*.example.com` while another owns `sub.example.com`. Only one organization is returned per lookup, always the most specific match, with exact winning over wildcard at equal specificity. Verify the intended mapping before relying on overlapping configurations.
+
+Use exact domains to model exceptions
+
+An organization can hold both `*.example.com` and `vip.example.com`. Addresses under `vip.example.com` resolve to the exact entry; all other subdomains fall back to the wildcard.
+
 ### [](#_managing_attributes_)Managing attributes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-attributes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-attributes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An administrator can store additional metadata about an organization using attributes. An organization attribute is a key/value pair that can hold multiple string values.
 
@@ -8297,7 +8968,7 @@ Managing organization attributes
 
 ### [](#_managing_members_)Managing members
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-members.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-members.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-members.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-members.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-members.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-members.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An organization member is basically a realm user but with a link to one or more organizations. They are logically separated from other users in a realm so that you know exactly which users belong to an organization.
 
@@ -8510,7 +9181,7 @@ In other words, LDAP users that are not imported can’t join an organization be
 
 ### [](#_managing_groups_)Managing groups
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-groups.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-groups.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Organization groups let you organize members into logical teams, departments, or any hierarchical structure that makes sense for your organization. Think of them as folders for your users—simple, flexible, and powerful.
 
@@ -8622,9 +9293,13 @@ Procedure
    Add to introspection
    
    Include groups in the Introspection endpoint response.
+   
+   Add group role mappings
+   
+   When enabled, realm and client roles assigned to the user’s organization groups are included in the token for each organization. See [Token structure with roles](#oidc-token-with-roles) for the output format.
 7. Click **Save**.
 
-The `organization` scope is added as an optional scope to all clients by default. Applications request it using `scope=organization` (or `scope=organization:alias` for a specific organization).
+The `organization` scope is added as an optional scope to all clients by default. Applications request it using `scope=organization` (or `scope=organization:alias` for a specific organization, or multiple specific organizations like `scope=organization:org-a organization:org-b`).
 
 ###### [](#option-2-create-custom-scope-with-both-mappers)Option 2: Create custom scope with both mappers
 
@@ -8672,7 +9347,35 @@ Notice:
 
 - Groups appear within the organization claim, not as a separate top-level claim
 - Group paths are relative to the organization
-- Multiple organizations can be included if the user is a member of multiple organizations and uses `scope=organization:*`
+- Make sure you have a single `organization-membership` mapper so that groups are included in the same claim as the organization data
+- Multiple organizations can be included if the user is a member of multiple organizations and uses `scope=organization:*` or multiple specific scopes like `scope=organization:org-a organization:org-b`
+
+###### [](#oidc-token-with-roles)Token structure with roles
+
+When **Add group role mappings** is enabled on the mapper, realm and client roles assigned to the user’s organization groups are included under `realm_access` and `resource_access` keys, following the same structure as standard Keycloak token role claims:
+
+```
+{
+  "organization": {
+    "orgA": {
+      "id": "f8d3c4e1-...",
+      "groups": [ "/Engineering/Backend" ],
+      "realm_access": {
+        "roles": [ "org-admin", "viewer" ]
+      },
+      "resource_access": {
+        "my-client": {
+          "roles": [ "client-editor" ]
+        }
+      }
+    }
+  }
+}
+```
+
+Composite roles are automatically expanded—if a group has a composite role, all its child roles are included.
+
+These roles are specific to the organization context and appear inside the `organization` claim. Standard `realm_access` and `resource_access` claims already include roles from all groups (including organization groups) regardless of this mapper setting.
 
 ##### [](#saml-organization-groups-in-assertions)SAML: Organization groups in assertions
 
@@ -8691,7 +9394,13 @@ Procedure
 5. Select **Organization Group Membership**.
 6. Click **Save**.
 
-The mapper has no additional configuration options. Groups are automatically included for all SAML clients.
+The mapper has one optional configuration:
+
+Add group role mappings
+
+When enabled, realm and client roles assigned to the user’s organization groups are included as additional SAML attributes. See [SAML assertion structure with roles](#saml-assertion-with-roles) for the output format.
+
+Groups are automatically included for all SAML clients.
 
 ###### [](#option-2-create-custom-saml-scope-with-both-mappers)Option 2: Create custom SAML scope with both mappers
 
@@ -8730,6 +9439,28 @@ When a user from Organization A’s `/Engineering/Backend` group authenticates, 
 
 Each organization gets its own attribute named `organization.{alias}.groups` with group paths as values, where `alias` is the organization alias.
 
+###### [](#saml-assertion-with-roles)SAML assertion structure with roles
+
+When **Add group role mappings** is enabled on the mapper, realm and client roles assigned to the user’s organization groups are included as additional attributes:
+
+```
+<Attribute Name="organization.orgA.groups">
+  <AttributeValue>/Engineering/Backend</AttributeValue>
+</Attribute>
+<Attribute Name="organization.orgA.realm_access.roles">
+  <AttributeValue>org-admin</AttributeValue>
+  <AttributeValue>viewer</AttributeValue>
+</Attribute>
+<Attribute Name="organization.orgA.resource_access.my-client.roles">
+  <AttributeValue>client-editor</AttributeValue>
+</Attribute>
+```
+
+Composite roles are automatically expanded. Each role type uses a separate attribute:
+
+- `organization.{alias}.realm_access.roles` — realm roles from the user’s organization groups
+- `organization.{alias}.resource_access.{clientId}.roles` — client roles, with one attribute per client
+
 Unlike OIDC, SAML clients don’t need to request a scope at runtime. The `saml_organization` scope is added as a default scope, so groups are automatically included in assertions for all organizations the user is a member of.
 
 #### [](#managing-group-attributes)Managing group attributes
@@ -8744,6 +9475,24 @@ Procedure
 4. Click **Save**.
 
 Group attributes are stored separately from user attributes. To include group attributes in tokens, configure a **User Attribute** mapper with the **Aggregate attributes** option enabled. The mapper will then combine matching attributes from both the user and all their groups.
+
+#### [](#assigning-roles-to-groups)Assigning roles to groups
+
+Organization groups support realm and client role mappings, just like realm groups. This lets you define role-based access that applies to all members of a group.
+
+Procedure
+
+1. Select an organization group.
+2. Click the **Role mapping** tab.
+3. Click **Assign role**.
+4. Select one or more realm or client roles.
+5. Click **Assign**.
+
+Roles assigned to organization groups are automatically included in `realm_access` and `resource_access` token claims for members of those groups—no additional mapper configuration is required.
+
+To also include these roles within the `organization` claim (organized per organization), enable the **Add group role mappings** option on the **Organization Group Membership** mapper. See [Token structure with roles](#oidc-token-with-roles) and [SAML assertion structure with roles](#saml-assertion-with-roles) for details.
+
+Assigning roles to organization groups requires the `manage-organizations` realm admin role (or equivalent Fine-Grained Admin Permission on the organization) and the `map-role` permission on the specific role being assigned.
 
 #### [](#important-distinctions)Important distinctions
 
@@ -8761,7 +9510,7 @@ Fully isolated—same paths can exist across organizations
 
 Role assignment
 
-Not supported (coming in future releases)
+Supported—realm and client roles can be assigned to organization groups via the Admin API and Admin Console
 
 Authorization policies
 
@@ -8789,7 +9538,7 @@ Procedure
 
 ### [](#_managing_identity_provider_)Managing identity providers
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-identity-providers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-identity-providers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-identity-providers.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/managing-identity-providers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-identity-providers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmanaging-identity-providers.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An organization might have its own identity provider as the single source of truth for their identities. In this case, you want to configure the organization to authenticate users using the organization’s identity provider, federate their identities, and finally add them as a member of the organization.
 
@@ -8826,6 +9575,10 @@ Domain
 
 The domain from the organization that you want to link with the identity provider.
 
+Excluded domains
+
+A comma-separated list of domains to skip automatic redirection. You can use wildcard domains like `*.example.com` to exclude all subdomains of `example.com`.
+
 Hide on login page
 
 If this identity provider should be hidden in login pages when the user is authenticating in the scope of the organization.
@@ -8833,6 +9586,10 @@ If this identity provider should be hidden in login pages when the user is authe
 Hide on login page when organization not resolved
 
 If enabled, the identity provider will be hidden on the login page when the organization cannot be resolved based on the user’s email domain. Otherwise, the identity provider will be shown on the login page regardless of whether the organization is resolved or not. If 'Hide on login page' is also enabled, the identity provider will always be hidden on the login page.
+
+Show on login page for unlinked members
+
+If enabled, organization members can see this identity provider on the login page even when they are already linked to another identity provider.
 
 Redirect when email domain matches
 
@@ -8977,7 +9734,7 @@ Unlinking identity provider
 
 ### [](#authenticating-members_server_administration_guide)Authenticating members
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/authenticating-members.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fauthenticating-members.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fauthenticating-members.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/authenticating-members.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fauthenticating-members.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fauthenticating-members.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When you enable organizations for a realm, user authentication is changed. If the user is recognized to be authenticating in the context of an organization, the authentication flow changes on a per-organization basis.
 
@@ -9079,7 +9836,7 @@ If enabled, and after the user provides the username or email in the identity-fi
 
 ### [](#_mapping_organization_claims_)Mapping organization claims
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/mapping-organization-claims.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmapping-organization-claims.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmapping-organization-claims.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/organizations/mapping-organization-claims.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Forganizations%2Fmapping-organization-claims.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Forganizations%2Fmapping-organization-claims.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To map organization-specific claims into tokens, a client needs to request the **organization** scope when sending authorization requests to the server. When authenticating in the context of an organization, clients can request the `organization` scope to map information about the organizations where the user is a member.
 
@@ -9116,17 +9873,19 @@ Maps to a single organization if the user is a member of a single organization. 
 
 `organization:<alias>`
 
-Maps to a single organization with the given alias.
+Maps to a specific organization with the given alias. Multiple organizations can be requested by specifying multiple scopes, for example `organization:org-a organization:org-b`. If any of the aliases does not match an existing organization or the user is not a member, the request will be rejected.
 
 `organization:*`
 
 Maps to all organizations the user is a member of.
 
+Mixing different scope formats (for example, `organization` with `organization:org-a`, or `organization:org-a` with `organization:*`) is not allowed and will result in an error.
+
 For details on including organization groups in tokens, see [Managing groups](#_managing_groups_).
 
 ## [](#_managing_workflows)Managing workflows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-workflows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-workflows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak Workflows is a powerful engine to automate and orchestrate realm administrative tasks, bringing key capabilities of Identity Governance and Administration (IGA) to your identity and access management infrastructure. By using workflows, you can implement policies and processes that govern the lifecycle of realm resources, such as users and clients, helping you to improve security, meet compliance requirements, and reduce administrative costs.
 
@@ -9141,11 +9900,11 @@ As a core component of IGA, identity lifecycle management is fully supported by 
 
 By leveraging workflows, realm administrators can ensure that security policies are consistently enforced and based on the least privilege principle, reduce the risk of human error, and free up valuable time to focus on other important administrative tasks. This guide will walk you through the process of creating and managing workflows to automate your administrative tasks and implement IGA best practices when managing realms.
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/intro.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fintro.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fintro.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/intro.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fintro.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fintro.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 ### [](#_understanding_workflows_)Understanding workflows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A workflow is an activity or process within Keycloak that executes a series of predefined steps on a specific realm resource in response to specific events and based on the defined conditions.
 
@@ -9168,7 +9927,7 @@ That is the main gist of Keycloak Workflows. There are more details and settings
 
 ### [](#_understanding_workflow_definition_)Understanding the workflow definition
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow-definition.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-definition.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-definition.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow-definition.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-definition.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-definition.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Workflows are defined in YAML format. This format allows for a clear and human-readable way to specify the automation process represented by a workflow.
 
@@ -9243,7 +10002,7 @@ This setting enables or disables the workflow. If set to `false`, new workflow e
 
 ### [](#_workflow_expression_language_)Understanding the workflow expression language
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow-expression.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-expression.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-expression.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflow-expression.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-expression.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflow-expression.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Some settings from the workflow definition can be defined using a boolean expression language, the Workflow Expression Language. Expressions are defined using functions, operands, and logical operators. The functions available in an expression will depend on the setting where it is being defined.
 
@@ -9280,7 +10039,7 @@ The settings that supports expressions provide its own set of functions as you w
 
 ### [](#_managing_workflows_)Managing workflows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/managing-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fmanaging-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fmanaging-workflows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/managing-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fmanaging-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fmanaging-workflows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Workflows can be managed through the Admin Console or the Admin REST API.
 
@@ -9330,7 +10089,7 @@ For now, the only option is to either wait for all active instances to complete 
 
 ### [](#_workflow_events_)Triggering workflows on events
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/listening-workflow-events.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-events.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-events.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/listening-workflow-events.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-events.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-events.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The `on` setting defines the event that will trigger the workflow. You should choose the event accordingly to the realm resource and the intent of the workflow.
 
@@ -9424,7 +10183,7 @@ None
 
 ### [](#_scheduling_workflows_)Scheduling workflows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/scheduling-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fscheduling-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fscheduling-workflows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/scheduling-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fscheduling-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fscheduling-workflows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Workflows can be scheduled to run periodically according to a defined interval. This is done using the `schedule` setting in the workflow definition.
 
@@ -9448,7 +10207,7 @@ The `schedule` setting supports the following parameters:
 
 ### [](#_workflow_conditions_)Defining conditions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/defining-conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-conditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-conditions.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/defining-conditions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-conditions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-conditions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The optional `if` setting allows you to define the conditions, as expressions, that the target resource must meet in order for the workflow to be triggered. See [Understanding the workflow expression language](#_workflow_expression_language_) for more details.
 
@@ -9497,7 +10256,7 @@ The name or path of the group.
 
 ### [](#_workflow_steps_)Defining steps
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/defining-steps.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-steps.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-steps.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/defining-steps.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-steps.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fdefining-steps.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The `steps` setting allows you to define the step chain, which is a sequence of actions to be executed during the lifetime of a workflow execution. Each step represents a specific action that can be performed, such as sending a notification, updating user attributes, or interacting with external systems.
 
@@ -9679,7 +10438,7 @@ steps:
 
 ### [](#_understanding_workflows_engine_)Understanding the workflows engine
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflows-engine.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflows-engine.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflows-engine.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-workflows-engine.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflows-engine.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-workflows-engine.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The lifecycle and execution of workflows in Keycloak is managed by the Workflows Engine. The engine is responsible for processing events, creating workflow executions, and processing their steps. Once a workflow execution is created, the engine takes over and manages the execution of its steps chain.
 
@@ -9727,7 +10486,7 @@ Consider the following best practices when defining workflows:
 
 ### [](#_handling_failures_)Handling failures
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/handling-failures.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fhandling-failures.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fhandling-failures.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/handling-failures.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Fhandling-failures.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Fhandling-failures.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The workflows engine keeps track of the execution process by storing the step that should run in a state table. If the step fails to run, either due to an error in the step execution or because of a timeout, the error is logged, an event is fired, and the state table remains unchanged. This effectively means that the step will be retried the next time the workflow execution task runs.
 
@@ -9737,9 +10496,193 @@ The state table is used even for immediate steps (i.e. steps that are supposed t
 
 Future versions of the workflows engine will include more features to handle failures, such as the ability to configure a maximum number of retries for each step, as well as the ability to define custom error handling logic for specific steps, like skip the step or cancel the workflow execution.
 
+### [](#_workflow_provider_events_)Listening to workflow provider events
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/listening-workflow-provider-events.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-provider-events.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Flistening-workflow-provider-events.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+During the lifecycle of a workflow execution, Keycloak fires a series of provider events that represent key moments such as activation, step execution, failures, and completion. SPI developers can listen to these events by implementing the `ProviderEventListener` interface and registering the listener with the `KeycloakSessionFactory`.
+
+Keycloak does not persist workflow execution history. By default, only log messages record what happened during a workflow run (see [Troubleshooting workflows](#_troubleshooting_workflows_)). Provider events allow you to capture and store workflow lifecycle data externally — for example, in an audit database or monitoring system — providing a complete execution trail beyond what the standard log messages offer.
+
+#### [](#common-event-fields)Common event fields
+
+All workflow provider events extend the `WorkflowProviderEvent` interface, which provides the following common fields:
+
+  Method Description
+
+`getKeycloakSession()`
+
+The `KeycloakSession` associated with this event.
+
+`getRealm()`
+
+The realm where the workflow event occurred.
+
+`getWorkflowId()`
+
+The ID of the workflow.
+
+`getWorkflowName()`
+
+The name of the workflow.
+
+`getResourceId()`
+
+The ID of the resource (user or client) associated with the workflow.
+
+`getResourceType()`
+
+The type of the resource — either `USERS` or `CLIENTS`.
+
+`getExecutionId()`
+
+The unique ID for this workflow execution.
+
+#### [](#_workflow_provider_event_types_)Event types
+
+The following event types are available:
+
+   Event Type Description Additional Fields
+
+`WorkflowActivatedEvent`
+
+Fired when a workflow is activated for a resource — either through a trigger event, a schedule, or a manual API call.
+
+- `getTriggerEventType()`: The event provider ID that triggered activation (e.g., `user-created`, `scheduled`, or `AD_HOC` for manual activation).
+
+`WorkflowDeactivatedEvent`
+
+Fired when a workflow execution is deactivated for a resource — for example, through a manual API call, a cancel-in-progress trigger, or because the resource no longer meets the workflow conditions.
+
+- `getReason()`: The reason for deactivation.
+
+`WorkflowRestartedEvent`
+
+Fired when a workflow execution is restarted from the beginning for a resource.
+
+None — uses only the common fields.
+
+`WorkflowStepScheduledEvent`
+
+Fired when a workflow step is scheduled for future execution (i.e., the step has an `after` delay).
+
+- `getStepId()`: The ID of the scheduled step.
+- `getStepProviderId()`: The provider ID of the step (e.g., `disable-user`).
+- `getScheduledTime()`: The time the step is scheduled to execute, in milliseconds since epoch.
+- `getDelay()`: The delay duration string (e.g., `PT5M` for 5 minutes).
+
+`WorkflowStepExecutedEvent`
+
+Fired when a workflow step completes successfully.
+
+- `getStepId()`: The ID of the executed step.
+- `getStepProviderId()`: The provider ID of the step.
+
+`WorkflowStepFailedEvent`
+
+Fired when a workflow step execution fails.
+
+- `getStepId()`: The ID of the failed step.
+- `getStepProviderId()`: The provider ID of the step.
+- `getErrorMessage()`: The error message from the failure.
+
+`WorkflowResourceMigratedEvent`
+
+Fired when resources are migrated from one workflow (or step) to another using the migration API.
+
+- `getSourceWorkflowId()` / `getSourceWorkflowName()`: The source workflow.
+- `getDestinationWorkflowId()` / `getDestinationWorkflowName()`: The destination workflow.
+- `getSourceStepId()` / `getSourceStepProviderId()`: The source step.
+- `getDestinationStepId()` / `getDestinationStepProviderId()`: The destination step.
+- `getOldExecutionId()` / `getNewExecutionId()`: The execution IDs from the source and destination workflows.
+
+`WorkflowCompletedEvent`
+
+Fired when all steps of a workflow have been executed successfully and the workflow execution is complete.
+
+None — uses only the common fields.
+
+#### [](#event-lifecycle)Event lifecycle
+
+During a typical workflow execution, provider events are fired in the following order:
+
+1. `WorkflowActivatedEvent` — the workflow is activated for the resource.
+2. For each step in the step chain:
+   
+   1. `WorkflowStepScheduledEvent` — if the step has an `after` delay.
+   2. `WorkflowStepExecutedEvent` — when the step completes successfully.
+   3. `WorkflowStepFailedEvent` — if the step fails (replaces `WorkflowStepExecutedEvent`).
+3. `WorkflowCompletedEvent` — all steps completed successfully.
+
+A `WorkflowDeactivatedEvent` may replace `WorkflowCompletedEvent` if the workflow is cancelled or the resource no longer meets the workflow conditions. A `WorkflowRestartedEvent` may occur at any point if the workflow is restarted from the beginning by a restart-in-progress trigger.
+
+#### [](#implementing-a-listener)Implementing a listener
+
+To listen to workflow provider events, create a custom `EventListenerProviderFactory` that registers a `ProviderEventListener` with the `KeycloakSessionFactory` during initialization. The listener is packaged as a JAR and deployed to the `providers/` folder, then enabled in the Admin Console under **Realm Settings** → **Events** → **Event listeners**.
+
+The following example shows a factory that registers a listener to capture workflow events:
+
+```
+import org.keycloak.events.EventListenerProvider;
+import org.keycloak.events.EventListenerProviderFactory;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
+import org.keycloak.models.workflow.WorkflowProviderEvent;
+import org.keycloak.models.workflow.WorkflowProviderEvent.WorkflowStepFailedEvent;
+
+public class WorkflowAuditListenerFactory implements EventListenerProviderFactory {
+
+    @Override
+    public EventListenerProvider create(KeycloakSession session) {
+        return new WorkflowAuditListener(session);
+    }
+
+    @Override
+    public void postInit(KeycloakSessionFactory factory) {
+        factory.register(event -> {
+            if (event instanceof WorkflowStepFailedEvent failedEvent) {
+                // handle step failure — e.g., send a notification or store in an audit log
+                String workflowName = failedEvent.getWorkflowName();
+                String stepId = failedEvent.getStepId();
+                String error = failedEvent.getErrorMessage();
+                // ...
+            } else if (event instanceof WorkflowProviderEvent workflowEvent) {
+                // handle other workflow events
+                String workflowName = workflowEvent.getWorkflowName();
+                String resourceId = workflowEvent.getResourceId();
+                // ...
+            }
+        });
+    }
+
+    @Override
+    public void init(org.keycloak.Config.Scope config) {
+    }
+
+    @Override
+    public void close() {
+    }
+
+    @Override
+    public String getId() {
+        return "workflow-audit";
+    }
+}
+```
+
+The factory must be registered as a service provider in `META-INF/services/org.keycloak.events.EventListenerProviderFactory` so that Keycloak discovers it when the JAR is deployed.
+
+#### [](#use-cases)Use cases
+
+Since Keycloak does not persist workflow execution history, provider events are the primary mechanism for building a complete audit trail of workflow activity. Common use cases include:
+
+- **Auditing and compliance**: Store workflow events in an external database to maintain a full record of workflow executions, step results, and failures.
+- **External notifications**: Send alerts (e.g., via email or messaging systems) when specific events occur, such as step failures or workflow completion.
+- **Monitoring and metrics**: Feed workflow event data into monitoring systems to track execution rates, failure rates, and step durations.
+
 ### [](#_troubleshooting_workflows_)Troubleshooting workflows
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/troubleshooting-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Ftroubleshooting-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Ftroubleshooting-workflows.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/troubleshooting-workflows.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Ftroubleshooting-workflows.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Ftroubleshooting-workflows.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When workflows are not behaving as expected, server logs are the primary tool for understanding what is happening. The workflow engine logs detailed information about workflow lifecycle events, step execution, and errors.
 
@@ -9823,7 +10766,7 @@ Step scheduling and delayed execution
 
 ### [](#_understanding_common_use_cases_)Understanding common use cases
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-common-use-cases.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-common-use-cases.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-common-use-cases.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/workflows/understanding-common-use-cases.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-common-use-cases.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fworkflows%2Funderstanding-common-use-cases.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Workflows can be used to automate a wide range of administrative tasks within a realm. Here are some common use cases where workflows can be particularly beneficial:
 
@@ -9888,21 +10831,1749 @@ steps:
       message: Your account was disabled. Sorry to see you go.
 ```
 
+## [](#_managing_scim)Managing users and groups through SCIM
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-scim.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-scim.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-scim.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+SCIM API is **Preview** and is not fully supported. This feature is disabled by default.
+
+To enable start the server with `--features=preview` or `--features=scim-api`
+
+SCIM (System for Cross-domain Identity Management) is a standard protocol designed to simplify identity management across multiple systems and domains. Defined by [RFC 7643](https://datatracker.ietf.org/doc/html/rfc7643) (Core Schema) and [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644) (Protocol), SCIM provides a common set of REST APIs and schemas for creating, reading, updating, and deleting identity resources such as users and groups. By adopting SCIM, organizations can automate user provisioning and deprovisioning across their identity infrastructure using widely supported tooling and libraries.
+
+Keycloak supports SCIM APIs for managing users and groups within a realm. External systems such as identity governance platforms, HR systems, or other identity providers can use these standardized APIs to provision and manage users in Keycloak without relying on the proprietary Admin REST API.
+
+In the current release, the SCIM implementation covers:
+
+- **User management**: Create, read, update, patch, and delete user resources.
+- **Group management**: Create, read, update, patch, and delete group resources, including membership management.
+- **Filtering and pagination**: Search resources using the full SCIM filter syntax with support for pagination.
+- **Schema extensions**: Support for the Enterprise User extension (RFC 7643, Section 4.3) and custom schema extensions through User Profile attribute mapping.
+- **Schema discovery**: Endpoints for discovering supported schemas, resource types, and server capabilities.
+
+Future releases are planned to extend SCIM support with additional capabilities, including federation of users from external SCIM service providers and push-based real-time event updates.
+
+The SCIM API is based on the same underlying user and group management functionality as the Admin REST API, ensuring consistency in behavior and permissions. However, the SCIM API provides a standardized interface that can be easily integrated with third-party tools and platforms that support SCIM.
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/intro.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fintro.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fintro.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+### [](#_enabling_scim_)Enabling SCIM for a realm
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/enabling-scim.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fenabling-scim.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fenabling-scim.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+Once the feature is enabled on the server, you must also enable SCIM for each realm individually. This can be done through the Admin Console or the Admin REST API.
+
+#### [](#using-the-admin-console-2)Using the Admin Console
+
+Procedure
+
+1. Click **Realm settings** in the menu.
+2. On the **General** tab, locate the **SCIM API** toggle.
+3. Set the toggle to **On**.
+4. Click **Save**.
+
+Enabling SCIM API in realm settings
+
+![Enabling SCIM API in realm settings](./images/scim-realm-settings.png)
+
+#### [](#obtaining-the-scim-api-base-url)Obtaining the SCIM API base URL
+
+The SCIM API in Keycloak is exposed under the following base URL:
+
+```
+http://<host>:<port>/realms/<realm-name>/scim/v2
+```
+
+This base URL is used to construct the full URLs for the available SCIM endpoints:
+
+- `/ServiceProviderConfig`
+- `/ResourceTypes`
+- `/Schemas`
+- `/Users`
+- `/Groups`
+
+The SCIM API requires a bearer token with the appropriate permissions. See [Authorizing access to SCIM endpoints](#_scim_accessing_endpoints_) for details on how to set up a client and obtain an access token.
+
+### [](#_scim_accessing_endpoints_)Accessing the SCIM endpoints
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/accessing-endpoints.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Faccessing-endpoints.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Faccessing-endpoints.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+All SCIM endpoints require authorization using an OAuth 2.0 Bearer Token.
+
+Unauthorized requests receive a `401 Unauthorized` response. The bearer token must also have the appropriate permissions to perform the requested operation.
+
+Only confidential clients can access the SCIM endpoints. Public clients are not supported for SCIM API calls.
+
+#### [](#setting-up-a-service-account-client)Setting up a service account client
+
+To access the SCIM APIs programmatically, you typically create a confidential client with a service account in Keycloak. This client obtains access tokens using the client credentials grant.
+
+Procedure
+
+1. Click **Clients** in the menu and then click **Create client**.
+2. Set the **Client ID** (for example, `scim-client`) and click **Next**.
+3. Enable **Client authentication** and **Service accounts roles**, then click **Save**.
+4. On the **Credentials** tab, note the **Client secret**.
+
+#### [](#assigning-permissions)Assigning permissions
+
+The service account associated with the client must be granted the appropriate realm management roles to access SCIM resources. The required roles depend on the operations the client needs to perform.
+
+Procedure
+
+1. Click **Clients** in the menu, then select the client you created.
+2. Click the **Service account roles** tab.
+3. Click **Assign role**, then filter by clients and select the `realm-management` client.
+4. Assign the required roles based on the operations the client needs to perform.
+
+The SCIM API relies on the same [permission model](#_admin_permissions) as the Keycloak Admin REST API. If a service account already has the admin roles needed to manage users and groups through the Admin API, no additional configuration is required to use the SCIM endpoints.
+
+If fine-grained admin permissions are enabled for the realm, access to SCIM resources can be further restricted on a per-resource basis. For example, a client could be granted permission to view only specific users or groups. For more details, see [Fine-grained admin permissions](#_fine_grained_permissions).
+
+The following table summarizes the permissions required for each type of SCIM operation:
+
+   Operation Required Role Description
+
+Create, update, delete users
+
+`manage-users`
+
+Full management access to user resources.
+
+Read users
+
+`view-users`
+
+Read-only access to individual user resources.
+
+Search users
+
+`query-users`
+
+Ability to list and filter user resources.
+
+Create, update, delete groups
+
+`manage-users`
+
+Full management access to group resources.
+
+Read groups
+
+`view-users`
+
+Read-only access to individual group resources.
+
+Search groups
+
+`query-groups`
+
+Ability to list and filter group resources.
+
+Access discovery endpoints
+
+`query-users` or `query-groups`
+
+Read access to `/ServiceProviderConfig`, `/ResourceTypes`, and `/Schemas`. Any role that implies `query-users` or `query-groups` (such as `view-users` or `manage-users`) also grants access.
+
+The minimum set of roles required for full access to the SCIM API is `manage-users`, which covers all user and group management operations as well as access to discovery endpoints.
+
+#### [](#configuring-the-token-audience)Configuring the token audience
+
+The SCIM API validates that access tokens contain the correct audience (`aud`) claim. The expected audience is the SCIM API base URL for the realm:
+
+```
+http://<host>:<port>/realms/<realm-name>/scim/v2
+```
+
+Tokens without this audience are rejected with a `401 Unauthorized` response.
+
+To configure the audience, add an **Audience** protocol mapper to the client:
+
+Procedure
+
+1. Click **Clients** in the menu, then select the client you created.
+2. Click the **Client scopes** tab, then click the dedicated scope for the client (for example, `scim-client-dedicated`).
+3. Click **Configure a new mapper**, then select **Audience**.
+4. Set **Name** to a descriptive value (for example, `scim-audience`).
+5. In **Included Custom Audience**, enter the SCIM API base URL for your realm (for example, `http://localhost:8080/realms/myrealm/scim/v2`).
+6. Ensure **Add to access token** is enabled.
+7. Click **Save**.
+
+The audience value must match the SCIM API base URL exactly as seen by Keycloak, including the scheme, host, port, and path. If Keycloak is running behind a reverse proxy, use the frontend URL configured through the hostname settings.
+
+#### [](#obtaining-an-access-token)Obtaining an access token
+
+To call the SCIM APIs, obtain an access token using the client credentials grant:
+
+```
+ACCESS_TOKEN=$(curl -s -X POST \
+  http://localhost:8080/realms/myrealm/protocol/openid-connect/token \
+  -d "grant_type=client_credentials" \
+  -d "client_id=scim-client" \
+  -d "client_secret=your-client-secret" \
+  | jq -r '.access_token')
+```
+
+Then use the token in the `Authorization` header when calling the SCIM endpoints:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+### [](#_scim_admin_resource_protection_)Protection of administrative resources
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/admin-resource-protection.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fadmin-resource-protection.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fadmin-resource-protection.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+Keycloak automatically protects administrative users and groups from being modified through the SCIM API. This prevents external identity providers or SCIM clients from accidentally or maliciously altering accounts and groups that have administrative privileges in the realm.
+
+#### [](#why-this-protection-exists)Why this protection exists
+
+The SCIM API is designed for automated user and group synchronization with external identity providers. Because SCIM clients typically operate with broad management permissions, a compromised or misconfigured client could otherwise:
+
+- Delete or disable administrator accounts, locking out realm management.
+- Modify administrator credentials or attributes.
+- Add unauthorized users to groups that carry administrative roles, escalating their privileges.
+- Remove administrators from their groups, revoking their access.
+
+To prevent these scenarios, Keycloak ensures that administrative resources can only be managed through the Admin Console or the Admin REST API, never through SCIM.
+
+#### [](#protected-admin-users)Protected admin users
+
+A user is considered an administrative user if they hold any administrative role. This includes roles from the `realm-management` client, roles from the master realm administration clients (such as `<realm-name>-realm`), and administrative realm roles on the master realm (such as `admin` or `create-realm`). Roles may be assigned directly to the user, inherited through group membership, or obtained through composite roles.
+
+The following restrictions apply to administrative users accessed through the SCIM API:
+
+- **Read operations** (`GET`) return a minimal representation containing only the `id`, `schemas`, and `userName` attributes. Personal details such as `name` and `emails` are not included.
+- **Write operations** (`PUT`, `PATCH`, `DELETE`) return a `403 Forbidden` response.
+- Administrative users still appear in listing and search results, but always with the minimal representation.
+- Once all administrative roles are revoked from a user, the user becomes fully manageable through SCIM again.
+
+#### [](#protected-admin-groups)Protected admin groups
+
+A group is considered an administrative group if it holds any administrative role. This includes roles from the `realm-management` client, roles from the master realm administration clients (such as `<realm-name>-realm`), and administrative realm roles on the master realm. Roles may be assigned directly to the group or obtained through composite roles. Child groups of an administrative group are also protected, because their members inherit the parent group’s administrative roles.
+
+The following restrictions apply to administrative groups accessed through the SCIM API:
+
+- **Read operations** (`GET`) return a minimal representation containing only the `id`, `schemas`, and `displayName` attributes. Members and other attributes are not included.
+- **Write operations** (`PUT`, `PATCH`, `DELETE`) return a `403 Forbidden` response.
+- **Membership changes are blocked from both directions:**
+  
+  - Adding or removing members through a `PATCH` on the group resource returns `403 Forbidden`.
+  - Adding or removing a user to or from an administrative group through a `PATCH` on the user resource also returns `403 Forbidden`.
+
+Administrative groups still appear in listing and search results, but always with the minimal representation.
+
+### [](#_understanding_scim_endpoints_)Understanding the SCIM endpoints
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/understanding-scim-endpoints.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Funderstanding-scim-endpoints.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Funderstanding-scim-endpoints.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+All SCIM endpoints use the `application/scim+json` content type for both requests and responses, as specified by RFC 7644. The `application/json` content type is also accepted for requests.
+
+#### [](#available-endpoints)Available endpoints
+
+The following table summarizes all available SCIM endpoints:
+
+   Endpoint Methods Description
+
+`/Users`
+
+GET, POST
+
+List all users or create a new user.
+
+`/Users/{id}`
+
+GET, PUT, PATCH, DELETE
+
+Retrieve, replace, partially update, or delete a specific user.
+
+`/Users/.search`
+
+POST
+
+Search users using a request body (useful for complex or long filter expressions).
+
+`/Groups`
+
+GET, POST
+
+List all groups or create a new group.
+
+`/Groups/{id}`
+
+GET, PUT, PATCH, DELETE
+
+Retrieve, replace, partially update, or delete a specific group.
+
+`/Groups/.search`
+
+POST
+
+Search groups using a request body.
+
+`/ServiceProviderConfig`
+
+GET
+
+Retrieve the SCIM capabilities supported by the server.
+
+`/ResourceTypes`
+
+GET
+
+List the resource types (User, Group) available on the server.
+
+`/Schemas`
+
+GET
+
+List all SCIM schemas supported by the server, including extensions.
+
+#### [](#http-methods)HTTP methods
+
+The SCIM API supports the following HTTP methods for resource management:
+
+   Method Status Code Description
+
+POST
+
+201 Created
+
+Create a new resource.
+
+GET
+
+200 OK
+
+Retrieve a single resource by ID, or list/search resources.
+
+PUT
+
+200 OK
+
+Replace an existing resource entirely.
+
+PATCH
+
+200 OK
+
+Partially modify a resource using add, replace, or remove operations.
+
+DELETE
+
+204 No Content
+
+Delete a resource.
+
+#### [](#query-parameters)Query parameters
+
+The following query parameters can be used with GET requests to control the response. The same parameters are also accepted in the body of `POST /.search` requests.
+
+   Parameter Type Description
+
+`filter`
+
+String
+
+A SCIM filter expression to search for resources. See [Filtering resources](#_scim_filtering_resources).
+
+`startIndex`
+
+Integer
+
+The 1-based index of the first result to return. Defaults to 1.
+
+`count`
+
+Integer
+
+The maximum number of results to return per page.
+
+`attributes`
+
+String
+
+A comma-separated list of attribute names to include in the response. When specified, only the listed attributes (plus `id` and `schemas`, which are always returned) are included.
+
+`excludedAttributes`
+
+String
+
+A comma-separated list of attribute names to exclude from the response. Applied after the `attributes` filter. The `id` attribute cannot be excluded.
+
+`sortBy`
+
+String
+
+The attribute name to sort results by. See note below.
+
+`sortOrder`
+
+String
+
+The sort order: `ascending` (default) or `descending`. See note below.
+
+While the `sortBy` and `sortOrder` parameters are accepted by the API, custom sorting is not currently supported. Resources are returned in the default order used by the underlying store, consistent with the behavior of the Keycloak Admin REST API.
+
+#### [](#resource-metadata)Resource metadata
+
+Every SCIM resource returned by the API includes a `meta` object with the following attributes:
+
+  Attribute Description
+
+`resourceType`
+
+The type of the resource (for example, `User` or `Group`).
+
+`created`
+
+The timestamp when the resource was created, in ISO 8601 format.
+
+`lastModified`
+
+The timestamp when the resource was last modified, in ISO 8601 format.
+
+`location`
+
+The full URI of the resource (for example, `http://localhost:8080/realms/myrealm/scim/v2/Users/{id}`).
+
+### [](#_accessing_scim_service_provider_config_)Accessing the SCIM service provider configuration
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/accessing-service-config.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Faccessing-service-config.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Faccessing-service-config.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+As per the SCIM specification, the Service Provider Configuration endpoint (`/ServiceProviderConfig`) provides metadata about the capabilities available from the SCIM API.
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/ServiceProviderConfig \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+A successful response returns the capabilities of the SCIM API, including supported operations such as `patch`, `filter`, and the authentication schemes:
+
+```
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
+  "patch": {
+    "supported": true
+  },
+  "bulk": {
+    "supported": false,
+    "maxOperations": 0,
+    "maxPayloadSize": 0
+  },
+  "filter": {
+    "supported": true,
+    "maxResults": 100
+  },
+  "changePassword": {
+    "supported": false
+  },
+  "sort": {
+    "supported": false
+  },
+  "etag": {
+    "supported": false
+  },
+  "authenticationSchemes": [
+    {
+      "type": "oauthbearertoken",
+      "name": "OAuth Bearer Token",
+      "description": "Authentication scheme using the OAuth Bearer Token standard"
+    }
+  ]
+}
+```
+
+At the moment, the Service Provider Configuration is read-only and cannot be modified.
+
+Future releases may allow customization of certain capabilities, such as supported authentication schemes or maximum filter results. For now, the configuration reflects the default capabilities of the SCIM API as implemented in Keycloak.
+
+### [](#_scim_managing_users_)Managing users
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/managing-users.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-users.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-users.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+The SCIM `/Users` endpoint allows you to create, read, update, and delete user resources in Keycloak. User resources conform to the `urn:ietf:params:scim:schemas:core:2.0:User` schema as defined in RFC 7643.
+
+#### [](#core-user-attributes)Core user attributes
+
+The following table shows the core SCIM user attributes and how they map to Keycloak user attributes:
+
+   SCIM Attribute Keycloak Attribute Description
+
+`userName`
+
+`username`
+
+Unique identifier for the user. Required.
+
+`name.givenName`
+
+`firstName`
+
+Given name (first name).
+
+`name.familyName`
+
+`lastName`
+
+Family name (last name).
+
+`emails`
+
+`email`
+
+User email addresses. Even though the attribute is multi-valued, Keycloak does not support mutiple emails for a given user account. When multiple email values are submitted, only the first value is persisted. In SCIM responses, the stored address is returned as a single `work` email entry that is marked as `primary`.
+
+`active`
+
+`enabled`
+
+Whether the user account is enabled.
+
+`locale`
+
+`locale`
+
+User locale. Only available when internationalization is enabled on the realm.
+
+`externalId`
+
+(custom attribute)
+
+An identifier from an external system. Requires user profile configuration. See [Mapping attributes](#_scim_mapping_attributes_).
+
+Additional name sub-attributes (`name.middleName`, `name.honorificPrefix`, `name.honorificSuffix`) can be mapped by configuring user profile attributes. See [Mapping attributes](#_scim_mapping_attributes_) for details.
+
+#### [](#creating-a-user)Creating a user
+
+To create a user, send a `POST` request to the `/Users` endpoint. At minimum, you must provide a `userName`:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "jdoe",
+    "name": {
+      "givenName": "John",
+      "familyName": "Doe"
+    },
+    "emails": [
+      {
+        "value": "jdoe@example.com",
+        "type": "work",
+        "primary": true
+      }
+    ],
+    "active": true
+  }'
+```
+
+A successful response returns the created user with a `201 Created` status:
+
+```
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "userName": "jdoe",
+  "name": {
+    "givenName": "John",
+    "familyName": "Doe",
+    "formatted": "John Doe"
+  },
+  "emails": [
+    {
+      "value": "jdoe@example.com",
+      "type": "work",
+      "primary": true
+    }
+  ],
+  "active": true,
+  "meta": {
+    "resourceType": "User",
+    "created": "2025-01-15T10:30:00Z",
+    "lastModified": "2025-01-15T10:30:00Z",
+    "location": "http://localhost:8080/realms/myrealm/scim/v2/Users/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }
+}
+```
+
+User profile validation rules are enforced when creating users through the SCIM API. If a required attribute is missing or a value does not match the expected format, the API returns a `400 Bad Request` response with a description of the validation error.
+
+If a user with the same `userName` already exists, the API returns a `409 Conflict` response with `scimType: "uniqueness"`.
+
+#### [](#retrieving-a-user)Retrieving a user
+
+To retrieve a user by ID:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+#### [](#listing-users)Listing users
+
+To list all users in the realm:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+The response uses the SCIM list format:
+
+```
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+  "totalResults": 2,
+  "itemsPerPage": 2,
+  "startIndex": 1,
+  "Resources": [...]
+}
+```
+
+For filtering and pagination of results, see [Filtering resources](#_scim_filtering_resources).
+
+#### [](#selecting-attributes)Selecting attributes
+
+You can control which attributes are included in the response for both single-resource and list requests by using the `attributes` query parameter:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users/{id}?attributes=userName,emails" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Or exclude certain attributes from the response:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users/{id}?excludedAttributes=name" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+When requesting a parent attribute (for example, `name`), all its sub-attributes are returned. When requesting a sub-attribute (for example, `name.familyName`), only that specific sub-attribute is included.
+
+Attribute names in query parameters are case-insensitive, as specified by RFC 7644. The `id` and `schemas` attributes are always included and cannot be excluded.
+
+#### [](#updating-a-user)Updating a user
+
+To fully replace a user resource, send a `PUT` request:
+
+```
+curl -X PUT http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "id": "{id}",
+    "userName": "jdoe",
+    "name": {
+      "givenName": "John",
+      "familyName": "Smith"
+    },
+    "emails": [
+      {
+        "value": "john.smith@example.com",
+        "type": "work",
+        "primary": true
+      }
+    ],
+    "active": true
+  }'
+```
+
+The `id` in the request body must match the `id` in the URL path, otherwise the API returns a `400 Bad Request` error.
+
+#### [](#partially-updating-a-user)Partially updating a user
+
+The `PATCH` method allows you to modify specific attributes without replacing the entire resource. A patch request contains one or more operations, each specifying an action (`add`, `replace`, or `remove`), an optional path to the attribute, and a value.
+
+##### [](#adding-or-replacing-attributes)Adding or replacing attributes
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "name.givenName",
+        "value": "Jane"
+      },
+      {
+        "op": "replace",
+        "path": "active",
+        "value": false
+      },
+      {
+        "op": "add",
+        "path": "emails",
+        "value": {
+          "value": "jane@example.com",
+          "type": "work",
+          "primary": true
+        }
+      }
+    ]
+  }'
+```
+
+You can also provide multiple attributes in a single operation without specifying a path. In this case, the paths are derived from the JSON structure:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "value": {
+          "name": {"givenName": "Jane"},
+          "active": false
+        }
+      }
+    ]
+  }'
+```
+
+##### [](#removing-attributes)Removing attributes
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "remove",
+        "path": "name.honorificPrefix"
+      }
+    ]
+  }'
+```
+
+For multi-valued attributes, you can use a filter in the path to remove specific values:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "remove",
+        "path": "emails[type eq \"work\"]"
+      }
+    ]
+  }'
+```
+
+#### [](#managing-group-membership)Managing group membership
+
+You can manage a user’s group memberships directly through the user resource. Group membership can also be managed from the group side using the `/Groups` endpoint. See [Managing groups](#_scim_managing_groups_) for details.
+
+##### [](#adding-a-user-to-groups-on-creation)Adding a user to groups on creation
+
+When creating a user, you can specify the groups the user should belong to:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "jdoe",
+    "groups": [
+      {"value": "{groupId}"}
+    ]
+  }'
+```
+
+##### [](#modifying-group-membership-via-patch)Modifying group membership via PATCH
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "add",
+        "path": "groups",
+        "value": "{groupId}"
+      }
+    ]
+  }'
+```
+
+To remove a user from a group:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "remove",
+        "path": "groups[value eq \"{groupId}\"]"
+      }
+    ]
+  }'
+```
+
+##### [](#querying-group-membership)Querying group membership
+
+To retrieve a user’s groups, include `groups` in the `attributes` parameter:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users/{id}?attributes=groups" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Each group membership includes the group `value` (ID), `display` (name), and `type` (`direct` or `indirect` for inherited memberships from parent groups).
+
+#### [](#deleting-a-user)Deleting a user
+
+```
+curl -X DELETE http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+A successful deletion returns a `204 No Content` response with no body.
+
+### [](#_scim_managing_groups_)Managing groups
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/managing-groups.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-groups.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-groups.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+The SCIM `/Groups` endpoint allows you to create, read, update, and delete group resources in Keycloak. Group resources conform to the `urn:ietf:params:scim:schemas:core:2.0:Group` schema as defined in RFC 7643.
+
+#### [](#group-attributes)Group attributes
+
+   SCIM Attribute Keycloak Attribute Description
+
+`displayName`
+
+`name`
+
+The name of the group. Required.
+
+`externalId`
+
+(custom attribute)
+
+An identifier from an external system.
+
+`members`
+
+(group membership)
+
+List of users that belong to this group. Read-only on GET; managed via PATCH.
+
+#### [](#creating-a-group)Creating a group
+
+To create a group, send a `POST` request to the `/Groups` endpoint:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Groups \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+    "displayName": "Engineering Team",
+    "externalId": "eng-team-001"
+  }'
+```
+
+A successful response returns the created group with a `201 Created` status.
+
+Group members cannot be specified during group creation. Attempting to include members in the `POST` request results in a `400 Bad Request` error. Use the `PATCH` method to add members after creating the group.
+
+If a group with the same `displayName` already exists, the API returns a `409 Conflict` response with `scimType: "uniqueness"`.
+
+#### [](#retrieving-a-group)Retrieving a group
+
+To retrieve a group by ID:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Groups/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+#### [](#listing-groups)Listing groups
+
+To list all groups in the realm:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Groups \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+For filtering and pagination of results, see [Filtering resources](#_scim_filtering_resources).
+
+#### [](#updating-a-group)Updating a group
+
+To replace a group’s attributes, send a `PUT` request:
+
+```
+curl -X PUT http://localhost:8080/realms/myrealm/scim/v2/Groups/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+    "id": "{id}",
+    "displayName": "Platform Engineering",
+    "externalId": "eng-team-002"
+  }'
+```
+
+Group members cannot be modified through `PUT` requests. Attempting to include members in the `PUT` request results in a `400 Bad Request` error. Use the `PATCH` method to manage group members.
+
+#### [](#partially-updating-a-group)Partially updating a group
+
+To modify specific group attributes, use a `PATCH` request:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Groups/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "displayName",
+        "value": "Platform Engineering"
+      }
+    ]
+  }'
+```
+
+#### [](#managing-group-members)Managing group members
+
+Group membership is managed exclusively through `PATCH` operations on the group resource. Group membership can also be managed from the user side through the `/Users` endpoint. See [Managing users](#_scim_managing_users_) for details.
+
+##### [](#adding-members)Adding members
+
+To add users to a group:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Groups/{groupId} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "add",
+        "path": "members",
+        "value": "{userId1}"
+      },
+      {
+        "op": "add",
+        "path": "members",
+        "value": "{userId2}"
+      }
+    ]
+  }'
+```
+
+##### [](#removing-members)Removing members
+
+To remove specific members from a group, use a value path filter:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Groups/{groupId} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "remove",
+        "path": "members[value eq \"{userId}\"]"
+      }
+    ]
+  }'
+```
+
+You can remove multiple members in a single operation using the `or` operator:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Groups/{groupId} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "remove",
+        "path": "members[value eq \"{userId1}\" or value eq \"{userId2}\"]"
+      }
+    ]
+  }'
+```
+
+##### [](#querying-members)Querying members
+
+To retrieve a group’s members, include `members` in the `attributes` parameter:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Groups/{groupId}?attributes=members" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Each member entry includes:
+
+- `value`: The user ID.
+- `display`: The user’s username.
+- `type`: Always `User`.
+
+##### [](#bidirectional-membership)Bidirectional membership
+
+Group membership is bidirectional. When a user is added to a group, the user’s `groups` attribute also reflects the membership. Similarly, when a user is assigned to a group through the User resource, the group’s `members` list is updated accordingly.
+
+You can also find groups by member:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Groups?filter=members.value+eq+\"{userId}\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Organization-related groups cannot have their members managed through the SCIM API. Attempting to add or remove members from an organization group returns a `400 Bad Request` error. Use the Organization API to manage organization group memberships.
+
+#### [](#deleting-a-group)Deleting a group
+
+```
+curl -X DELETE http://localhost:8080/realms/myrealm/scim/v2/Groups/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+A successful deletion returns a `204 No Content` response.
+
+### [](#_scim_filtering_resources)Filtering resources
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/filtering-resources.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Ffiltering-resources.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Ffiltering-resources.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+The SCIM API in Keycloak supports the full filter syntax defined in [RFC 7644, Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2), allowing you to search for resources using a rich expression language.
+
+#### [](#using-filters)Using filters
+
+Filters are specified using the `filter` query parameter on `GET` requests:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?filter=userName+eq+\"jdoe\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Filter values must be URL-encoded when used in query parameters. Spaces in the filter expression should be encoded as `+` or `%20`. The examples in this section show the raw filter syntax for readability.
+
+#### [](#comparison-operators)Comparison operators
+
+The following comparison operators are supported:
+
+   Operator Description Example
+
+`eq`
+
+Equal
+
+`userName eq "jdoe"`
+
+`ne`
+
+Not equal
+
+`active ne false`
+
+`co`
+
+Contains
+
+`emails co "example.com"`
+
+`sw`
+
+Starts with
+
+`userName sw "j"`
+
+`ew`
+
+Ends with
+
+`userName ew "doe"`
+
+`gt`
+
+Greater than
+
+`meta.created gt "2025-01-01T00:00:00Z"`
+
+`ge`
+
+Greater than or equal
+
+`meta.created ge "2025-01-01T00:00:00Z"`
+
+`lt`
+
+Less than
+
+`meta.lastModified lt "2025-06-01T00:00:00Z"`
+
+`le`
+
+Less than or equal
+
+`meta.lastModified le "2025-06-01T00:00:00Z"`
+
+`pr`
+
+Present (attribute has a value)
+
+`emails.value pr`
+
+The `gt`, `ge`, `lt`, and `le` operators are supported on date/time attributes such as `meta.created` and `meta.lastModified`. The `sw`, `ew`, and `co` operators are supported on string attributes but not on date/time or boolean attributes. Invalid operator/type combinations return a `400 Bad Request` response with `scimType: "invalidFilter"`.
+
+#### [](#logical-operators)Logical operators
+
+Filters can be combined using logical operators:
+
+  Operator Description
+
+`and`
+
+Both conditions must be true.
+
+`or`
+
+At least one condition must be true.
+
+`not`
+
+Negates the following expression. Parentheses are optional but recommended for clarity.
+
+##### [](#examples)Examples
+
+Filter users by family name and active status:
+
+```
+name.familyName eq "Smith" and active eq true
+```
+
+Filter users matching either condition:
+
+```
+userName eq "jdoe" or userName eq "asmith"
+```
+
+Negate a condition:
+
+```
+not (active eq false)
+```
+
+Use parentheses to group conditions:
+
+```
+(userName sw "j" or userName sw "a") and active eq true
+```
+
+#### [](#filtering-by-sub-attributes)Filtering by sub-attributes
+
+You can filter by sub-attributes of complex attributes using dot notation:
+
+```
+name.givenName eq "John"
+name.familyName sw "Sm"
+```
+
+For multi-valued attributes like `emails`:
+
+```
+emails eq "jdoe@example.com"
+emails.value eq "jdoe@example.com"
+emails co "example.com"
+```
+
+#### [](#value-path-filters)Value path filters
+
+SCIM also supports value path filtering, where you filter on sub-attributes within a complex attribute using bracket notation:
+
+```
+name[familyName eq "Smith"]
+name[givenName eq "John" and familyName eq "Doe"]
+name[givenName eq "John" or givenName eq "Jane"]
+```
+
+Value path filters can be combined with regular filters:
+
+```
+name[familyName eq "Smith"] and active eq true
+```
+
+#### [](#filtering-by-group-membership)Filtering by group membership
+
+You can filter users by their group membership using the `groups.value` attribute:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?filter=groups.value+eq+\"{groupId}\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Combine group membership filters with logical operators:
+
+```
+(groups.value eq "{groupIdA}") and (groups.value eq "{groupIdB}")
+(groups.value eq "{groupIdA}") or (groups.value eq "{groupIdB}")
+groups.value ne "{groupId}"
+```
+
+Similarly, you can filter groups by member:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Groups?filter=members.value+eq+\"{userId}\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+When an LDAP user federation provider is configured with a group mapper in `LDAP_ONLY` mode, group membership filters (`groups.value` and `members.value`) may return empty results. This happens because `LDAP_ONLY` mode stores group memberships exclusively in LDAP, while the SCIM filter queries the local database directly. Retrieving a user’s groups via `?attributes=groups` or a group’s members via `?attributes=members` is not affected, as those requests go through the federation layer and read from LDAP. If you need membership-based filtering with LDAP federation, consider switching the group mapper to `IMPORT` mode so that memberships are also stored locally.
+
+#### [](#filtering-by-extension-attributes)Filtering by extension attributes
+
+Filters can reference attributes from schema extensions by using the full schema URI as a prefix:
+
+```
+urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department eq "Engineering"
+urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.displayName ew "Manager"
+```
+
+For custom schema extensions:
+
+```
+urn:my:params:scim:schemas:extension:custom:1.0:User:myattribute eq "myvalue"
+```
+
+See [Managing schema extensions](#_scim_managing_schema_extensions_) for more details on configuring extension attributes.
+
+#### [](#using-post-based-search)Using POST-based search
+
+For complex queries that might exceed URL length limitations, use the `POST /.search` endpoint:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users/.search \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:SearchRequest"],
+    "filter": "(userName sw \"j\" or userName sw \"a\") and active eq true",
+    "startIndex": 1,
+    "count": 10,
+    "attributes": ["userName", "emails"]
+  }'
+```
+
+The search request body supports the same parameters available as query parameters: `filter`, `startIndex`, `count`, `attributes`, `excludedAttributes`, `sortBy`, and `sortOrder`.
+
+#### [](#pagination)Pagination
+
+When listing or searching resources, you can control the page of results returned using the `startIndex` and `count` parameters:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?startIndex=1&count=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+The response includes pagination metadata:
+
+```
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+  "totalResults": 45,
+  "itemsPerPage": 10,
+  "startIndex": 1,
+  "Resources": [...]
+}
+```
+
+- `totalResults`: The total number of resources matching the query.
+- `itemsPerPage`: The number of resources in the current page.
+- `startIndex`: The 1-based index of the first resource in the current page.
+
+To retrieve the next page, increment `startIndex` by `count`:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?startIndex=11&count=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+#### [](#error-responses)Error responses
+
+Invalid filter expressions return a `400 Bad Request` response with `scimType: "invalidFilter"`:
+
+```
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+  "scimType": "invalidFilter",
+  "detail": "Invalid filter expression",
+  "status": "400"
+}
+```
+
+Common causes of filter errors:
+
+- Mismatched parentheses.
+- Unknown filter operators.
+- Using an operator on an incompatible attribute type (for example, `gt` on a boolean).
+- Using string operators (`sw`, `ew`, `co`) on date/time attributes.
+
+### [](#_scim_mapping_attributes_)Mapping user attributes to SCIM schemas
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/mapping-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fmapping-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fmapping-attributes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+Keycloak uses the User Profile configuration to define how user attributes are mapped to SCIM schema attributes. A set of core attributes are mapped by default, and additional attributes can be mapped by configuring user profile attributes with a SCIM schema attribute mapping.
+
+#### [](#default-attribute-mappings)Default attribute mappings
+
+The following attributes are automatically mapped to the SCIM core user schema (`urn:ietf:params:scim:schemas:core:2.0:User`) without any additional configuration:
+
+  Keycloak Attribute SCIM Attribute
+
+`username`
+
+`userName`
+
+`email`
+
+`emails`
+
+`firstName`
+
+`name.givenName`
+
+`lastName`
+
+`name.familyName`
+
+`enabled`
+
+`active`
+
+`createdTimestamp`
+
+`meta.created`
+
+`locale`
+
+`locale` (only when internationalization is enabled)
+
+#### [](#adding-custom-attribute-mappings)Adding custom attribute mappings
+
+To map additional user attributes to SCIM schema attributes, you need to create a user profile attribute and configure its SCIM schema attribute mapping, setting the value to the SCIM attribute path that the user profile attribute should be mapped to.
+
+##### [](#using-the-admin-console-3)Using the Admin Console
+
+Procedure
+
+1. Click **Realm settings** in the menu, then select the **User profile** tab.
+2. Click **Create attribute**.
+3. Enter the **Name** for the attribute (for example, `middleName`).
+4. In the **SCIM** section, select or enter the **SCIM attribute** to map to (for example, `name.middleName`). Attributes from the core User and Enterprise User schemas are available for selection. You can also enter custom values for attributes from other schemas by typing the full URN-prefixed value (for example, `urn:my:params:scim:schemas:extension:custom:1.0:User:memberOf`). See [Managing schema extensions](#_scim_managing_schema_extensions_) for more details on custom schemas.
+5. Configure the attribute permissions as needed (at minimum, grant **admin** read and write access).
+6. Click **Save**.
+
+Configuring a SCIM attribute mapping in User Profile
+
+![Configuring a SCIM attribute mapping](./images/scim-user-profile-mapping.png)
+
+#### [](#mapping-additional-name-attributes)Mapping additional name attributes
+
+To support the full SCIM name attributes, you can map:
+
+  User Profile Attribute Name SCIM Attribute Value
+
+`middleName`
+
+`name.middleName`
+
+`honorificPrefix`
+
+`name.honorificPrefix`
+
+`honorificSuffix`
+
+`name.honorificSuffix`
+
+Once configured, creating a user with these attributes via SCIM works as expected:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "jdoe",
+    "name": {
+      "givenName": "John",
+      "middleName": "Michael",
+      "familyName": "Doe",
+      "honorificPrefix": "Mr.",
+      "honorificSuffix": "Jr."
+    }
+  }'
+```
+
+The `name.formatted` attribute is automatically generated from the name components and is read-only.
+
+#### [](#mapping-the-externalid-attribute)Mapping the externalId attribute
+
+To support the SCIM `externalId` attribute, which allows external systems to store their own identifier for a user:
+
+- User Profile attribute name: `myExternalId` (or any name of your choice)
+- SCIM attribute value: `externalId`
+
+Once configured, you can set the external ID when creating or updating users:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "jdoe",
+    "externalId": "ext-12345"
+  }'
+```
+
+#### [](#schema-discovery)Schema discovery
+
+Any attribute configured with a SCIM attribute mapping is automatically reflected in the schema discovery endpoints (`/Schemas` and `/ResourceTypes`). For more details on schema discovery, including how to use extension schemas beyond the core User schema, see [Managing schema extensions](#_scim_managing_schema_extensions_).
+
+### [](#_scim_managing_schema_extensions_)Managing schema extensions
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/scim/managing-schema-extensions.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-schema-extensions.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fscim%2Fmanaging-schema-extensions.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+In addition to the core SCIM user and group schemas, Keycloak supports schema extensions that allow you to expose additional attributes through the SCIM API. Extension schemas are configured using the same User Profile SCIM attribute mapping described in [Mapping user attributes to SCIM schemas](#_scim_mapping_attributes_), but with URN-prefixed values that identify which extension schema the attribute belongs to. All configured extension schemas are automatically discoverable through the `/Schemas` endpoint.
+
+#### [](#enterprise-user-extension)Enterprise User extension
+
+The Enterprise User extension (`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`) is defined in [RFC 7643, Section 4.3](https://datatracker.ietf.org/doc/html/rfc7643#section-4.3) and provides attributes commonly used in enterprise environments.
+
+##### [](#available-attributes)Available attributes
+
+  Attribute Description
+
+`employeeNumber`
+
+The employee’s number or identifier.
+
+`costCenter`
+
+The cost center to which the user belongs.
+
+`organization`
+
+The name of the organization.
+
+`division`
+
+The name of the division.
+
+`department`
+
+The name of the department.
+
+`manager`
+
+The user’s manager, with sub-attributes `value` (manager identifier) and `displayName`.
+
+##### [](#enabling-the-enterprise-extension)Enabling the enterprise extension
+
+To use the Enterprise User extension, you must configure user profile attributes for each enterprise attribute you want to expose. Each attribute must have a SCIM attribute mapping pointing to the enterprise schema attribute.
+
+In the Admin Console, when creating or editing a user profile attribute, the **SCIM** section provides the Enterprise User schema attributes as selectable options. Alternatively, you can type the full URN-prefixed value manually.
+
+For example, to enable the `employeeNumber` and `department` attributes, create two user profile attributes:
+
+  User Profile Attribute Name SCIM Attribute Value
+
+`employeeNumber`
+
+`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber`
+
+`department`
+
+`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department`
+
+For complex attributes like `manager`, you map individual sub-attributes:
+
+  User Profile Attribute Name SCIM Attribute Value
+
+`manager`
+
+`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.value`
+
+`managerName`
+
+`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.displayName`
+
+##### [](#creating-an-enterprise-user)Creating an enterprise user
+
+Once the user profile attributes are configured, you can create users with enterprise extension data:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:User",
+      "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+    ],
+    "userName": "jdoe",
+    "name": {
+      "givenName": "John",
+      "familyName": "Doe"
+    },
+    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+      "employeeNumber": "E12345",
+      "department": "Engineering",
+      "division": "R&D",
+      "organization": "ACME Corp",
+      "costCenter": "AMER-4015",
+      "manager": {
+        "value": "manager-user-id",
+        "displayName": "Jane Smith"
+      }
+    }
+  }'
+```
+
+##### [](#patching-enterprise-attributes)Patching enterprise attributes
+
+You can update enterprise extension attributes using PATCH operations. There are several ways to reference extension attributes in the path:
+
+Using the full URN with colon separator:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber",
+        "value": "E54321"
+      }
+    ]
+  }'
+```
+
+Using the URN as the path with a JSON object as the value:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "value": {"employeeNumber": "E54321", "department": "QE"}
+      }
+    ]
+  }'
+```
+
+Or without a path, including the full URN in the value object:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "value": {
+          "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+            "employeeNumber": "E54321"
+          }
+        }
+      }
+    ]
+  }'
+```
+
+##### [](#filtering-by-enterprise-attributes)Filtering by enterprise attributes
+
+You can search users by enterprise extension attributes using the full URN prefix in the filter:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?filter=urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department+eq+\"Engineering\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+#### [](#custom-schema-extensions)Custom schema extensions
+
+Beyond the standard Enterprise User extension, Keycloak allows you to define custom schema extensions using any URN-based schema identifier. This is useful for exposing organization-specific attributes through SCIM.
+
+##### [](#defining-a-custom-extension)Defining a custom extension
+
+To create a custom extension schema, configure user profile attributes with a SCIM attribute mapping pointing to your custom schema URN:
+
+  User Profile Attribute Name SCIM Attribute Value
+
+`keycloak.team`
+
+`urn:my:params:scim:schemas:extension:custom:1.0:User:memberOf`
+
+`keycloak.area`
+
+`urn:my:params:scim:schemas:extension:custom:1.0:User:area`
+
+The user profile attribute name does not need to match the SCIM attribute name. The SCIM attribute value defines the schema mapping. You can use any valid attribute name in the user profile.
+
+##### [](#using-custom-extensions)Using custom extensions
+
+Once configured, the custom extension attributes can be used in SCIM operations just like the enterprise extension:
+
+```
+curl -X POST http://localhost:8080/realms/myrealm/scim/v2/Users \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:User",
+      "urn:my:params:scim:schemas:extension:custom:1.0:User"
+    ],
+    "userName": "jdoe",
+    "urn:my:params:scim:schemas:extension:custom:1.0:User": {
+      "memberOf": "core-iam",
+      "area": "identity"
+    }
+  }'
+```
+
+Custom extension attributes can also be patched and filtered:
+
+```
+curl -X PATCH http://localhost:8080/realms/myrealm/scim/v2/Users/{id} \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/scim+json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "urn:my:params:scim:schemas:extension:custom:1.0:User:memberOf",
+        "value": "platform-engineering"
+      }
+    ]
+  }'
+```
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users?filter=urn:my:params:scim:schemas:extension:custom:1.0:User:memberOf+eq+\"core-iam\"" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+##### [](#multiple-custom-extensions)Multiple custom extensions
+
+You can define multiple custom schema extensions simultaneously. Each extension is identified by its unique URN and can contain different attributes. Users can have data from multiple extension schemas at the same time, and each schema is listed in the user’s `schemas` array when the extension has data.
+
+#### [](#keycloak-realm-extension)Keycloak realm extension
+
+Keycloak includes a built-in extension schema (`urn:keycloak:params:scim:schemas:extension:realm:1.0:User`) that can be used as a convenience schema for realm-specific custom attributes. It works the same way as any other custom schema extension, but does not require you to define your own URN. If you need to expose attributes to multiple external systems that each expect their own schema URN, use custom extensions with distinct URNs instead.
+
+#### [](#schema-discovery-2)Schema discovery
+
+All configured extension schemas are automatically advertised through the SCIM schema discovery endpoints.
+
+To view all available schemas, including extensions:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/Schemas \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+To view the resource types and their associated schemas:
+
+```
+curl http://localhost:8080/realms/myrealm/scim/v2/ResourceTypes \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+The resource types endpoint lists the schema extensions for each resource type, indicating which extensions are available and whether they are required.
+
+##### [](#requesting-extension-attributes)Requesting extension attributes
+
+You can request only extension attributes by including the schema URN in the `attributes` parameter:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users/{id}?attributes=urn:ietf:params:scim:schemas:extension:enterprise:2.0:User" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
+Similarly, you can exclude extension attributes:
+
+```
+curl "http://localhost:8080/realms/myrealm/scim/v2/Users/{id}?excludedAttributes=urn:ietf:params:scim:schemas:extension:enterprise:2.0:User" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/scim+json"
+```
+
 ## [](#assembly-managing-clients_server_administration_guide)Managing OpenID Connect and SAML Clients
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-clients.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-clients.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-clients.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/assembly-managing-clients.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fassembly-managing-clients.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fassembly-managing-clients.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Clients are entities that can request authentication of a user. Clients come in two forms. The first type of client is an application that wants to participate in single sign-on. These clients just want Keycloak to provide security for them. The other type of client is one that is requesting an access token so that it can invoke other services on behalf of the authenticated user. This section discusses various aspects around configuring clients and various ways to do it.
 
 ### [](#_oidc_clients)Managing OpenID Connect clients
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/assembly-client-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fassembly-client-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fassembly-client-oidc.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/assembly-client-oidc.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fassembly-client-oidc.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fassembly-client-oidc.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 [OpenID Connect](#con-oidc_server_administration_guide) is the recommended protocol to secure applications. It was designed from the ground up to be web friendly and it works best with HTML5/JavaScript applications.
 
 #### [](#proc-creating-oidc-client_server_administration_guide)Creating an OpenID Connect client
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-creating-oidc-client.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-creating-oidc-client.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-creating-oidc-client.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-creating-oidc-client.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-creating-oidc-client.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-creating-oidc-client.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To protect an application that uses the OpenID connect protocol, you create a client.
 
@@ -9920,14 +12591,14 @@ Procedure
    This ID is an alphanumeric string that is used in OIDC requests and in the Keycloak database to identify the client.
 5. Supply a **Name** for the client.
    
-   If you plan to localize this name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information.
+   If you plan to localize this name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information.
 6. Click **Save**.
 
 This action creates the client and bring you to the **Settings** tab, where you can perform [Basic configuration](#con-basic-settings_server_administration_guide).
 
 #### [](#con-basic-settings_server_administration_guide)Basic configuration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-basic-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-basic-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-basic-settings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-basic-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-basic-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-basic-settings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The **Settings** tab includes many options to configure this client.
 
@@ -9943,7 +12614,7 @@ The alphanumeric ID string that is used in OIDC requests and in the Keycloak dat
 
 **Name**
 
-The name for the client in Keycloak UI screen. To localize the name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information.
+The name for the client in Keycloak UI screen. To localize the name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information.
 
 **Description**
 
@@ -10113,7 +12784,7 @@ When enabled, Keycloak displays a confirmation page to the user after a successf
 
 #### [](#con-advanced-settings_server_administration_guide)Advanced configuration
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-advanced-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-advanced-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-advanced-settings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-advanced-settings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-advanced-settings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-advanced-settings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 After completing the fields on the **Settings** tab, you can use the other tabs to perform advanced configuration. For example, you can use the **Roles** or **Client scopes** tabs to configure client roles defined for the client or manage client scopes for the client. Also, see the remaining sections in this chapter for other capabilities.
 
@@ -10246,7 +12917,7 @@ For further details see [Step-up Authentication](#_step-up-flow) and [the offici
 
 #### [](#_client-credentials)Confidential client credentials
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-confidential-client-credentials.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-confidential-client-credentials.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-confidential-client-credentials.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-confidential-client-credentials.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-confidential-client-credentials.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-confidential-client-credentials.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If the [Client authentication](#_access-type) of the client is set to **ON**, the credentials of the client must be configured under the **Credentials** tab.
 
@@ -10306,7 +12977,7 @@ If you are using a client secured by Keycloak adapter, you can configure the JWK
 https://myhost.com/myapp/k_jwks
 ```
 
-See [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more details.
+See [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more details.
 
 **Signed JWT issued by an Identity Provider**
 
@@ -10346,7 +13017,9 @@ X509 certificate
 
 ![x509 client auth](./images/x509-client-auth.png)
 
-The validator also checks the Subject DN field of the certificate with a configured regexp validation expression. For some use cases, it is sufficient to accept all certificates. In that case, you can use `(.*?)(?:$)` expression.
+The validator also checks the Subject DN of the client certificate and the root Certificate Authority (CA) Subject DN (trust anchor). This way, Keycloak ensures the certificate presented by the client is the expected one and it was issued by the correct CA. As the trust-store or mTLS store is shared among all the realms, this extra security check avoids interferences between CAs.
+
+The certificate Subject DN can use a regexp validation expression instead of the exact DN. If you want to accept all certificates for a specific CA Subject DN, the expression `(.*?)(?:$)` can be used. Nevertheless this configuration is deprecated and will be removed in a future version.
 
 Two ways exist for Keycloak to obtain the Client ID from the request:
 
@@ -10355,7 +13028,7 @@ Two ways exist for Keycloak to obtain the Client ID from the request:
 
 #### [](#_dpop-bound-tokens)DPoP
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-dpop.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-dpop.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-dpop.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-dpop.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-dpop.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-dpop.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak supports **DPoP** (Demonstrating Proof-of-Possession) to bind access and refresh tokens to a cryptographic key pair, ensuring they can only be used by the legitimate client.
 
@@ -10363,9 +13036,11 @@ For detailed instructions on how to configure, enforce, and use DPoP within Keyc
 
 #### [](#_secret_rotation)Client Secret Rotation
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-secret-rotation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-secret-rotation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-secret-rotation.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-secret-rotation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-secret-rotation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-secret-rotation.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
-Please note that Client Secret Rotation support is in development. Use this feature experimentally.
+Client Secret Rotation is **Preview** and is not fully supported. This feature is disabled by default.
+
+To enable start the server with `--features=preview` or `--features=client-secret-rotation`
 
 For a client with [Confidential](#_client-credentials) [Client authentication](#_access-type) Keycloak supports the functionality of rotating client secrets through [Client Policies](#_client_policies).
 
@@ -10392,7 +13067,7 @@ To apply the secret rotation behavior to an existing client, update that client 
 
 #### [](#_proc-secret-rotation)Creating an OIDC Client Secret Rotation Policy
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-secret-rotation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-secret-rotation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-secret-rotation.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-secret-rotation.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-secret-rotation.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-secret-rotation.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 The following is an example of defining a secret rotation policy:
 
@@ -10474,7 +13149,7 @@ Using client REST services it can be executed in two ways:
 
 #### [](#_service_accounts)Using a service account
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-using-a-service-account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-using-a-service-account.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-using-a-service-account.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/proc-using-a-service-account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-using-a-service-account.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fproc-using-a-service-account.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Each OIDC client has a built-in *service account*. Use this *service account* to obtain an access token.
 
@@ -10547,7 +13222,7 @@ For more details, see [Client Credentials Grant](#_client_credentials_grant).
 
 #### [](#_oidc_token_role_mappings)Role mappings in the token
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-token-role-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-token-role-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-token-role-mappings.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-token-role-mappings.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-token-role-mappings.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-token-role-mappings.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 When a user authenticates, there are some roles that are added to the access token. By default, the [Realm roles](#proc-creating-realm-roles_server_administration_guide) are added to the access token into the `realm_access` claim. The [Client roles](#con-client-roles_server_administration_guide) are added by default to the `resource_access` claim.
 
@@ -10616,7 +13291,7 @@ The [Audience documentation](#_audience_resolve) contains a more detailed exampl
 
 #### [](#audience-support)Audience support
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-audience.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-audience.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-audience.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/oidc/con-audience.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-audience.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Foidc%2Fcon-audience.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Typically, the environment where Keycloak is deployed consists of a set of *confidential* or *public* client applications that use Keycloak for authentication. These clients are *frontend clients*, which may directly redirect user to Keycloak to request browser authentication. The particular client would then receive set of tokens after successful authentication.
 
@@ -10750,7 +13425,7 @@ If you need to disable this validation during migration, you can enable a backwa
 
 ### [](#_client-saml-configuration)Creating a SAML client
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/proc-creating-saml-client.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-creating-saml-client.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-creating-saml-client.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/proc-creating-saml-client.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-creating-saml-client.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-creating-saml-client.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak supports [SAML 2.0](#_saml) for registered applications. POST and Redirect bindings are supported. You can choose to require client signature validation. You can have the server sign and/or encrypt responses as well.
 
@@ -10784,7 +13459,7 @@ The alphanumeric ID string that is used in OIDC requests and in the Keycloak dat
 
 **Name**
 
-The name for the client in a Keycloak UI screen. To localize the name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information.
+The name for the client in a Keycloak UI screen. To localize the name, set up a replacement string value. For example, a string value such as ${myapp}. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information.
 
 **Description**
 
@@ -11023,11 +13698,11 @@ Define which ACR (Authentication Context Class Reference) value is mapped to whi
 
 **Minimum ACR Value**
 
-Minimum ACR to be enforced by Keycloak. If the resulting authentication context for the request is as strong as this ACR the request is valid, otherwise Keycloak returns the `NoAuthnContext` status error. Only present if [Step-up authentication for SAML](#_step-up-authentication-saml) feature is enabled.
+Minimum ACR to be enforced by Keycloak. If the resulting authentication context for the request is as strong as this ACR the request is valid, otherwise Keycloak returns the `NoAuthnContext` status error. If none or invalid ACR is assigned, no minimum ACR is considered for the client. Only present if [Step-up authentication for SAML](#_step-up-authentication-saml) feature is enabled.
 
 #### [](#idp-initiated-login)IDP Initiated login
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/idp-initiated-login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fidp-initiated-login.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fidp-initiated-login.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/idp-initiated-login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fidp-initiated-login.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fidp-initiated-login.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 IDP Initiated Login is a feature that allows you to set up an endpoint on the Keycloak server that will log you into a specific application/client. In the **Settings** tab for your client, you need to specify the **IDP Initiated SSO URL Name**. This is a simple string with no whitespace in it. After this you can reference your client at the following URL: `root/realms/{realm-name}/protocol/saml/clients/{url-name}`
 
@@ -11053,7 +13728,7 @@ Please note that you can import basic client settings from the brokering IDP int
 
 #### [](#proc-using-an-entity-descriptors_server_administration_guide)Using an entity descriptor to create a client
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/proc-using-an-entity-descriptor.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-using-an-entity-descriptor.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-using-an-entity-descriptor.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/saml/proc-using-an-entity-descriptor.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-using-an-entity-descriptor.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fsaml%2Fproc-using-an-entity-descriptor.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Instead of registering a SAML 2.0 client manually, you can import the client using a standard SAML Entity Descriptor XML file.
 
@@ -11079,7 +13754,7 @@ where *realm* is the realm of your client.
 
 ### [](#con-client-links_server_administration_guide)Client links
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-client-links.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-links.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-links.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-client-links.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-links.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-links.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To link from one client to another, Keycloak provides a redirect endpoint: `/realms/realm_name/clients/{client-id}/redirect`.
 
@@ -11095,7 +13770,7 @@ This URL temporarily redirects to: [http://host:port/realms/master/account](http
 
 ### [](#_protocol-mappers)OIDC token and SAML assertion mappings
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-protocol-mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-protocol-mappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-protocol-mappers.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-protocol-mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-protocol-mappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-protocol-mappers.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Applications receiving ID tokens, access tokens, or SAML assertions may require different roles and user metadata.
 
@@ -11137,7 +13812,7 @@ Procedure
    ![add mapper](./images/add-mapper.png)
 3. Select a **Mapper Type** from the list box.
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-creating-mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-mappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-mappers.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-creating-mappers.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-mappers.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-mappers.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 #### [](#_protocol-mappers_priority)Priority order
 
@@ -11168,7 +13843,7 @@ Service account sessions provide the following details:
 
 #### [](#script-mapper)Script mapper
 
-Use the **Script Mapper** to map claims to tokens by running user-defined JavaScript code. For more details about deploying scripts to the server, see [JavaScript Providers](https://www.keycloak.org/docs/26.6.3/server_development/#_script_providers).
+Use the **Script Mapper** to map claims to tokens by running user-defined JavaScript code. For more details about deploying scripts to the server, see [JavaScript Providers](https://www.keycloak.org/docs/26.7.4/server_development/#_script_providers).
 
 When scripts deploy, you should be able to select the deployed scripts from the list of available mappers.
 
@@ -11191,6 +13866,12 @@ Using a lightweight access token in Keycloak
 
 By applying `use-lightweight-access-token` executor of [client policies](#_client_policies) to a client, the client can receive a lightweight access token instead of an access token. The lightweight access token contains a claim controlled by a protocol mapper where its setting `Add to lightweight access token`(default OFF) is turned ON. Also, by turning ON its setting `Add to token introspection` of the protocol mapper, the client can obtain the claim by sending the access token to Keycloak’s token introspection endpoint.
 
+Converting a lightweight access token to a regular access token
+
+To obtain a full access token from a lightweight access token, use [Token Exchange](https://www.keycloak.org/securing-apps/token-exchange). The client holding a lightweight access token can exchange it for a regular access token that contains all standard claims. This is useful when you need to call APIs that require full access tokens or when you need access to claims that are not included in the lightweight token.
+
+For token exchange to work with lightweight access tokens, you must configure the audience mappers on the client that issues the lightweight token with the `Add to lightweight access token` setting turned ON. The token exchange requires the target client to be in the `aud` (audience) claim of the lightweight token.
+
 Introspection endpoint
 
 In some cases, it might be useful to trigger the token introspection endpoint with the HTTP header `Accept: application/jwt` instead of `Accept: application/json`, which can be useful especially for lightweight access tokens. See the details of **Token Introspection endpoint** in the [securing apps](https://www.keycloak.org/guides#securing-apps) section.
@@ -11200,13 +13881,13 @@ UserInfo endpoint restriction
 The UserInfo endpoint rejects lightweight access tokens by default, not for direct use with UserInfo. If you need user information from a lightweight access token, use one of these alternatives:
 
 - Call the token introspection endpoint instead of UserInfo - the introspection endpoint is designed for lightweight tokens and returns the full claims
-- Exchange the lightweight access token for a full access token using [Token Exchange](https://www.keycloak.org/securing-apps/token-exchange), then call UserInfo with the full token
+- Exchange the lightweight access token for a full access token using [Token Exchange](https://www.keycloak.org/securing-apps/token-exchange) (see **Converting a lightweight access token to a regular access token** above), then call UserInfo with the full token
   
   If you must use lightweight tokens with the UserInfo endpoint during migration, you can enable a backwards compatibility option in **OpenID Connect Compatibility Modes** by enabling **Allow UserInfo with lightweight access token** on the client that issues the lightweight tokens.
 
 ### [](#_client_installation)Generating client adapter config
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-generating-client-adapter-config.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-generating-client-adapter-config.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-generating-client-adapter-config.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-generating-client-adapter-config.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-generating-client-adapter-config.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-generating-client-adapter-config.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak can generate configuration files that you can use to install a client adapter in your application’s deployment environment. A number of adapter types are supported for OIDC and SAML.
 
@@ -11219,7 +13900,7 @@ All Keycloak client adapters for OIDC and SAML are supported. The mod-auth-mello
 
 ### [](#_client_scopes)Client scopes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-scopes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-client-scopes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Use Keycloak to define a shared client configuration in an entity called a *client scope*. A *client scope* configures [protocol mappers](#_protocol-mappers) and [role scope mappings](#_role_scope_mappings) for multiple clients.
 
@@ -11238,7 +13919,7 @@ To create a client scope, follow these steps:
 
 A *client scope* has similar tabs to regular clients. You can define [protocol mappers](#_protocol-mappers) and [role scope mappings](#_role_scope_mappings). These mappings can be inherited by other clients and are configured to inherit from this client scope.
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-creating-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-client-scopes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-creating-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-creating-client-scopes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 #### [](#_client_scopes_protocol)Protocol
 
@@ -11288,7 +13969,7 @@ If **Display On Consent Screen** is enabled, and the scope is added to a client 
 
 Consent Screen Text
 
-The text displayed on the consent screen when this client scope is added to a client when consent required defaults to the name of client scope. The value for this text can be customised by specifying a substitution variable with **${var-name}** strings. The customised value is configured within the property files in your theme. See the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/) for more information on customisation.
+The text displayed on the consent screen when this client scope is added to a client when consent required defaults to the name of client scope. The value for this text can be customised by specifying a substitution variable with **${var-name}** strings. The customised value is configured within the property files in your theme. See the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/) for more information on customisation.
 
 #### [](#include-in-token-scope)Include in token scope
 
@@ -11344,7 +14025,7 @@ Procedure
 
 This will also show you the value of the **scope** parameter. This parameter needs to be sent from the application to the Keycloak OpenID Connect authorization endpoint.
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-evaluating-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-evaluating-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-evaluating-client-scopes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-evaluating-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-evaluating-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-evaluating-client-scopes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 If your application uses the [Keycloak JavaScript adapter](https://www.keycloak.org/securing-apps/javascript-adapter), see its section to learn how to send the **scope** parameter with the desired value.
 
@@ -11372,13 +14053,160 @@ To see the realm default client scopes, click the **Client Scopes** tab on the l
 
 When a client is created, you can unlink the default client scopes, if needed. This is similar to removing [Default Roles](#_default_roles).
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-updating-default-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-updating-default-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-updating-default-scopes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/proc-updating-default-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fproc-updating-default-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fproc-updating-default-scopes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 #### [](#_downscoping)Downscoping
 
 In OAuth/OIDC, **downscoping** is the process of exchanging an existing JWT access token for a new one with a more restricted set of permissions (scopes) and/or a narrower audience. In the OAuth 2.0 refresh token grant type, the [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-6) itself restricts the requested scope, saying that it must not include any scope not originally granted by the resource owner. So, this **downscoping** concept is very common and very recommended for security reasons.
 
 Keycloak provides a [client policy](#_client_policies) executor that ensures this **downscoping** idea for other grant types. The client executor is called `downscope-assertion-grant-enforcer` and, for the moment, applies for the [Standard token exchange](https://www.keycloak.org/securing-apps/token-exchange#_standard-token-exchange). When this client executor is enforced, the token exchange is only allowed for the scopes that are already present in the initial JWT (`subject_token` parameter). An error is returned if any other extra scope is requested, no matter if the client configuration permits this scope as optional or default. Default scopes that are configured as **include in token scope** set to **false** (for example `basic` or `acr` in the default configuration) are the only exception. Those scopes are invisible for the requester and are considered compulsory for any grant type. Once this executor is applied for the client, **downscoping** is the only option when exchanging an access token, no additional scopes will ever be granted.
+
+#### [](#_parameterized_client_scopes)Parameterized client scopes
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/con-parameterized-client-scopes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fcon-parameterized-client-scopes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fcon-parameterized-client-scopes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+This feature is currently experimental. Do not use it in production. Backward compatibility is not guaranteed, and future updates may introduce breaking changes.
+
+To enable, start the server with `--features=parameterized-scopes`.
+
+Keycloak supports parameterized client scopes, which allow clients to pass a parameter value along with the scope name in the OAuth 2.0 authorization request. A parameterized scope uses the format `scopeName:parameterValue`, where the colon (`:`) separates the scope name from its parameter.
+
+For example, a client scope named `contract` can be requested as `contract:42`, where `42` is the parameter value. This enables creating access tokens with fine-grained resource details without defining a separate client scope for each possible value.
+
+##### [](#creating-a-parameterized-client-scope)Creating a parameterized client scope
+
+To create a parameterized client scope, follow these steps:
+
+1. Click **Client scopes** in the menu.
+2. Click **Create client scope**.
+3. Enter a **Name** for the scope (for example, `project`).
+4. Enable the **Parameterized scope** toggle.
+5. Select a **Parameter type** from the available options (for example, `String`).
+6. If you selected the `Custom` parameter type, enter a regular expression pattern that the parameter value must match.
+7. Set **Type** to **None** or **Optional**. When the **Parameterized scope** toggle is enabled, the **Default** option is not available.
+8. Click **Save**.
+
+Creating a parameterized client scope
+
+![client scopes parameterized create](./images/client-scopes-parameterized-create.png)
+
+##### [](#_parameterized_scopes_parameter_types)Parameter types
+
+When creating a parameterized scope, you must select a parameter type that determines how the parameter value is validated at request time. The following built-in types are available:
+
+   Type Description Repeatable by default
+
+`string`
+
+Accepts any string value. No validation is performed on the parameter.
+
+Yes
+
+`integer`
+
+Accepts integer numbers only. The parameter value must be parsable as an integer number.
+
+Yes
+
+`boolean`
+
+Accepts only `true` or `false` (case-insensitive).
+
+No
+
+`username`
+
+Validates that the parameter value is the username of an existing, enabled user in the realm. Additionally, a user cannot target themselves with this scope type.
+
+When this type is selected, an additional **Allow access to user data** switch appears in the scope settings. It controls access checks in the [Parameterized Scope User Property](#_parameterized_scopes_mappers) mapper.
+
+Yes
+
+`delegation`
+
+Extends the `username` type with an additional impersonation check. The parameter must be a valid, enabled username, the user cannot target themselves, and the current user must have impersonation permissions for the target user.
+
+No
+
+`custom`
+
+Validates the parameter value against a regular expression pattern defined by the administrator. When selecting this type, you must provide a valid regex pattern.
+
+Yes
+
+##### [](#_parameterized_scopes_use_case)Use case: resource-specific access
+
+Consider an application **ProjectHub** that manages projects. Without parameterized scopes, you would need to create a separate client scope for every project the client might access (for example, `project-backend-api`, `project-mobile-app`). This approach does not scale well as new projects are created.
+
+With parameterized scopes, you define a single `project` scope with the `string` parameter type. **ProjectHub** can then request access to a specific project at authorization time:
+
+```
+scope=openid project:backend-api
+```
+
+Keycloak validates the parameter value against the configured parameter type. If the validation fails, the scope value is silently excluded from the request. When a scope is [repeatable](#_parameterized_scopes_repeatable), a client can request multiple values for the same parameterized scope in a single request:
+
+```
+scope=openid project:backend-api project:mobile-app
+```
+
+Each value is validated independently. The resulting access token contains the validated parameterized scope values in its `scope` claim, allowing the resource server **ProjectService** to enforce access based on the parameter value.
+
+To restrict the parameter to known project identifiers, use the `custom` parameter type with a regular expression such as `[a-z0-9\-]+`.
+
+The following diagram illustrates the full flow:
+
+![Sequence diagram of the parameterized scopes flow](./images/parameterized-scopes-flow.drawio.svg)
+
+Figure 1. Parameterized scopes flow with resource-specific access
+
+##### [](#consent-screen)Consent screen
+
+When a client has **Consent Required** enabled and uses parameterized scopes, the consent screen displays each parameterized scope value individually. The consent text follows the format `scopeName: parameterValue`.
+
+For example, using the [resource-specific access](#_parameterized_scopes_use_case) use case above, requesting `scope=openid project:mobile-app project:backend-api` would display the following on the consent screen:
+
+Consent screen with parameterized scopes
+
+![client scopes parameterized consent](./images/client-scopes-parameterized-consent.png)
+
+##### [](#_parameterized_scopes_repeatable)Repeatable scopes
+
+By default, a client can request the same parameterized scope with multiple different parameter values in a single authorization request. For example, `scope=openid project:backend-api project:mobile-app` includes two values for the `project` scope.
+
+However, some scope types do not allow this. For example, a `boolean` scope with both `scope:true` and `scope:false` in the same request is contradictory. Similarly, a `delegation` scope that identifies a single target user should not appear with multiple values.
+
+Each parameter type defines a default for whether the scope is repeatable (see the [Parameter types](#_parameterized_scopes_parameter_types) table). You can override this default for individual scopes:
+
+1. Open the parameterized client scope in the Admin Console.
+2. Toggle the **Repeatable** switch to enable or disable multiple parameter values.
+3. Click **Save**.
+
+When a client requests multiple parameter values for a non-repeatable scope, Keycloak rejects the request with an `invalid_scope` error.
+
+##### [](#_parameterized_scopes_mappers)Protocol mappers
+
+Keycloak provides two built-in protocol mappers for parameterized scopes. They appear in the mapper type dropdown when adding a protocol mapper to a parameterized client scope.
+
+Parameterized Scope Parameter
+
+Maps the raw parameter value directly to a token claim. For example, if a scope named `project` is requested as `project:backend-api`, this mapper can place `backend-api` into a claim such as `project`. Available for all parameterized scope types.
+
+Parameterized Scope User Property
+
+Resolves a user from the parameter value (username) and maps a user attribute or built-in property (such as `email`, `firstName`, or `id`) to a token claim. For example, a `share-with` scope requested as `share-with:alice` can map Alice’s email to a `shared_user_email` claim.
+
+This mapper is applicable when the parameter type is `username` or `delegation`. Access control depends on the type:
+
+- `username` — the mapper checks whether the authenticated user has `view-users` permission or fine-grained admin permission for the target user. If the **Allow access to user data** switch is enabled on the scope, this check is skipped. Without permission, user property claims are silently omitted from the token.
+- `delegation` — the impersonation permission is already validated during scope resolution. Since this is a stronger check than `view-users`, no additional access control is applied and user property claims are always included.
+
+##### [](#constraints)Constraints
+
+Parameterized client scopes have the following constraints:
+
+- A parameterized scope can only be an **optional** client scope. It cannot be assigned as a default client scope for a client.
+- A parameterized scope cannot be assigned as a realm default scope. It can be assigned as a realm optional scope.
 
 #### [](#scopes-explained)Scopes explained
 
@@ -11394,11 +14222,11 @@ This is available under the **Scope** tab of a client or client scope. Use **Rol
 
 Authorization scopes
 
-The **Authorization Scope** covers the actions that can be performed in the application. See the [Authorization Services Guide](https://www.keycloak.org/docs/26.6.3/authorization_services/) for more details.
+The **Authorization Scope** covers the actions that can be performed in the application. See the [Authorization Services Guide](https://www.keycloak.org/docs/26.7.4/authorization_services/) for more details.
 
 ### [](#_client_policies)Client Policies
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/client-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fclient-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fclient-policies.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/clients/client-policies.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fclients%2Fclient-policies.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fclients%2Fclient-policies.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To make it easy to secure client applications, it is beneficial to realize the following points in a unified way.
 
@@ -11408,7 +14236,7 @@ To make it easy to secure client applications, it is beneficial to realize the f
 
 To realize these points in a unified way, *Client Policies* concept is introduced.
 
-#### [](#use-cases)Use-cases
+#### [](#use-cases-2)Use-cases
 
 Client Policies realize the following points mentioned as follows.
 
@@ -11426,7 +14254,7 @@ The *Global client profiles* are client profiles pre-configured in Keycloak by d
 
 #### [](#protocol)Protocol
 
-The client policy concept is independent of any specific protocol. Keycloak currently supports especially client profiles for the [OpenID Connect (OIDC) protocol](https://www.keycloak.org/docs/26.6.3/server_admin/#con-oidc_server_administration_guide), but there is also a client profile available for the [SAML protocol](https://www.keycloak.org/docs/26.6.3/server_admin/#_saml).
+The client policy concept is independent of any specific protocol. Keycloak currently supports especially client profiles for the [OpenID Connect (OIDC) protocol](https://www.keycloak.org/docs/26.7.4/server_admin/#con-oidc_server_administration_guide), but there is also a client profile available for the [SAML protocol](https://www.keycloak.org/docs/26.7.4/server_admin/#_saml).
 
 #### [](#architecture)Architecture
 
@@ -11491,6 +14319,8 @@ Identity Provider Alias
 
 Condition that checks the Identity Provider that is involved in the client request. A list of IdP alias can be configured. The condition evaluates to true if one of them is associated to the request. It only applies to operations in which an IdP is involved (for example JWT Authorization grant).
 
+See the [dedicated section](#_client_policy_conditions_evaluation) for the details on how are conditions evaluated.
+
 ##### [](#executor)Executor
 
 An executor specifies what action is executed on a client to which a policy is adopted. The executor executes one or several specified actions. For example, some executor checks whether the value of the parameter `redirect_uri` in the authorization request matches exactly with one of the pre-registered redirect URIs on Authorization Endpoint and rejects this request if not.
@@ -11537,6 +14367,7 @@ One of several purposes for this executor is to realize the security requirement
 - Enforce SAML Redirect binding cannot be used or SAML requests and assertions are signed
 - Enforce scopes granted in [Standard token exchange](https://www.keycloak.org/securing-apps/token-exchange#_standard-token-exchange) or in JWT Authorization Grant are restricted to the ones present in the initial `subject_token` or `assertion` JWT. This executor only allows downscoping of the presented assertion. An error is returned if any extra scope, not originally granted to the JWT, is requested.
 - Enforce claims for assertion grants (`subject_token` in Token Exchange and `assertion` in JWT Authorization Grant). The executor enforces the presence and specific values of a claim in a JWT. It uses a Java regex so it is quite versatile.
+- Add default **Certificate Authority subject DN** for the client registration service when TLS client authentication (`tls_client_auth`) is configured (see **Using the client registration service** in the [securing apps](https://www.keycloak.org/guides#securing-apps) section for more information). The `tls-client-auth-ca-subject-dn` executor can be used to provide the new compulsory attribute in client registration interface. It can also enforce the configured CA name to reject unwanted values.
 
 Another available executor is the `auth-flow-enforce`, which can be used to enforce an authentication flow during an authentication request. For instance, it can be used to select a flow based on certain conditions, such as a specific scope or an ACR value. For more details, see the [related documentation](#_client-policy-auth-flow).
 
@@ -11553,6 +14384,24 @@ A policy consists of several conditions and profiles. The policy can be adopted 
 Policies, profiles, conditions, executors can be configured by Admin REST API, which means also the Admin Console. To do so, there is a tab *Realm* → *Realm Settings* → *Client Policies* , which means the administrator can have client policies per realm.
 
 The *Global Client Profiles* are automatically available in each realm. However there are no client policies configured by default. This means that the administrator is always required to create any client policy if they want for example the clients of his realm to be FAPI compliant. Global profiles cannot be updated, but the administrator can easily use them as a template and create their own profile if they want to do some slight changes in the global profile configurations. There is JSON Editor available in the Admin Console, which simplifies the creation of new profile based on some global profile.
+
+#### [](#_client_policy_conditions_evaluation)Conditions evaluation
+
+Client policy is evaluated in a way that the configured conditions are evaluated during particular request. The evaluation of single condition can be finished in any of the following states:
+
+- **yes** - Condition was successfully evaluated. For example `client-scopes` condition is evaluated to `yes` when particular configured client scope is present in the particular request of particular client.
+- **no** - Condition was evaluated to false. For example `client-scopes` condition is evaluated to `no` when particular configured client scope is not present in the particular request of particular client.
+- **abstain** - Condition was not applicable to the particular request and hence evaluation of the condition was ignored (in the default mode). For example `identity-provider-condition` is evaluated just during requests when identity provider is involved (For example during [JWT Authorization grant requests](https://www.keycloak.org/securing-apps/jwt-authorization-grant)), but ignored in most of the other requests.
+
+In case that condition is configured with **Negative logic** switch enabled, the result is reversed. So when evaluation ended with `no`, it would be changed to `yes` or vice-versa. The condition evaluated to `abstain` is still considered as `abstain` when **Negative logic** is enabled.
+
+By default, the policy evaluation is satisfied when at least one condition evaluates to `yes` and none of the conditions evaluates to `no`. Conditions, which evaluate to `abstain` are ignored. However when you configure client policy with mode `STRICT`, then all conditions must evaluate to `yes` and none of the conditions can evaluate to `no` or `abstain`. When policy evaluation is satisfied, the client profiles attached to the particular client policy will be triggered. See the example in the [identity provider API section](https://www.keycloak.org/docs/26.7.4/server_development/#_identity-brokering-apis-client-policies) on how the `STRICT` mode can be useful to enforce certain rules.
+
+Some condition types are evaluated in all the request types, however some condition types are evaluated just during certain requests. For instance, some conditions might be evaluated just during registration or update of new client, when some other conditions are evaluated at runtime during specific requests. In some cases, it may not be obvious whether particular condition is evaluated or not. Once you setup client policies, it is highly recommended to test your scenarios to make sure that client policies enforcement rules work as expected.
+
+#### [](#troubleshooting-2)Troubleshooting
+
+When checking evaluation of client policies, it is recommended to enable `TRACE` logging category `org.keycloak.services.clientpolicy` to have some more logging during evaluation of client policies. See the [Logging Guide](https://www.keycloak.org/server/logging) for the details on how to enable logging for the particular category.
 
 #### [](#backward-compatibility)Backward Compatibility
 
@@ -11578,43 +14427,134 @@ Keycloak, with client policies, provides specific executors to protect the vario
 
 ## [](#_oid4vci)Configuring Keycloak as a Verifiable Credential Issuer
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/oid4vci/vc-issuer-configuration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foid4vci%2Fvc-issuer-configuration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foid4vci%2Fvc-issuer-configuration.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/oid4vci/vc-issuer-configuration.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foid4vci%2Fvc-issuer-configuration.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foid4vci%2Fvc-issuer-configuration.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
-This is an experimental feature and should not be used in production. Backward compatibility is not guaranteed, and future updates may introduce breaking changes.
+This feature is currently experimental. Do not use it in production. Backward compatibility is not guaranteed, and future updates may introduce breaking changes.
 
-Keycloak provides experimental support for [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+Keycloak supports the [OpenID for Verifiable Credential Issuance (OpenID4VCI)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) protocol, enabling it to act as a credential issuer in decentralized identity ecosystems. With this protocol, you can issue digitally signed Verifiable Credentials (VCs) that relying parties (verifiers) can independently verify without contacting Keycloak.
 
-### [](#introduction)Introduction
+This chapter explains what Verifiable Credentials are, how the protocol works, and walks you through every step needed to configure Keycloak for credential issuance.
 
-This chapter provides step-by-step instructions for configuring Keycloak as a Verifiable Credential Issuer using the OpenID for Verifiable Credential Issuance (OID4VCI) protocol. It outlines the process for setting up a Keycloak instance to securely issue and manage Verifiable Credentials (VCs), supporting decentralized identity solutions.
+### [](#what-are-verifiable-credentials)What are Verifiable Credentials?
 
-### [](#what-are-verifiable-credentials-vcs)What are Verifiable Credentials (VCs)?
+Verifiable Credentials are the digital equivalent of physical credentials like passports, driver’s licenses, or university degrees. They are cryptographically signed, tamper-evident data structures containing claims about an entity (a person, organization, or device). The key properties of VCs:
 
-Verifiable Credentials (VCs) are cryptographically signed, tamper-evident data structures that represent claims about an entity, such as a person, organization, or device. They are foundational to decentralized identity systems, allowing secure and privacy-preserving identity verification without reliance on centralized authorities. VCs support advanced features like selective disclosure and zero-knowledge proofs, enhancing user privacy and security.
+- **Tamper-evident**: Any alteration invalidates the cryptographic signature.
+- **Privacy-preserving**: Support selective disclosure (e.g., prove you are over 18 without revealing your exact birthdate).
+- **Offline-verifiable**: A verifier can check the credential’s validity without contacting the issuer.
+- **Holder-controlled**: The individual receiving the credential controls when and with whom to share it.
 
-### [](#what-is-oid4vci)What is OID4VCI?
+#### [](#verifiable-credential-formats)Verifiable Credential Formats
 
-OpenID for Verifiable Credential Issuance (OID4VCI) is an extension of the OpenID Connect (OIDC) protocol. It defines a standardized, interoperable framework for credential issuers to deliver VCs to holders, who can then present them to verifiers. OID4VCI leverages Keycloak’s existing authentication and authorization capabilities to streamline VC issuance.
+OpenID4VCI supports multiple credential formats for encoding and issuing credentials:
 
-### [](#scope-of-this-chapter)Scope of This Chapter
+- [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-13.html) – Selective Disclosure JSON Web Token Verifiable Credential
+- [JWT VC](https://github.com/decentralized-identity/jwt-vc-presentation-profile) – JSON Web Token Verifiable Credential
+- [mDL/mdoc](https://www.iso.org/standard/69084.html) – Mobile driver’s license / mobile document format
 
-This chapter covers the following technical configurations:
+Keycloak currently supports both SD-JWT VC and JWT VC for issuance. mDL/mdoc support is planned for a future release.
 
-- Creating a dedicated realm for VC issuance.
-- Setting up a test user for credential testing.
-- Configuring custom cryptographic keys for signing and encrypting VCs.
-- Defining realm attributes to specify VC metadata.
-- Establishing client scopes and mappers to include user attributes in VCs.
-- Registering a client to handle VC requests.
-- Verifying the configuration using the issuer metadata endpoint.
+### [](#the-issuer-holder-verifier-model)The Issuer-Holder-Verifier Model
+
+Verifiable Credentials rely on a trust model built around three distinct roles:
+
+![Diagram showing the Issuer-Holder-Verifier model](./images/oid4vci/triangle-of-trust.dio.svg)
+
+Figure 2. Triangle of Trust — The Issuer-Holder-Verifier Model
+
+- **Issuer** — The entity (in this case, Keycloak) that signs and issues credentials. Governed by *OpenID4VCI*.
+- **Holder** — The individual or wallet that receives, stores, and presents credentials.
+- **Verifier** — The relying party that validates the credential’s authenticity and integrity. Governed by *OpenID4VP*.
+
+An important privacy property: the issuer and verifier never communicate directly. The holder controls what information to share and with whom. This means the issuer cannot track where, when, or how credentials are used.
+
+### [](#why-use-openid4vci)Why Use OpenID4VCI
+
+OpenID4VCI brings verifiable credential issuance into the OpenID Connect ecosystem your organization already uses. Key benefits:
+
+- **Interoperability** — Built on top of OAuth 2.0 and OpenID Connect, making it straightforward to integrate with existing identity infrastructure.
+- **Privacy and security** — Supports selective disclosure, key-bound credentials, and offline verification.
+- **Regulatory compliance** — Aligns with frameworks like eIDAS 2.0 and emerging digital identity regulations worldwide.
+- **Developer efficiency** — Leverages Keycloak’s existing authentication, authorization, and token management capabilities.
+
+### [](#real-world-applications)Real-World Applications
+
+Verifiable Credentials open the door to a wide range of practical use cases:
+
+- Digital identity cards or driver’s licenses issued by governments, where citizens reveal only what is needed (age, residency) for a given transaction.
+- Verifiable diplomas and certificates issued by educational institutions, which employers can instantly verify without contacting the school.
+- Employee badges issued as VCs for secure office access and remote authentication.
+- Event tickets that are tamper-evident and verifiable offline.
+- Membership credentials for professional associations, granting access to gated content or conference venues.
+
+### [](#how-credential-issuance-works-two-core-flows)How Credential Issuance Works: Two Core Flows
+
+OpenID4VCI defines two primary ways to issue credentials. Which one to use depends on whether the user needs to authenticate interactively.
+
+#### [](#authorization-code-flow)Authorization Code Flow
+
+The Authorization Code Flow is an interactive flow where the holder must authenticate and explicitly consent to credential issuance. It is ideal when you need user approval before issuing a credential.
+
+This flow reuses Keycloak’s standard OpenID Connect authorization endpoint, so no additional endpoint is needed for the authorization step. The wallet communicates through a registered OIDC client that must have OID4VCI enabled and the appropriate credential client scope assigned.
+
+**How it works:**
+
+1. The **User** wants a credential and initiates the process through their wallet.
+2. The **Wallet** sends an Authorization Request to Keycloak’s Authorization Endpoint (via the registered OIDC Client).
+3. Keycloak prompts the **User** to log in and grant consent.
+4. The **User** authenticates and approves the credential request.
+5. Keycloak returns an authorization code to the **Wallet**.
+6. The **Wallet** exchanges the code at the Token Endpoint for an access token.
+7. The **Wallet** requests the Verifiable Credential from the Credential Endpoint (`/protocol/oid4vc/credential`), presenting the access token.
+8. Keycloak validates the request, signs the credential, and returns it to the **Wallet**.
+
+![Sequence diagram of the Authorization Code Flow](./images/oid4vci/authorization-code-flow.drawio.svg)
+
+Figure 3. Authorization Code Flow — Credential Issuance
+
+This flow is best suited for scenarios where the user should be in control and give explicit permission for each credential issued.
+
+#### [](#pre-authorized-code-flow)Pre-Authorized Code Flow
+
+The Pre-Authorized Code Flow is a non-interactive flow. The issuer creates a pre-approved credential offer, and the wallet can claim the credential without real-time user authentication. This is useful for bulk issuance, offline-capable scenarios, or when the user has already been authenticated through other means.
+
+Pre-authorized credential offers can be created through the Keycloak Admin Console, the Admin REST API, or programmatically through a dedicated endpoint (`/protocol/oid4vc/create-credential-offer`). The wallet communicates through a registered OIDC client that must have OID4VCI enabled.
+
+**How it works:**
+
+1. An **Admin** creates a pre-authorized credential offer in Keycloak (via a registered OIDC Client).
+2. Keycloak returns a pre-authorized code and a credential offer URI.
+3. The **Admin** delivers the pre-authorized code to the **Wallet** (via QR code, link, or email).
+4. The **Wallet** exchanges the pre-authorized code at the Token Endpoint for an access token.
+5. The **Wallet** requests the Verifiable Credential from the Credential Endpoint, presenting the access token.
+6. Keycloak validates the request and returns the signed credential.
+
+![Sequence diagram of the Pre-Authorized Code Flow](./images/oid4vci/pre-authorized-code-flow.drawio.svg)
+
+Figure 4. Pre-Authorized Code Flow — Credential Issuance
+
+An optional transaction code (`tx_code`) can add a second layer of security. The `tx_code` must be communicated through a separate channel from the pre-authorized code itself.
+
+### [](#what-this-chapter-covers)What This Chapter Covers
+
+The rest of this chapter walks through the practical steps of configuring Keycloak as a Verifiable Credential Issuer.
+
+You will learn how to:
+
+- Enable the OID4VCI feature on your Keycloak server.
+- Create a dedicated realm for VC issuance.
+- Set up users and cryptographic keys.
+- Define realm-level attributes that control credential behavior.
+- Create client scopes (each representing a credential type) with protocol mappers.
+- Register a client to handle credential requests.
+- Verify the configuration by inspecting the issuer metadata endpoint.
 
 ### [](#prerequisites)Prerequisites
 
-Ensure the following requirements are met before configuring Keycloak as a Verifiable Credential Issuer:
+Ensure the following requirements are met before proceeding:
 
-### [](#keycloak-instance)Keycloak Instance
-
-A running Keycloak server with the OID4VCI feature enabled.
+- A running Keycloak server.
+- The OID4VCI feature flag enabled at startup.
 
 To enable the feature, add the following flag to the startup command:
 
@@ -11622,7 +14562,11 @@ To enable the feature, add the following flag to the startup command:
 --features=oid4vc-vci
 ```
 
-Verify activation by checking the server logs for the `OID4VC_VCI` initialization message.
+Verify the feature is active in the Keycloak Admin Console. Navigate to the **master** realm’s **Dashboard**, switch to the **Server Info** tab, and confirm that `OID4VC_VCI` appears under **Enabled Features**.
+
+![Enabled Features list showing OID4VC_VCI](./images/oid4vci/screenshot-server-info-features.png)
+
+Figure 5. OID4VC\_VCI Feature in Server Info
 
 ### [](#configuring-credential-issuance-in-keycloak)Configuring Credential Issuance in Keycloak
 
@@ -11631,6 +14575,8 @@ In Keycloak, Verifiable Credentials are managed through **ClientScopes**, with e
 During the OAuth2 authorization process, the credential-specific scope can be requested by including the ClientScope’s name in the `scope` parameter of the authorization request. Once the user has successfully authenticated, the resulting Access Token **MUST** include the requested ClientScope in its `scope` claim. To ensure this, make sure the ClientScope option **Include in token scope** is enabled.
 
 With this Access Token, the Verifiable Credential can be issued at the Credential Endpoint.
+
+Because some configurations are not yet supported via the Admin Console, we may need to use the Keycloak Admin REST API to configure certain aspects. To interact with the Admin REST API, you first need to obtain a valid access token.
 
 ### [](#authentication)Authentication
 
@@ -11645,11 +14591,153 @@ Refer to the following Keycloak documentation sections for detailed steps on:
 
 Follow these steps to configure Keycloak as a Verifiable Credential Issuer. Each section is detailed with procedures, explanations, and examples where applicable.
 
-### [](#creating-a-realm)Creating a Realm
+### [](#configuring-openid4vci-at-the-realm-level)Configuring OpenID4VCI at the Realm Level
+
+The behavior of OID4VCI across the entire realm is determined by a combination of realm settings, cryptographic keys, and realm-level attributes. This section guides you through each step.
+
+#### [](#creating-a-realm)Creating a Realm
 
 A realm in Keycloak is a logical container that manages users, clients, roles, and authentication flows. For Verifiable Credential (VC) issuance, create a dedicated realm to ensure isolation and maintain a clear separation of functionality.
 
 For detailed instructions on creating a realm, refer to the Keycloak documentation: [Creating a Realm](#proc-creating-a-realm_server_administration_guide).
+
+##### [](#enabling-verifiable-credentials-for-the-realm)Enabling Verifiable Credentials for the Realm
+
+Before configuring OID4VCI settings, you must enable Verifiable Credentials at the realm level:
+
+1. In the Keycloak Admin Console, navigate to **Realm Settings**.
+2. On the **General** tab, toggle the **Verifiable Credentials** switch **On**.
+
+![Enabling Verifiable Credentials switch in Realm Settings](./images/oid4vci/screenshot-realm-verifiable-credentials.png)
+
+Figure 6. Enabling Verifiable Credentials in Realm Settings
+
+This enables the OID4VCI functionality for the realm. Once enabled, the **OID4VC Issuer Metadata** link appears in the **Endpoints** section of the General tab, and an **OID4VCI Attributes** section appears in the **Tokens** tab.
+
+#### [](#key-management-configuration)Key Management Configuration
+
+Because EC (Elliptic Curve) cryptography is strongly encouraged in the OpenID4VC ecosystem, add a **P-256 Elliptic Curve key pair** to the realm’s set of keys under **Realm Settings &gt; Keys &gt; Providers**. This will later enable configuring the signing of issued VCs with the `ES256` algorithm.
+
+![Adding ECDSA key provider in Realm Settings](./images/oid4vci/screenshot-realm-ecdsa-generated-provider.png)
+
+Figure 7. Adding ECDSA Key Provider
+
+For a detailed guide on configuring realm keys, refer to the Keycloak documentation: [Managing Realm Keys](#realm_keys).
+
+#### [](#configuring-realm-level-oid4vci-attributes)Configuring Realm-Level OID4VCI Attributes
+
+Realm attributes define the behavior of Verifiable Credential issuance across the entire realm. Keycloak provides a dedicated **OID4VCI Attributes** section in the Admin Console under **Realm Settings** &gt; **Tokens** tab to configure these settings. Sensible defaults apply out of the box, so you can start with minimal changes.
+
+![OID4VCI Attributes section in Realm Settings Tokens tab](./images/oid4vci/screenshot-realm-config-oid4vci-attributes.png)
+
+Figure 8. OID4VCI Attributes in the Tokens Tab
+
+The following table describes the available OID4VCI realm attributes:
+
+    Setting Realm Attribute Default Description
+
+OID4VCI Nonce Lifetime
+
+`vc.c-nonce-lifetime-seconds`
+
+`60` seconds
+
+Lifetime of the `c_nonce` value returned by the nonce endpoint. Wallets must include this nonce when presenting proofs at the credential endpoint. Minimum: 30 seconds.
+
+Credential Offer Lifespan
+
+`credentialOfferLifespanS`
+
+`300` seconds (5 minutes)
+
+Defines how long a credential offer remains valid before it expires. Applies to both authorization code and pre-authorized code flows. Minimum: 30 seconds.
+
+Signed Metadata Lifespan
+
+`oid4vci.signed_metadata.lifespan`
+
+`60` seconds
+
+Lifetime of the signed metadata JWT returned when the client requests the credential issuer metadata with `Accept: application/jwt`.
+
+Signed Metadata Signing Algorithm
+
+`oid4vci.signed_metadata.alg`
+
+`RS256`
+
+Asymmetric signing algorithm used to sign the metadata JWT. Must be supported by the realm’s active keys.
+
+Require Request Encryption
+
+`oid4vci.request.encryption.required`
+
+Off
+
+When enabled, all incoming credential requests must be encrypted as JWE. The issuer’s public encryption keys are advertised in the credential issuer metadata.
+
+Require Response Encryption
+
+`oid4vci.response.encryption.required`
+
+Off
+
+When enabled, all credential responses are encrypted using the wallet’s provided encryption key.
+
+Enable DEFLATE Compression
+
+`oid4vci.request.zip.algorithms`
+
+Off
+
+Only available when request encryption is required. Enabling this advertises DEFLATE compression support in the issuer metadata. The wallet can compress the JWE payload using the `DEF` algorithm.
+
+Batch Issuance Size
+
+`oid4vci.batch_credential_issuance.batch_size`
+
+`2`
+
+Maximum number of credentials that can be issued in a single batch request. Must be 2 or greater. Disabled if not set or invalid.
+
+##### [](#time-claim-correlation-mitigation)Time Claim Correlation Mitigation
+
+To reduce the risk of correlation across multiple issuances or presentations, you can normalize time-related claims. This is an opt-in privacy feature configured in the **Time Claim Correlation Mitigation** section:
+
+![Time Claim Correlation Mitigation settings](./images/oid4vci/screenshot-time-claim-mitigation.png)
+
+Figure 9. Time Claim Correlation Mitigation
+
+    Setting Realm Attribute Default Description
+
+Time Claims Strategy
+
+`oid4vci.time.claims.strategy`
+
+Off
+
+Strategy to apply to time claims. Supported values: `off` (no normalization), `randomize` (subtract a random offset), `round` (truncate to a time unit boundary).
+
+Randomize Window
+
+`oid4vci.time.randomize.window.seconds`
+
+`86400` (24 hours)
+
+When strategy is `randomize`, the system subtracts a random number of seconds between 0 and this value from the original timestamp.
+
+Round Unit
+
+`oid4vci.time.round.unit`
+
+`SECOND`
+
+When strategy is `round`, timestamps are truncated to the selected unit boundary (UTC). Supported values: `SECOND`, `MINUTE`, `HOUR`, `DAY`.
+
+How normalization is applied during issuance:
+
+- For JWT-VC, the credential `issuanceDate` is normalized at issuance; the JWT `nbf` is derived from the normalized value. If a mapper sets a VC `expirationDate`, it is normalized and emitted as JWT `exp`.
+- For SD-JWT VCs, time-related claims (`iat`, `nbf`, `exp`) are typically set using protocol mappers such as the Issued At Time Claim Mapper. Values are automatically normalized according to the realm strategy.
 
 ### [](#creating-a-user-account)Creating a User Account
 
@@ -11659,422 +14747,282 @@ For step-by-step instructions on creating a user, refer to the Keycloak document
 
 Ensure that the user has a valid username, email, and password. If the password should not be reset upon first login, disable the "Temporary" toggle during password configuration.
 
-### [](#key-management-configuration)Key Management Configuration
+The next step is to create verifiable credential for the user to indicate which verifiable credentials the particular user can request. You may switch to the tab **Verifiable credentials** of the user, request creating verifiable credential and create some verifiable credential for the user, which you want this user to be able to obtain. For now, you can choose some of the pre-defined OID4VCI credential scopes or some credential scope you created based on [the instructions from the credential scope section](#_oid4vci_client_scope).
 
-Keycloak uses cryptographic keys for signing and encrypting Verifiable Credentials (VCs). To ensure secure and standards-compliant issuance, configure **ECDSA (ES256) for signing**, **RSA (RS256) for signing**, and **RSA-OAEP for encryption** using a keystore.
+Once verifiable credential is created, administrator can send credential offer to the user by email by click **Send credential offer** in the table of available verifiable credentials. This link is available in case user has email. It is also needed that SMTP is properly configured for the realm as described in the [dedicated section](#_email). The email will also inform user that he has some verifiable credential available. User can also visit [Account console](#_account-service) and request issuance of some available verifiable credential by himself.
 
-For a detailed guide on configuring realm keys, refer to the Keycloak documentation: [Managing Realm Keys](#realm_keys).
+### [](#_oid4vci_client_scope)Create Client Scopes with Mappers
 
-#### [](#configuring-key-providers)Configuring Key Providers
+Client scopes define **which user attributes** are included in Verifiable Credentials (VCs) and therefore represent the Verifiable Credential configuration itself. Each credential type is configured as a dedicated client scope using the **OpenID for Verifiable Credentials** protocol.
 
-To enable cryptographic operations for VC issuance:
+A client scope uses **protocol mappers** to map specific user attributes to claims within the credential. These protocol mappers also expose the corresponding metadata that is published through the Credential Issuer Metadata Endpoint.
 
-- **ECDSA (ES256) Key**: Used for signing VCs with the ES256 algorithm.
-- **RSA (RS256) Key**: Alternative signing mechanism using RS256.
-- **RSA-OAEP Key**: Used for encrypting sensitive data in VCs.
+#### [](#creating-a-client-scope-via-the-admin-console)Creating a Client Scope via the Admin Console
 
-Each key must be registered as a **java-keystore provider** within the **Realm Settings** &gt; **Keys** section, ensuring: - The keystore file is correctly specified and securely stored. - The appropriate algorithm (ES256, RS256, or RSA-OAEP) is selected. - The key is active, enabled, and configured with the correct usage (signing or encryption). - Priority values are set to define precedence among keys.
+Many OID4VCI client scope attributes can be configured directly through the Keycloak Admin Console:
 
-Ensure the keystore file is **securely stored** and accessible to the Keycloak server. Use **strong passwords** to protect both the keystore and the private keys.
+1. Navigate to **Client Scopes** and click **Create client scope**.
+2. Configure the basic settings:
+   
+   - **Name** – A unique identifier for this credential type (e.g., `membership-credential`).
+   - **Type** – Select **None** (recommended for credential scopes).
+   - **Protocol** – Select **OpenID for Verifiable Credentials**.
+3. Ensure **Include in token scope** is toggled **On** — this is required for the scope to appear in the access token’s `scope` claim.
+4. Ensure **Include in OpenID Provider Metadata** is toggled **On** — when enabled, this client scope is included in the OpenID Provider Metadata and the credential configuration will be advertised in the Issuer Metadata Endpoint response.
 
-### [](#registering-realm-attributes)Registering Realm Attributes
+![Creating a Client Scope with OID4VCI protocol](./images/oid4vci/screenshot-create-oid4vci-client-scope.png)
 
-Realm attributes define metadata for Verifiable Credentials (VCs), such as **expiration times, supported formats, and scope definitions**. These attributes allow Keycloak to issue VCs with predefined settings.
+Figure 10. Creating an OID4VCI Client Scope
 
-Since the **Keycloak Admin Console does not support direct attribute creation**, use the **Keycloak Admin REST API** to configure these attributes.
+After selecting the OID4VCI protocol, the following configuration fields become available:
 
-#### [](#define-realm-attributes)Define Realm Attributes
+   Field Default Description
 
-Create a JSON file (e.g., `realm-attributes.json`) with the following content:
+Credential Configuration ID
 
-```
-{
-  "realm": "oid4vc-vci",
-  "enabled": true,
-  "attributes": {
-    "preAuthorizedCodeLifespanS": 120
-  }
-}
-```
+(scope name)
 
-#### [](#attribute-breakdown)Attribute Breakdown
+Identifier for this credential configuration. Exposed in the issuer metadata under `credential_configurations_supported`.
 
-The attributes section contains issuer-specific metadata: - **preAuthorizedCodeLifespanS** – Defines how long pre-authorized codes remain valid (in seconds). - **oid4vc.attestation.trusted\_keys** – JSON array of trusted JWK (JSON Web Key) objects for attestation proof validation. Each JWK must include a `kid` (key ID) field. These keys take precedence over realm session keys when there are conflicts. Useful for configuring additional trusted keys beyond the realm’s default keys. Format: JSON array of JWK objects, e.g., `[{"kid":"key1","kty":"EC",…​},{"kid":"key2","kty":"RSA",…​}]`. - **oid4vc.attestation.trusted\_key\_ids** – Comma-separated list of key IDs from the realm’s key providers to use for attestation proof validation. Keys are looked up by their `kid` regardless of enabled status, allowing the use of disabled keys that are not exposed in well-known endpoints. This attribute takes the highest priority when merging trusted keys. Format: comma-separated list of key IDs, e.g., `key-id-1,key-id-2,key-id-3`.
+Credential Identifier
 
-#### [](#import-realm-attributes)Import Realm Attributes
+(scope name)
 
-Use the following `curl` command to import the attributes into Keycloak:
+Identifier used during the credential issuance process.
 
-```
-curl -X PUT "https://localhost:8443/admin/realms/oid4vc-vci" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @realm-attributes.json
-```
+Credential Offer Required
 
-- Replace `$ACCESS_TOKEN` with a valid **Keycloak Admin API access token**.
-- **Avoid using `-k` in production**; instead, configure a **trusted TLS certificate**.
+Off
 
-#### [](#time-claim-correlation-mitigation)Time-claim correlation mitigation
+When enabled, a credential offer must be generated before issuance. Useful for pre-authorized code flows.
 
-To reduce unintended correlation across multiple issuances or presentations, you can normalize time-related claims by either randomizing them within a time window or rounding them to a coarse time unit. This behavior is opt-in and controlled by the following realm attributes:
+Issuer DID
 
-   Attribute Default Description
+(scope name)
 
-`oid4vci.time.claims.strategy`
+The Decentralized Identifier (DID) of the issuer (e.g., `did:web:vc.example.com`).
 
-`off`
+Credential Lifetime
 
-Strategy to apply to time claims. Supported values: `off`, `randomize`, `round`.
+`31536000` seconds (1 year)
 
-`oid4vci.time.randomize.window.seconds`
-
-`86400`
+How long the issued credential remains valid. This controls the expiration of the refresh token and the database record.
 
-When strategy is `randomize`, subtract a random number of seconds between 0 and the value of this attribute from the original timestamp to mitigate correlation attacks.
+Credential Refresh Interval
 
-`oid4vci.time.round.unit`
+`604800` seconds (7 days), or credential lifetime if shorter
 
-`SECOND`
+How often the wallet should refresh the credential. This sets the expiration (`exp` claim) of the issued VC JWT. If not explicitly set, defaults to 7 days or the credential lifetime, whichever is smaller. The credential can be refreshed using the refresh token as long as the credential lifetime has not expired. Must not exceed the credential lifetime.
 
-When strategy is `round`, truncate timestamps to the selected unit boundary (UTC). Supported values: `SECOND`, `MINUTE`, `HOUR`, `DAY`.
+Supported Format
 
-How it is applied during issuance:
+SD-JWT VC (`dc+sd-jwt`)
 
-- For JWT-VC, the credential `issuanceDate` is normalized at issuance; the JWT `nbf` is derived from the normalized value. If a mapper sets a VC `expirationDate`, it is normalized and emitted as JWT `exp`.
-- For SD-JWT VCs, time-related claims (`iat`, `nbf`, `exp`) are typically set using protocol mappers. Use the available OID4VC mappers, such as the Issued At Time Claim Mapper for `iat`, to populate these claims. Values are automatically normalized according to the realm strategy.
+The credential format. Supported options: **SD-JWT VC** (`dc+sd-jwt`) and **JWT VC** (`jwt_vc_json`).
 
-Examples:
+Token JWS Type
 
-```
-# Round to start of day (UTC)
-curl -X PUT "https://localhost:8443/admin/realms/oid4vc-vci" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "attributes": {
-          "oid4vci.time.claims.strategy": "round",
-          "oid4vci.time.round.unit": "DAY"
-        }
-      }'
+(auto)
 
-# Randomize within the last 24 hours
-curl -X PUT "https://localhost:8443/admin/realms/oid4vc-vci" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "attributes": {
-          "oid4vci.time.claims.strategy": "randomize",
-          "oid4vci.time.randomize.window.seconds": "86400"
-        }
-      }'
-```
-
-### [](#create-client-scopes-with-mappers)Create Client Scopes with Mappers
-
-Client scopes define **which user attributes** are included in Verifiable Credentials (VCs). Therefore, they are considered the Verifiable Credential configuration itself. These scopes use **protocol mappers** to map specific claims into VCs and the protocol mappers will also contain the corresponding metadata for claims that is displayed at the Credential Issuer Metadata Endpoint.
-
-You can create the ClientScopes using the Keycloak web Administration Console, but the web Administration Console does not yet support adding metadata configuration. For metadata configuration, you will need to use the Admin REST API.
-
-#### [](#define-a-client-scope-with-a-mapper)Define a Client Scope with a Mapper
-
-Create a JSON file (e.g., `client-scopes.json`) with the following content:
-
-```
-{
-  "name": "vc-scope-mapping",
-  "protocol": "oid4vc",
-  "attributes": {
-    "include.in.token.scope": "true",
-    "vc.issuer_did": "did:web:vc.example.com",
-    "vc.credential_configuration_id": "my-credential-configuration-id",
-    "vc.credential_identifier": "my-credential-identifier",
-    "vc.format": "jwt_vc",
-    "vc.expiry_in_seconds": 31536000,
-    "vc.verifiable_credential_type": "my-vct",
-    "vc.supported_credential_types": "credential-type-1,credential-type-2",
-    "vc.credential_contexts": "context-1,context-2",
-    "vc.credential_signing_alg": "ES256",
-    "vc.cryptographic_binding_methods_supported": "jwk",
-    "vc.signing_key_id": "key-id-123456",
-    "vc.display": "[{\"name\": \"IdentityCredential\", \"logo\": {\"uri\": \"https://university.example.edu/public/logo.png\", \"alt_text\": \"a square logo of a university\"}, \"locale\": \"en-US\", \"background_color\": \"#12107c\", \"text_color\": \"#FFFFFF\"}]",
-    "vc.sd_jwt.number_of_decoys": "2",
-    "vc.credential_build_config.sd_jwt.visible_claims": "iat,jti,nbf,exp,given_name",
-    "vc.credential_build_config.hash_algorithm": "SHA-256",
-    "vc.credential_build_config.token_jws_type": "JWS",
-    "vc.include_in_metadata": "true"
-  },
-  "protocolMappers": [
-    {
-      "name": "academic_title-mapper-bsk",
-      "protocol": "oid4vc",
-      "protocolMapper": "oid4vc-static-claim-mapper",
-      "config": {
-        "claim.name": "academic_title",
-        "staticValue": "N/A"
-      }
-    },
-    {
-      "name": "givenName",
-      "protocol": "oid4vc",
-      "protocolMapper": "oid4vc-user-attribute-mapper",
-      "config": {
-        "claim.name": "given_name",
-        "userAttribute": "firstName",
-        "vc.mandatory": "false",
-        "vc.display": "[{\"name\": \"الاسم الشخصي\", \"locale\": \"ar-SA\"}, {\"name\": \"Vorname\", \"locale\": \"de-DE\"}, {\"name\": \"Given Name\", \"locale\": \"en-US\"}, {\"name\": \"Nombre\", \"locale\": \"es-ES\"}, {\"name\": \"نام\", \"locale\": \"fa-IR\"}, {\"name\": \"Etunimi\", \"locale\": \"fi-FI\"}, {\"name\": \"Prénom\", \"locale\": \"fr-FR\"}, {\"name\": \"पहचानी गई नाम\", \"locale\": \"hi-IN\"}, {\"name\": \"Nome\", \"locale\": \"it-IT\"}, {\"name\": \"名\", \"locale\": \"ja-JP\"}, {\"name\": \"Овог нэр\", \"locale\": \"mn-MN\"}, {\"name\": \"Voornaam\", \"locale\": \"nl-NL\"}, {\"name\": \"Nome Próprio\", \"locale\": \"pt-PT\"}, {\"name\": \"Förnamn\", \"locale\": \"sv-SE\"}, {\"name\": \"مسلمان نام\", \"locale\": \"ur-PK\"}]"
-      }
-    }
-  ]
-}
-```
+The JWT type written into the `typ` header. The recommended value is automatically set based on the selected format.
 
-This is a **sample configuration**. You can define **additional protocol mappers** to support different claim mappings, such as:
+Signing Key ID
 
-- Dynamic attribute values instead of static ones.
-- Mapping multiple attributes per credential type.
-- Alternative supported credential types.
+(default realm key)
 
-From the example above:
+Select a specific realm key for signing this credential. The signing algorithm updates automatically.
 
-- It is important to set `include.in.token.scope=true`, see [Attribute table: include.in.token.scope](#include.in.token.scope).
-- Most of the named attributes above are optional. See below: [Attribute Breakdown](#client-scope-attribute-breakdown).
-- You can determine the appropriate `protocolMapper` names by first creating them through the Web Administration Console and then retrieving their definitions via the Admin REST API.
+Credential Signing Algorithm
 
-#### [](#client-scope-attribute-breakdown)Attribute Breakdown - ClientScope
+(auto)
 
-   Property Required Description / Default
+The algorithm used to sign the credential. Automatically populated when a signing key is selected.
 
-`name`
+Hash Algorithm
 
-required
+`sha-256`
 
-Name of the client scope.
+Hashing algorithm used before signing the credential.
 
-`protocol`
+Binding Required
 
-required
+Off
 
-Protocol used by the client scope. Use `oid4vc` for OpenID for Verifiable Credential Issuance, which is an OAuth2 extension (like `openid-connect`).
+When enabled, the credential must be cryptographically bound to the holder’s wallet.
 
-`include.in.token.scope`
+Cryptographic Binding Methods
 
-required
+(when binding enabled)
 
-[]()This value MUST be `true`. It ensures that the scope’s name is included in the `scope` claim of the issued Access Token.
+Comma-separated cryptographic binding methods. Allowed value: `jwk`.
 
-`protocolMappers`
+Binding Supported Proof Types
 
-optional
+(when binding enabled)
 
-Defines how claims are mapped into the credential and how metadata is exposed via the issuer’s metadata endpoint.
+Comma-separated proof types. Allowed values: `jwt`, `attestation`.
 
-`vc.issuer_did`
+Credential Display
 
-optional
+(optional)
 
-The Decentralized Identifier (DID) of the issuer.  
-*Default*: `${name}`
+JSON array of display metadata for wallets. Example: `[{\"name\": \"Membership Credential\", \"locale\": \"en\"}]`.
 
-`vc.credential_configuration_id`
+Supported Credential Types
 
-optional
+(optional)
 
-The credentials configuration ID.  
-*Default*: `${name}+`
+Comma-separated credential type values. Available for JWT VC and SD-JWT formats.
 
-`vc.credential_identifier`
+Verifiable Credential Type
 
-optional
+(optional)
 
-The credentials identifier.  
-*Default*: `${name}+`
+The VCT claim value for SD-JWT credentials.
 
-`vc.format`
+Visible Claims
 
-optional
+`id,iat,nbf,exp,jti`
 
-Defines the VC format (e.g., `jwt_vc`).  
-*Default*: `dc+sd-jwt`
+Claims always disclosed in the SD-JWT body (SD-JWT format only).
 
-`vc.verifiable_credential_type`
+![OID4VCI configuration fields in the Client Scope form](./images/oid4vci/screenshot-oid4vci-scope-form.png)
 
-optional
+Figure 11. OID4VCI Configuration Fields in the Client Scope Form
 
-The Verifiable Credential Type (VCT).  
-*Default*: `${name}+`
+When you select a **Signing Key ID**, the **Credential Signing Algorithm** is automatically populated with the corresponding algorithm of the selected key. To override the algorithm, leave the signing key field empty and set the algorithm manually.
 
-`vc.supported_credential_types`
+##### [](#understanding-credential-lifetime-vs-refresh-interval)Understanding Credential Lifetime vs. Refresh Interval
 
-optional
+Keycloak provides separate time-based settings for verifiable credential validity:
 
-The type values of the Verifiable Credential Type.  
-*Default*: `${name}+`
+- **Credential Lifetime** (`vc.expiry_in_seconds`) — Controls how long the credential record remains valid in the database and determines the refresh token expiration. Default: 1 year (31536000 seconds).
+- **Credential Refresh Interval** (`vc.refresh_interval_in_seconds`) — Controls the `exp` (expiration) claim in the actual VC JWT returned to the wallet. Default: 7 days (604800 seconds), or the credential lifetime if shorter.
 
-`vc.credential_contexts`
+This separation enables a periodic refresh cycle:
 
-optional
+1. The wallet receives a VC with a 7-day expiration
+2. The wallet also receives a refresh token valid for 1 year
+3. After 7 days, the VC expires (wallet can verify this locally)
+4. The wallet uses the refresh token to obtain a new access token
+5. The wallet requests a new VC, which is valid for another 7 days
+6. This cycle continues until the refresh token expires (after 1 year)
+7. After 1 year, both the refresh token and the database record expire, requiring re-authentication
 
-The context values of the Verifiable Credential Type.  
-*Default*: `${name}+`
+This design provides:
 
-`vc.credential_signing_alg`
+- **Enhanced security** — Regular credential rotation reduces the impact of credential theft
+- **Privacy protection** — Fresh credentials with updated timestamps prevent long-term correlation
+- **User convenience** — Automatic refresh without re-authentication for up to 1 year
 
-optional
+The credential refresh interval must not exceed the credential lifetime. Keycloak validates this constraint when creating or updating credential scopes. If you set a credential lifetime shorter than 7 days without explicitly configuring the refresh interval, the refresh interval automatically adjusts to match the credential lifetime.
 
-Supported signature algorithm for this credential.  
-*Default*: All asymmetric signing algorithms backed by realm keys.
+#### [](#adding-protocol-mappers)Adding Protocol Mappers
 
-`vc.cryptographic_binding_methods_supported`
+Protocol mappers map user attributes into specific claims within the credential and also expose the corresponding metadata displayed at the Credential Issuer Metadata Endpoint. This section explains how to configure protocol mappers through the Admin Console.
 
-optional
+After creating a client scope with the `oid4vc` protocol, add protocol mappers as follows:
 
-Supported cryptographic methods (if applicable).  
-*Default*: `jwk`
+1. In the Keycloak Admin Console, navigate to **Client Scopes** and select the created client scope (e.g., `membership-credential`).
+2. Click the **Mappers** tab.
+3. Click **Add mapper** and select **By configuration**.
+4. From the list of mapper types, select the desired mapper (see [Available Mapper Types](#available-mapper-types) below).
+5. Provide a **Name** for the mapper and configure the required fields.
+6. Click **Save**.
 
-`vc.signing_key_id`
+The following mapper types are available for the `oid4vc` protocol:
 
-optional
+![Available OID4VCI mapper type in the Add mapper dialog](./images/oid4vci/screenshot-oid4vci-add-mapper-selection.png)
 
-The ID of the key to sign this credential.  
-*Default*: *none*
+Figure 12. Available OID4VCI Mapper Types
 
-`vc.display`
+##### [](#minimum-mapper-configuration-for-issuance)Minimum Mapper Configuration for Issuance
 
-optional
+At a minimum, a credential should include the user’s core identity attributes. For example, to issue a membership credential carrying the user’s given name, family name, and email, configure the following mappers:
 
-Display information shown in the user’s wallet about the issued credential.  
-*Default*: *none*
+    Mapper Name Mapper Type Config Description
 
-`vc.sd_jwt.number_of_decoys`
+`given_name-mapper`
 
-optional
+User Attribute Mapper
 
-Used only with format `dc+sd-jwt`. Number of decoy hashes in the SD-JWT.  
-*Default*: `10`
+`claim.name`: `given_name`  
+`userAttribute`: `firstName`  
+`vc.display`: `[{"name":"Given Name","locale":"en"}]`
 
-`vc.credential_build_config.sd_jwt.visible_claims`
+Maps the user’s first name to the `given_name` claim in the credential.
 
-optional
+`family_name-mapper`
 
-Used only with format `dc+sd-jwt`. Claims always disclosed in the SD-JWT body.  
-*Default*: `id,iat,nbf,exp,jti`
+User Attribute Mapper
 
-`vc.credential_build_config.hash_algorithm`
+`claim.name`: `family_name`  
+`userAttribute`: `lastName`  
+`vc.display`: `[{"name":"Family Name","locale":"en"}]`
 
-optional
+Maps the user’s last name to the `family_name` claim.
 
-Hash algorithm used before signing the credential.  
-*Default*: `SHA-256`
+`email-mapper`
 
-`vc.credential_build_config.token_jws_type`
+User Attribute Mapper
 
-optional
+`claim.name`: `email`  
+`userAttribute`: `email`  
+`vc.display`: `[{"name":"Email","locale":"en"}]`
 
-JWT type written into the `typ` header of the token.  
-*Default*: `JWS`
+Maps the user’s email address to the `email` claim.
 
-`vc.expiry_in_s`
+`iat-mapper`
 
-optional
+Issued At Time Claim Mapper
 
-Credential expiration time in seconds.  
-*Default*: `31536000` (one year)
+`claim.name`: `iat`  
+`truncateToTimeUnit`: `HOURS`  
+`valueSource`: `COMPUTE`
 
-`vc.include_in_metadata`
+Sets the `iat` (issued at) claim to the current timestamp, truncated to hour boundaries.
 
-optional
+The `vc.display` property provides display metadata that wallets use to show human-readable descriptions for each claim. For time-based mappers like `iat`, display configuration is typically not required.
 
-If this claim should be listed in the credentials metadata.  
-*Default*: `true` but depends on the mapper-type. Claims like `jti`, `nbf`, `exp`, etc. are set to `false` by default.
-
-`vc.key_attestations_required`
-
-optional
-
-Indicates whether issuing this credential requires a key attestation.  
-*Default*: `false`.
-
-`vc.key_attestations_required.key_storage`
-
-optional
-
-Comma separated list of accepted key-storage attack potential levels (see ISO 18045 levels, e.g. `iso_18045_high`).  
-Only relevant if `vc.key_attestations_required` is present.  
-*Default*: none
-
-`vc.key_attestations_required.user_authentication`
-
-optional
-
-Comma separated list of accepted user-authentication attack potential levels (see ISO 18045 levels).  
-Only relevant if `vc.key_attestations_required` is present.  
-*Default*: none
-
-#### [](#attribute-breakdown-protocolmappers)Attribute Breakdown - ProtocolMappers
-
-- **name** – Mapper identifier.
-- **protocol** – Must be `oid4vc` for Verifiable Credentials.
-- **protocolMapper** – Specifies the claim mapping strategy (e.g., `oid4vc-static-claim-mapper`).
-- **config**: contains the protocol-mappers specific attributes.
-
-Most claims are dependent on the `protocolMapper`-value, but there are also commonly used claims available for all ProtocolMappers:
-
-   Property Required Description / Default
-
-`claim.name`
-
-required
-
-The name of the attribute that will be added into the Verifiable Credential.  
-Just like with OIDC user attributes, you may use dots to create nested JSON objects.  
-*Default*: *none*
-
-`userAttribute`
-
-required
-
-The name of the users-attribute that will be used to map the value into the `claim.name` of the Verifiable Credential.  
-*Default*: *none*
-
-`vc.mandatory`
-
-optional
-
-If the credential must be issued with this claim.  
-*Default*: `false`
-
-`vc.display`
-
-optional
-
-Metadata information that is displayed at the credential-issuer metadata-endpoint.  
-*Default*: *none*
-
-#### [](#import-the-client-scope)Import the Client Scope
-
-Use the following `curl` command to import the client scope into Keycloak:
-
-```
-curl -X POST "https://localhost:8443/admin/realms/oid4vc-vci/client-scopes" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @client-scopes.json
-```
-
-- Replace `$ACCESS_TOKEN` with a valid **Keycloak Admin API access token**.
-- **Avoid using `-k` in production**; instead, configure a **trusted TLS certificate**.
-- If updating an existing scope, use `PUT` instead of `POST`.
-
-### [](#create-the-client)Create the Client
+### [](#create-and-configure-the-client)Create and Configure the Client
 
 Set up a client to handle Verifiable Credential (VC) requests and assign the necessary scopes. The client does not differ from regular OpenID Connect clients — with one exception: it must have the appropriate **optional ClientScopes** assigned that define the Verifiable Credentials it is allowed to issue.
 
-1. Create a JSON file (e.g., `oid4vc-rest-api-client.json`) with the following content:
+After creating the client, you must configure its OID4VCI-specific settings.
+
+#### [](#enabling-oid4vci-for-the-client)Enabling OID4VCI for the Client
+
+To allow a client to issue Verifiable Credentials, you must enable OID4VCI for that specific client:
+
+1. In the Keycloak Admin Console, navigate to **Clients** and select your client.
+2. Go to the **Advanced** tab.
+3. Scroll down to the **OpenID for Verifiable Credentials** section.
+4. Toggle **OID4VCI enabled** to **On**.
+5. Click **Save**.
+
+![Enabling OID4VCI for the client](./images/oid4vci/enable-oid4vci-for-client.png)
+
+#### [](#assigning-credential-scopes)Assigning Credential Scopes
+
+For a client to issue a specific type of credential, the corresponding OID4VCI client scope (which defines the credential format and claims) must be assigned to it:
+
+1. In the Keycloak Admin Console, navigate to **Clients** and select your client.
+2. Go to the **Client scopes** tab.
+3. Click **Add client scope**.
+4. Select the credential scope you created earlier (e.g., `membership-credential`).
+5. Choose **Optional** as the assignment type (recommended for credential scopes).
+
+This ensures that the client can request and process the scope during the authorization flow, allowing the wallet to receive the corresponding Verifiable Credential.
+
+#### [](#creating-a-client-via-the-rest-api)Creating a Client via the REST API
+
+Alternatively, you can create and configure the client programmatically. Ensure the `oid4vci.enabled` attribute is set to `true` and the required client scope is added to `optionalClientScopes`.
+
+1. Create a JSON file (e.g., `my-wallet-client.json`) with the following content:
    
    ```
    {
-     "clientId": "oid4vc-rest-api",
+     "clientId": "my-wallet-client",
      "enabled": true,
      "protocol": "openid-connect",
      "publicClient": false,
@@ -12083,8 +15031,9 @@ Set up a client to handle Verifiable Credential (VC) requests and assign the nec
      "redirectUris": ["http://localhost:8080/*"],
      "directAccessGrantsEnabled": true,
      "defaultClientScopes": ["profile"],
-     "optionalClientScopes": ["vc-scope-mapping"],
+     "optionalClientScopes": ["membership-credential"],
      "attributes": {
+       "oid4vci.enabled": "true",
        "client.secret.creation.time": "1719785014",
        "client.introspection.response.allow.jwt.claim.enabled": "false",
        "login_theme": "keycloak",
@@ -12094,17 +15043,18 @@ Set up a client to handle Verifiable Credential (VC) requests and assign the nec
    ```
    
    - **clientId**: Unique identifier for the client.
-   - **optionalClientScopes**: Links the `vc-scope-mapping` scope for VC requests.
+   - **optionalClientScopes**: Links the credential scope (e.g., `membership-credential`) for VC requests.
+   - **attributes.oid4vci.enabled**: Must be `true` to enable OID4VCI functionality for this client.
 2. Import the client using the following `curl` command:
    
    ```
    curl -k -X POST "https://localhost:8443/admin/realms/oid4vc-vci/clients" \
      -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H "Content-Type: application/json" \
-     -d @oid4vc-rest-api-client.json
+     -d @my-wallet-client.json
    ```
 
-### [](#verify-the-configuration)Verify the Configuration
+### [](#verifying-the-configuration)Verifying the Configuration
 
 Validate the setup by accessing the **issuer metadata endpoint**:
 
@@ -12113,8 +15063,8 @@ Validate the setup by accessing the **issuer metadata endpoint**:
    ```
    https://localhost:8443/.well-known/openid-credential-issuer/realms/oid4vc-vci
    ```
-
-A successful response returns a JSON object containing details such as: - **Supported claims** - **Credential formats** - **Issuer metadata**
+   
+   A successful response returns a JSON object containing details such as: - **Supported claims** - **Credential formats** - **Issuer metadata**
 
 ### [](#conclusion)Conclusion
 
@@ -12122,9 +15072,645 @@ You have successfully configured **Keycloak as a Verifiable Credential Issuer** 
 
 For a **complete reference implementation**, see the sample project: [Keycloak SSI Deployment](https://github.com/adorsys/Keycloak-ssi-deployment/tree/main).
 
+### [](#_oid4vci_credential_request)Requesting Credentials
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/oid4vci/requesting-credentials.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foid4vci%2Frequesting-credentials.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foid4vci%2Frequesting-credentials.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+This section explains how a wallet interacts with Keycloak to request and obtain a Verifiable Credential using the Authorization Code Flow.
+
+#### [](#1-discovering-issuer-metadata)1. Discovering Issuer Metadata
+
+Wallets often start from a credential offer, for example from a QR code or link. The credential offer contains the issuer identifier (`credential_issuer`), which the wallet uses to locate the Credential Issuer Metadata endpoint.
+
+The wallet then discovers the issuer’s capabilities by calling the Credential Issuer Metadata endpoint. This endpoint provides details about the credential formats supported, cryptographic binding methods, and the URLs of other necessary endpoints (such as the authorization, token, and credential endpoints).
+
+```
+curl -s -X GET "https://localhost:8443/.well-known/openid-credential-issuer/realms/{realm}"
+```
+
+The JSON response contains the `credential_configurations_supported` object, which lists all available credentials and their configurations. From this metadata, the wallet determines the `credential_configuration_id` it wishes to request and identifies the `credential_endpoint` and `token_endpoint`.
+
+```
+{
+  "credential_issuer": "https://localhost:8443/realms/{realm}",
+  "credential_endpoint": "https://localhost:8443/realms/{realm}/protocol/oid4vc/credential",
+  "batch_credential_endpoint": "https://localhost:8443/realms/{realm}/protocol/oid4vc/batch-credential",
+  "nonce_endpoint": "https://localhost:8443/realms/{realm}/protocol/oid4vc/nonce",
+  "authorization_servers": [
+    "https://localhost:8443/realms/{realm}"
+  ],
+  "credential_configurations_supported": {
+    "membership-credential": {
+      "format": "jwt_vc_json",
+      "scope": "membership-credential",
+      "cryptographic_binding_methods_supported": [
+        "jwk"
+      ],
+      "credential_signing_alg_values_supported": [
+        "ES256",
+        "RS256"
+      ],
+      "credential_definition": {
+        "type": [
+          "VerifiableCredential",
+          "membership-credential"
+        ]
+      },
+      "proof_types_supported": {
+        "jwt": {
+          "proof_signing_alg_values_supported": [
+            "ES256"
+          ]
+        }
+      },
+      "credential_metadata": {
+        "display": [
+          {
+            "name": "IdentityCredential",
+            "locale": "en-US",
+            "description": "Digitally verifiable identity credential",
+            "background_color": "#12107c",
+            "text_color": "#ffffff"
+          }
+        ],
+        "claims": [
+          {
+            "path": [
+              "credentialSubject",
+              "given_name"
+            ],
+            "mandatory": true,
+            "display": [
+              {
+                "name": "Given Name",
+                "locale": "en-US"
+              }
+            ]
+          },
+          {
+            "path": [
+              "credentialSubject",
+              "family_name"
+            ],
+            "mandatory": true,
+            "display": [
+              {
+                "name": "Family Name",
+                "locale": "en-US"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### [](#2-oidc-authorization-request)2. OIDC Authorization Request
+
+To initiate the Authorization Code Flow, the wallet must direct the user to the Keycloak Authorization Endpoint. The wallet requests access to specific credentials using either standard OpenID Connect **Scopes** or the finer-grained **Authorization Details** parameter.
+
+##### [](#using-scopes)Using Scopes
+
+If credentials are mapped directly to scopes, the wallet includes the scope advertised for the credential configuration in the `scope` parameter alongside `openid`. This scope is the name of the client scope and can be different from the `credential_configuration_id`.
+
+```
+GET /realms/{realm}/protocol/openid-connect/auth
+  ?response_type=code
+  &client_id=my-wallet-client
+  &redirect_uri=http://localhost:8080/callback
+  &scope=openid membership-credential
+  &code_challenge=xyz...
+  &code_challenge_method=S256
+```
+
+##### [](#using-authorization-details-recommended)Using Authorization Details (Recommended)
+
+Alternatively, the wallet can use the `authorization_details` parameter to request credentials. This is highly recommended for complex credential configurations. The `authorization_details` parameter is a JSON array that specifies the exact credential being requested.
+
+```
+[
+  {
+    "type": "openid_credential",
+    "credential_configuration_id": "membership-credential"
+  }
+]
+```
+
+To pass this in the URL, the JSON array must be URL-encoded:
+
+```
+GET /realms/{realm}/protocol/openid-connect/auth
+  ?response_type=code
+  &client_id=my-wallet-client
+  &redirect_uri=http://localhost:8080/callback
+  &scope=openid
+  &authorization_details=%5B%7B%22type%22%3A%22openid_credential%22%2C%22credential_configuration_id%22%3A%22membership-credential%22%7D%5D
+  &code_challenge=xyz...
+  &code_challenge_method=S256
+```
+
+**Use Pushed Authorization Requests (PAR)**: The `authorization_details` parameter can quickly become large and exceed standard URL length limits. It is highly recommended to use the **PAR endpoint** (`/realms/{realm}/protocol/openid-connect/ext/par/request`) to push the authorization payload via a back-channel `POST` request. The PAR endpoint returns a `request_uri`, which is then safely passed to the frontend authorization endpoint.
+
+#### [](#3-oidc-token-request)3. OIDC Token Request
+
+After the user successfully authenticates and grants consent, Keycloak redirects the user back to the wallet with an authorization code. The wallet exchanges this code for an Access Token at the Token Endpoint.
+
+```
+curl -X POST "https://localhost:8443/realms/{realm}/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "code=AUTHORIZATION_CODE" \
+  -d "client_id=my-wallet-client" \
+  -d "client_secret=<YOUR_CLIENT_SECRET>" \
+  -d "redirect_uri=http://localhost:8080/callback" \
+  -d "code_verifier=PKCE_CODE_VERIFIER"
+```
+
+**Token Response and Credential Identifiers**
+
+If the authorization request was successful, the token response includes the access token and the authorized `authorization_details`. Critically, Keycloak will populate the `credential_identifiers` array inside the authorization details. This identifier must be extracted, as it is required for the subsequent credential request.
+
+```
+{
+  "access_token": "eyJhbGci...",
+  "token_type": "Bearer",
+  "expires_in": 300,
+  "scope": "openid membership-credential",
+  "authorization_details": [
+    {
+      "type": "openid_credential",
+      "credential_configuration_id": "membership-credential",
+      "credential_identifiers": [
+        "membership-credential"
+      ]
+    }
+  ]
+}
+```
+
+#### [](#4-requesting-the-credential)4. Requesting the Credential
+
+With the Access Token and the `credential_identifier` in hand, the wallet can now request the credential.
+
+First, the wallet must obtain a fresh challenge nonce from the `/protocol/oid4vc/nonce` endpoint, and use it to construct a cryptographic Proof of Possession (typically a JWT proof signed by the wallet’s private key). See [Proof Types and Key Binding in OID4VCI](#_oid4vci_proofs) for details about supported proof types and proof payloads.
+
+Then, the wallet submits the request to the Credential Endpoint (`/protocol/oid4vc/credential`):
+
+```
+curl -X POST "https://localhost:8443/realms/{realm}/protocol/oid4vc/credential" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "credential_identifier": "membership-credential",
+    "proofs": {
+      "jwt": [
+        "eyJhbGciOiJFUzI1NiIsInR5c...<base64url-encoded-jwt-proof>"
+      ]
+    }
+  }'
+```
+
+If the Access Token contains `authorization_details`, the `credential_identifier` in the credential request **must exactly match** the identifier returned in the Token Response. If it does not match, the request will be rejected with an `unknown_credential_identifier` error.
+
+Keycloak validates the access token, verifies the proof signature against the provided public key, checks user requirements (like mandatory claims), and returns the signed Verifiable Credential.
+
+**Sample Credential Response (JWT VC)**
+
+For a standard JWT VC (`jwt_vc_json` format), the response includes the signed credential string and a new nonce for any subsequent requests:
+
+```
+{
+  "format": "jwt_vc_json",
+  "credential": "eyJhbGciOiJFUzI1NiIs...<base64url-encoded-jwt>",
+  "c_nonce": "new_nonce_value_for_next_request",
+  "c_nonce_expires_in": 86400
+}
+```
+
+#### [](#requesting-an-sd-jwt-credential)Requesting an SD-JWT Credential
+
+Requesting an SD-JWT (Selective Disclosure JWT) credential follows the exact same process described above, but the target `credential_configuration_id` must map to a client scope configured for the `dc+sd-jwt` format.
+
+When Keycloak processes the request, it issues a credential where claims are hidden behind cryptographic salts (disclosures). The issued SD-JWT credential response looks like this:
+
+```
+{
+  "format": "dc+sd-jwt",
+  "credential": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJfaXNzIjoi...~<disclosure_1>~<disclosure_2>~",
+  "c_nonce": "new_nonce_value_for_next_request",
+  "c_nonce_expires_in": 86400
+}
+```
+
+The `credential` string is a concatenated format combining the Issuer-Signed JWT and the base64url-encoded Disclosures, separated by tildes (`~`). The holder binding key (from the wallet’s proof) is embedded securely in the `_sd_hash` confirmation claim inside the SD-JWT.
+
+### [](#_oid4vci_proofs)Proof Types and Key Binding in OID4VCI
+
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/oid4vci/proofs.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Foid4vci%2Fproofs.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Foid4vci%2Fproofs.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+
+This section documents the proof types supported by OpenID for Verifiable Credential Issuance (OID4VCI), how to configure trusted attester keys, and how key binding works in the resulting credentials.
+
+#### [](#supported-proof-types)Supported Proof Types
+
+Keycloak currently supports the following proof types for holder binding:
+
+   Proof Type Value Description
+
+JWT Proof
+
+`jwt`
+
+A signed JWT containing holder binding information. The key used to sign the JWT becomes the holder binding key in the credential.
+
+Attestation Proof
+
+`attestation`
+
+Proof containing key attestations from a trusted attestation authority.
+
+When a credential requires cryptographic holder binding, the client must provide a proof of an appropriate type. The issuer validates the proof and extracts the binding key, which is then included in the issued credential.
+
+#### [](#configuring-trusted-attester-keys)Configuring Trusted Attester Keys
+
+Keycloak supports JWT proofs that can optionally include key attestations, and the `attestation` proof type. To validate these attestations, configure the trusted attester keys through trust-material identity providers and link those identity providers to the OID4VCI client.
+
+Trusted attester keys are configured per client because different wallets can rely on different attestation authorities. The former realm-level options **Trusted Key IDs** and **Trusted Keys (JSON)** are no longer used for OID4VCI proof validation.
+
+##### [](#admin-console)Admin Console
+
+1. Create or configure a trust-material identity provider, such as **Default Trust**, that exposes the trusted attester public keys. The identity provider must be configured with either a JWKS URL or a validating public key.
+2. Go to **Clients** and select the wallet client that requests credentials.
+3. Open the **Advanced** tab.
+4. In the **OpenID Verifiable Credentials** section, enable **Enable OID4VCI**.
+5. In **OID4VCI Attester Trust Identity Providers**, select the trust-material identity providers that contain the trusted attester public keys.
+6. Save the client.
+
+The **OID4VCI Attester Trust Identity Providers** option is only shown when **Enable OID4VCI** is enabled for the client. It accepts only trust-material identity providers from the current realm. If no trust-material identity provider is configured, the dropdown has no values to select.
+
+##### [](#client-attribute)Client Attribute
+
+   Attribute Default Description
+
+`oid4vci.attester_trust_idps`
+
+none
+
+Comma-separated aliases of trust-material identity providers containing trusted attester public keys for OID4VCI key attestation validation.
+
+##### [](#admin-rest-api)Admin REST API
+
+Use the Admin REST API when you need to configure the client attribute directly.
+
+```
+curl -X PUT "https://localhost:8443/admin/realms/{realm}/clients/{client-uuid}" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "attributes": {
+          "oid4vci.enabled": "true",
+          "oid4vci.attester_trust_idps": "alias-1,alias-2"
+        }
+      }'
+```
+
+For a JWT proof with a `key_attestation` JOSE header, or for an `attestation` proof, Keycloak resolves the attester signing key from the configured identity providers. Key resolution can use the attestation JWT header and payload, including the `kid`, `alg`, and `iss` values. If no configured identity provider exposes a matching trusted key, proof validation fails.
+
+#### [](#creating-and-sending-jwt-proofs)Creating and Sending JWT Proofs
+
+JWT proofs are the most common proof type. To create a JWT proof:
+
+##### [](#1-obtain-a-nonce)1. Obtain a Nonce
+
+First, call the nonce endpoint to obtain a fresh nonce:
+
+```
+curl -X POST "https://localhost:8443/realms/{realm}/protocol/oid4vc/nonce" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+
+```
+{
+  "c_nonce": "abc123def456...",
+  "c_nonce_expires_in": 300
+}
+```
+
+##### [](#2-create-the-jwt-proof)2. Create the JWT Proof
+
+The JWT proof must contain the following claims:
+
+   Claim Required Description
+
+`iss`
+
+Conditional
+
+For client-bound flows, must be the client\_id. For anonymous flows, omit this claim.
+
+`aud`
+
+Yes
+
+Must be the Credential Issuer Identifier of the issuing realm
+
+`nonce`
+
+Yes
+
+The c\_nonce value obtained from the nonce endpoint.
+
+`iat`
+
+Yes
+
+Issued-at time (Unix timestamp). Must be within 30 seconds of server time.
+
+`exp`
+
+No
+
+Expiration time. If provided, must be in the future.
+
+`nbf`
+
+No
+
+Not-before time. If provided, must be before server time + 10 seconds.
+
+Table 10. Header Requirements   Header Description
+
+`typ`
+
+Must be `openid4vci-proof+jwt`
+
+`alg`
+
+One of the algorithms listed in `proof_signing_alg_values_supported` (e.g., `ES256`, `RS256`, `PS256`)
+
+`jwk` or `kid` or `x5c`
+
+The binding key. Only one of these should be present.
+
+###### [](#example-jwt-proof-with-jwk-in-header)Example: JWT Proof with JWK in Header
+
+```
+// Header
+{
+  "typ": "openid4vci-proof+jwt",
+  "alg": "ES256",
+  "jwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "f83OJ3B2f4GuoXv...d83rVU",
+    "y": "X_5R34qL2Y8ZdqU..."
+  }
+}
+
+// Payload
+{
+  "iss": "your-client-id",
+  "aud": "https://localhost:8443/realms/myrealm",
+  "nonce": "abc123def456...",
+  "iat": 1719785014
+}
+```
+
+###### [](#example-jwt-proof-with-kid-header)Example: JWT Proof with kid Header
+
+```
+// Header
+{
+  "typ": "openid4vci-proof+jwt",
+  "alg": "ES256",
+  "kid": "my-binding-key-id"
+}
+
+// Payload
+{
+  "iss": "your-client-id",
+  "aud": "https://localhost:8443/realms/myrealm",
+  "nonce": "abc123def456...",
+  "iat": 1719785014
+}
+```
+
+##### [](#3-send-the-credential-request)3. Send the Credential Request
+
+Include the JWT proof in the credential request:
+
+```
+{
+  "format": "jwt_vc_json",
+  "credential_configuration_id": "my-credential-config",
+  "proofs": {
+    "jwt": ["eyJhbGciOiJFUzI1NiIsInR5cCI6Im9wZW5pZDh2Y2ktcHJvb2Yrand0IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZjgzak8zQjJmNFdndU...=="]
+  }
+}
+```
+
+#### [](#using-attestation-proofs)Using Attestation Proofs
+
+Attestation proofs allow the holder to prove key ownership through an attestation authority. This is useful for hardware-backed keys or keys managed by secure enclaves.
+
+##### [](#structure-of-an-attestation-proof)Structure of an Attestation Proof
+
+An attestation proof is a JWT containing:
+
+Table 11. Header   Header Description
+
+`typ`
+
+`openid4vci-attestation+jwt`
+
+`kid`
+
+Key ID of the attestation signing key
+
+`alg`
+
+Algorithm (e.g., `ES256`)
+
+Table 12. Payload    Claim Required Description
+
+`nonce`
+
+Yes
+
+The c\_nonce from the nonce endpoint
+
+`iat`
+
+Yes
+
+Issued-at time
+
+`exp`
+
+Yes
+
+Expiration time
+
+`attested_keys`
+
+Yes
+
+Array of JWK objects representing the holder’s attested keys
+
+`key_storage`
+
+No
+
+List of acceptable key storage attack potential levels (ISO 18045)
+
+`user_authentication`
+
+No
+
+List of acceptable user authentication attack potential levels
+
+`status`
+
+Yes
+
+Object with `status` claim (e.g., `{"status": "valid"}`)
+
+##### [](#credential-request-with-attestation-proof)Credential Request with Attestation Proof
+
+```
+{
+  "format": "jwt_vc_json",
+  "credential_configuration_id": "my-credential-config",
+  "proofs": {
+    "attestation": ["eyJhbGciOiJFUzI1NiIsInR5cCI6Im9wZW5pZDh2Y2ktYXR0ZXN0YXRpb24rand0Ii...=="]
+  }
+}
+```
+
+#### [](#key-binding-in-credentials)Key Binding in Credentials
+
+The binding key from the proof is included in the issued credential to ensure the holder possesses the corresponding private key.
+
+##### [](#jwt-vc-json-format)JWT VC JSON Format
+
+For `jwt_vc_json` format credentials, the binding key is included in the `cnf` (confirmation) claim:
+
+```
+{
+  "iss": "https://localhost:8443/realms/myrealm",
+  "vc": {
+    "@context": ["https://www.w3.org/2018/credentials/v1"],
+    "type": ["VerifiableCredential", "MyCredential"],
+    "credentialSubject": { ... },
+    "cnf": {
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "f83OJ3B2f4GuoXv...d83rVU",
+        "y": "X_5R34qL2Y8ZdqU..."
+      }
+    }
+  },
+  "iat": 1719785014,
+  "exp": 1751321014,
+  "jti": "unique-credential-id"
+}
+```
+
+##### [](#sd-jwt-format)SD-JWT Format
+
+For `dc+sd-jwt` format credentials, the binding key is included as a disclosure in the SD-JWT:
+
+```
+eyJhbGciOiJFUzI1NiJ9.eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiTXlDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7fSwiY25mIjp7Imp3ayI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6ImY4M09PM0IyZjRHZ3VYdi4uLmQ4M3JWVSJ9fX0.K3ZkVYZ2B9...#eyJjdHgiOnsidHlwZSI6ImNuZiIsIm9iaiI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2In19"
+```
+
+The holder binding key appears in the `_sd_hash` of the SD-JWT, allowing verifiers to confirm the holder possesses the corresponding private key.
+
+##### [](#verifying-key-binding)Verifying Key Binding
+
+When presenting a credential, the verifier should:
+
+1. Extract the `cnf` claim (for JWT VC) or verify the `_sd_hash` (for SD-JWT)
+2. Challenge the holder to sign a challenge with the corresponding private key
+3. Verify the signature matches the bound key
+
+#### [](#complete-example-credential-request-with-jwt-proof)Complete Example: Credential Request with JWT Proof
+
+```
+# 1. Get an access token (OAuth2 flow)
+# ... (obtain access token with appropriate scopes)
+
+# 2. Obtain nonce
+NONCE_RESPONSE=$(curl -X POST "https://localhost:8443/realms/myrealm/protocol/oid4vc/nonce" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
+C_NONCE=$(echo $NONCE_RESPONSE | jq -r '.c_nonce')
+
+# 3. Create JWT proof (pseudocode - use your JWT library)
+PROOF_HEADER='{ "typ":"openid4vci-proof+jwt", "alg":"ES256", "jwk":{ "kty":"EC", "crv":"P-256", "x":"...", "y":"..." } }'
+PROOF_PAYLOAD="{ \"iss\":\"your-client-id\", \"aud\":\"https://localhost:8443/realms/myrealm\", \"nonce\":\"$C_NONCE\", \"iat\":$(date +%s) }"
+JWT_PROOF=$(create_jwt "$PROOF_HEADER" "$PROOF_PAYLOAD" "$YOUR_PRIVATE_KEY")
+
+# 4. Send credential request
+curl -X POST "https://localhost:8443/realms/myrealm/protocol/oid4vc/credential" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format": "jwt_vc_json",
+    "credential_configuration_id": "my-credential-config",
+    "proofs": {
+      "jwt": ["'"$JWT_PROOF"'"]
+    }
+  }'
+```
+
+#### [](#client-scope-configuration-for-proof-types)Client Scope Configuration for Proof Types
+
+To require key binding for a credential, configure the OID4VCI client scope with the appropriate attributes. These settings are advertised in the issuer metadata as `cryptographic_binding_methods_supported` and `proof_types_supported`, and they determine which proof types the wallet can use.
+
+```
+{
+  "name": "my-vc-scope",
+  "protocol": "oid4vc",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "vc.format": "jwt_vc_json",
+    "vc.credential_configuration_id": "my-credential-config",
+    "vc.binding_required": "true",
+    "vc.cryptographic_binding_methods_supported": "jwk",
+    "vc.binding_required_proof_types": "jwt,attestation",
+    "vc.credential_signing_alg": "ES256"
+  },
+  "protocolMappers": [
+    {
+      "name": "givenName",
+      "protocol": "oid4vc",
+      "protocolMapper": "oid4vc-user-attribute-mapper",
+      "config": {
+        "claim.name": "given_name",
+        "userAttribute": "firstName"
+      }
+    }
+  ]
+}
+```
+
+The `vc.binding_required_proof_types` attribute accepts a comma-separated list of supported proof types, currently `jwt` and `attestation`. If `vc.binding_required` is not enabled, the credential configuration does not require holder binding and the issuer metadata omits `cryptographic_binding_methods_supported` and `proof_types_supported`.
+
+The `proof_signing_alg_values_supported` values are automatically included in the issuer metadata based on the realm’s supported asymmetric signing algorithms.
+
+#### [](#related-configuration)Related Configuration
+
+- [OID4VCI Configuration](#_oid4vci) - General OID4VCI setup
+- [Creating a Realm](#proc-creating-a-realm_server_administration_guide) - Realm creation
+- [Managing Realm Keys](#realm_keys) - Key management
+
 ## [](#_vault-administration)Using a vault to obtain secrets
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/vault.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fvault.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fvault.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/vault.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fvault.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fvault.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak currently provides two out-of-the-box implementations of the Vault SPI: a plain-text file-based vault and Java KeyStore-based vault.
 
@@ -12192,13 +15778,13 @@ If you have not configured a resolver for the built-in providers, Keycloak selec
 
 ## [](#configuring-auditing-to-track-events)Configuring auditing to track events
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes a suite of auditing capabilities. You can record every login and administrator action and review those actions in the Admin Console. Keycloak also includes a Listener SPI that listens for events and can trigger actions. Examples of built-in listeners include log files and sending emails if an event occurs.
 
 ### [](#auditing-user-events)Auditing user events
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events/login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents%2Flogin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents%2Flogin.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events/login.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents%2Flogin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents%2Flogin.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can record and view every event that affects users. Keycloak triggers login events for actions such as successful user login, a user entering an incorrect password, or a user account updating. By default, Keycloak does not store or display events in the Admin Console. Only the error events are logged to the Admin Console and the server’s log file.
 
@@ -12447,7 +16033,7 @@ kc.[sh|bat] --spi-events-listener--email--include-events=USER_DISABLED_BY_TEMPOR
 
 ### [](#auditing-admin-events)Auditing admin events
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events/admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents%2Fadmin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents%2Fadmin.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/events/admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fevents%2Fadmin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fevents%2Fadmin.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 You can record all actions that are performed by an administrator in the Admin Console. The Admin Console performs administrative actions by invoking the Keycloak REST interface and Keycloak audits these REST invocations. You can view the resulting events in the Admin Console.
 
@@ -12490,13 +16076,13 @@ kc.[sh|bat] --spi-events-store--jpa--max-field-length=2500
 
 ## [](#mitigating_security_threats)Mitigating security threats
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Security vulnerabilities exist in any authentication server. See the Internet Engineering Task Force’s (IETF) [OAuth 2.0 Threat Model](https://datatracker.ietf.org/doc/html/rfc6819) and the [OAuth 2.0 Security Best Current Practice](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics) for more information.
 
 ### [](#host)Host
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/host.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fhost.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fhost.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/host.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fhost.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fhost.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak uses the public hostname in several ways, such as within token issuer fields and URLs in password reset emails.
 
@@ -12506,13 +16092,13 @@ The hostname’s Service Provider Interface (SPI) provides a way to configure th
 
 ### [](#admin-endpoints-and-admin-console)Admin endpoints and Admin Console
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fadmin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fadmin.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/admin.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fadmin.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fadmin.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak exposes the administrative REST API and the web console on the same port as non-administrative usage. Do not expose administrative endpoints externally if external access is not necessary.
 
 ### [](#password-guess-brute-force-attacks)Brute force attacks
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/brute-force.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fbrute-force.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fbrute-force.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/brute-force.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fbrute-force.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fbrute-force.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A brute force attack attempts to guess a user’s password by trying to log in multiple times. Keycloak has brute force detection capabilities and can permanently or temporarily disable a user account if the number of login failures exceeds a specified threshold.
 
@@ -12975,13 +16561,13 @@ Consider using intrusion prevention software (IPS). Keycloak logs every login fa
 
 ### [](#password-policies)Password policies
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/password.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/password.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Ensure you have a complex password policy to force users to choose complex passwords. See the [Password Policies](#_password-policies) chapter for more information. Prevent password guessing by setting up the Keycloak server to use one-time-passwords.
 
 ### [](#read_only_user_attributes)Read-only user attributes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/read-only-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fread-only-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fread-only-attributes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/read-only-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fread-only-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fread-only-attributes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Typical users who are stored in Keycloak have various attributes related to their user profiles. Such attributes include email, firstName or lastName. However users may also have attributes, which are not typical profile data, but rather metadata. The metadata attributes usually should be read-only for the users and the typical users never should have a way to update those attributes from the Keycloak user interface or Account REST API. Some of the attributes should be even read-only for the administrators when creating or updating user with the Admin REST API.
 
@@ -13012,7 +16598,7 @@ For this example, users and administrators would not be able to update attribute
 
 ### [](#validate_user_attributes)Validate user attributes
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/validate-user-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fvalidate-user-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fvalidate-user-attributes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/validate-user-attributes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fvalidate-user-attributes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fvalidate-user-attributes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 With the functionality in [Managing user attributes](#user-profile), administrators can restrict the data users enter for attributes, for example, in user registration or the account console.
 
@@ -13022,7 +16608,7 @@ When using regular expressions to validate user attributes, avoid regular expres
 
 ### [](#clickjacking)Clickjacking
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/clickjacking.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fclickjacking.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fclickjacking.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/clickjacking.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fclickjacking.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fclickjacking.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Clickjacking is a technique of tricking users into clicking on a user interface element different from what users perceive. A malicious site loads the target site in a transparent iFrame, overlaid on top of a set of dummy buttons placed directly under important buttons on the target site. When a user clicks a visible button, they are clicking a button on the hidden page. An attacker can steal a user’s authentication credentials and access their resources by using this method.
 
@@ -13043,7 +16629,7 @@ By default, Keycloak only sets up a *same-origin* policy for iframes.
 
 ### [](#sslhttps-requirement)SSL/HTTPS requirement
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/ssl.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fssl.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fssl.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/ssl.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fssl.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fssl.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 OAuth 2.0/OpenID Connect uses access tokens for security. Attackers can scan your network for access tokens and use them to perform malicious operations for which the token has permission. This attack is known as a man-in-the-middle attack. Use SSL/HTTPS for communication between the Keycloak auth server and the clients Keycloak secures to prevent man-in-the-middle attacks.
 
@@ -13053,7 +16639,7 @@ On the adapter/client-side, you can disable the SSL trust manager. The trust man
 
 ### [](#csrf-attacks)CSRF attacks
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/csrf.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcsrf.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcsrf.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/csrf.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcsrf.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcsrf.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 A Cross-site request forgery (CSRF) attack uses HTTP requests from users that websites have already authenticated. Any site using cookie-based authentication is vulnerable to CSRF attacks. You can mitigate these attacks by matching a state cookie against a posted form or query parameter.
 
@@ -13065,7 +16651,7 @@ The Account Console in Keycloak can be vulnerable to CSRF. To prevent CSRF attac
 
 ### [](#unspecific-redirect-uris_server_administration_guide)Unspecific redirect URIs
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/redirect.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fredirect.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fredirect.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/redirect.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fredirect.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fredirect.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Make your registered redirect URIs as specific as feasible. Registering vague redirect URIs for [Authorization Code Flows](#con-oidc-auth-flows_server_administration_guide) can allow malicious clients to impersonate another client with broader access. Impersonation can happen if two clients live under the same domain, for example.
 
@@ -13073,19 +16659,19 @@ You can use secure redirect uris enforcer executor for your realm. The result ma
 
 ### [](#fapi-compliance)FAPI compliance
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/fapi-compliance.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Ffapi-compliance.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Ffapi-compliance.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/fapi-compliance.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Ffapi-compliance.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Ffapi-compliance.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To make sure that Keycloak server will validate your client to be more secure and FAPI compliant, you can configure client policies for the FAPI support. **FAPI** details are described in the [securing apps](https://www.keycloak.org/guides#securing-apps) section. Among other things, this ensures some security best practices described above like SSL required for clients, secure redirect URI used and more of similar best practices.
 
 ### [](#oauth-2-1-compliance)OAuth 2.1 compliance
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/oauth21-compliance.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Foauth21-compliance.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Foauth21-compliance.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/oauth21-compliance.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Foauth21-compliance.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Foauth21-compliance.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 To make sure that Keycloak server will validate your client to be more secure and OAuth 2.1 compliant, you can configure client policies for the OAuth 2.1 support. **OAuth 2.1** details are described in the [securing apps](https://www.keycloak.org/guides#securing-apps) section.
 
 ### [](#compromised-access-and-refresh-tokens)Compromised access and refresh tokens
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/compromised-tokens.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-tokens.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-tokens.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/compromised-tokens.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-tokens.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-tokens.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak includes several actions to prevent malicious actors from stealing access tokens and refresh tokens. The crucial action is to enforce SSL/HTTPS communication between Keycloak and its clients and applications. Keycloak does not enable SSL by default.
 
@@ -13101,7 +16687,7 @@ You can disable specific applications, clients, or users if they are compromised
 
 ### [](#compromised-authorization-code)Compromised authorization code
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/compromised-codes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-codes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-codes.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/compromised-codes.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-codes.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fcompromised-codes.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 For the [OIDC Auth Code Flow](#con-oidc-auth-flows_server_administration_guide), Keycloak generates a cryptographically strong random value for its authorization codes. An authorization code is used only once to obtain an access token.
 
@@ -13111,7 +16697,7 @@ You can also defend against leaked authorization codes by applying [Proof Key fo
 
 ### [](#open-redirectors)Open redirectors
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/open-redirect.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fopen-redirect.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fopen-redirect.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/open-redirect.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fopen-redirect.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fopen-redirect.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 An open redirector is an endpoint using a parameter to automatically redirect a user agent to the location specified by the parameter value without validation. An attacker can use the end-user authorization endpoint and the redirect URI parameter to use the authorization server as an open redirector, using a user’s trust in an authorization server to launch a phishing attack.
 
@@ -13123,7 +16709,7 @@ By using [Client Policies](#_client_policies), an administrator can make sure th
 
 ### [](#ssrf)Mitigating Server-Side Request Forgery (SSRF)
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/ssrf.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fssrf.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fssrf.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/ssrf.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fssrf.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fssrf.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 **Server-Side Request Forgery (SSRF)** is a security vulnerability where an attacker induces the server (Keycloak, in this case) to make requests to an unintended destination. In Keycloak, this risk is primarily associated with client fields that trigger requests from the server, such as the **JWKS URI**.
 
@@ -13137,7 +16723,7 @@ This executor enforces a strict security policy by validating client URIs agains
 
 It can be used not only for `JWKS URI` but to validate all available uri fields of the client like including `rootUrl`, `adminUrl`, `redirectUris`, `webOrigins` and others.
 
-Table 9. Configuration Properties   Configuration Description
+Table 13. Configuration Properties   Configuration Description
 
 Allowed URI Patterns
 
@@ -13180,13 +16766,13 @@ This executor uses Java Regular Expressions. Ensure you correctly escape special
 
 ### [](#password-database-compromised)Password database compromised
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/password-db-compromised.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword-db-compromised.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword-db-compromised.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/password-db-compromised.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword-db-compromised.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fpassword-db-compromised.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak does not store passwords in raw text but as hashed text, using the `PBKDF2-HMAC-SHA512` message digest algorithm. Keycloak performs `210,000` hashing iterations, the number of iterations recommended by the security community. This number of hashing iterations can adversely affect performance as PBKDF2 hashing uses a significant amount of CPU resources.
 
 ### [](#limiting-scope)Limiting scope
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/scope.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fscope.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fscope.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/scope.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fscope.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fscope.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 #### [](#scope-availability)Scope availability
 
@@ -13202,13 +16788,13 @@ By default, all scopes are included in the OpenID Connect discovery endpoint. To
 
 ### [](#limit-token-audience)Limit token audience
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/audience-limit.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Faudience-limit.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Faudience-limit.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/audience-limit.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Faudience-limit.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Faudience-limit.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 In environments with low levels of trust among services, limit the audiences on the token. See the [OAuth2 Threat Model](https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.5.5) and the [Audience Support](#audience-support) section for more information.
 
 ### [](#_limit-authentication-sessions)Limit Authentication Sessions
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/auth-sessions-limit.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fauth-sessions-limit.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fauth-sessions-limit.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/auth-sessions-limit.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fauth-sessions-limit.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fauth-sessions-limit.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 [Authentication sessions](#_authentication-sessions) track the state of the authentication. The text below is applicable regardless of the source flow.
 
@@ -13236,19 +16822,19 @@ bin/kc.[sh|bat] start --spi-authentication-sessions--map--auth-sessions-limit=10
 
 ### [](#sql-injection-attacks)SQL injection attacks
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/sql.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fsql.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fsql.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/threat/sql.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fthreat%2Fsql.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fthreat%2Fsql.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Currently, Keycloak has no known SQL injection vulnerabilities.
 
 ## [](#_account-service)Account Console
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Faccount.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Faccount.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/account.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Faccount.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Faccount.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 Keycloak users can manage their accounts through the Account Console. They can configure their profiles, add two-factor authentication, include identity provider accounts, and oversee device activity.
 
 Additional resources
 
-- The Account Console can be configured in terms of appearance and language preferences. An example is adding additional attributes to the **Personal info** page. For more information, see the [Server Developer Guide](https://www.keycloak.org/docs/26.6.3/server_development/).
+- The Account Console can be configured in terms of appearance and language preferences. An example is adding additional attributes to the **Personal info** page. For more information, see the [Server Developer Guide](https://www.keycloak.org/docs/26.7.4/server_development/).
 
 ### [](#accessing-the-account-console)Accessing the Account Console
 
@@ -13383,7 +16969,7 @@ View group memberships
 
 ## [](#admin-cli)Admin CLI
 
-[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-cli.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-cli.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-cli.adoc&version=26.6.3&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
+[Edit this section](https://github.com/keycloak/keycloak/tree/main/docs/documentation/server_admin/topics/admin-cli.adoc) [Report an issue](https://github.com/keycloak/keycloak/issues/new?template=bug.yml&title=Docs%3A%20server_admin%2Ftopics%2Fadmin-cli.adoc&description=%0A%0AFile%3A%20server_admin%2Ftopics%2Fadmin-cli.adoc&version=26.7.4&behaviorExpected=%3C%21--%20describe%20what%20you%20want%20to%20see%20in%20the%20docs%20--%3E&behaviorActual=%3C%21--%20describe%20what%20is%20currently%20wrong%20or%20missing%20in%20the%20docs%20--%3E&reproducer=%3C%21--%20list%20steps%20in%20the%20application%20that%20show%20behavior%20that%20should%20be%20documented%20--%3E)
 
 With Keycloak, you can perform administration tasks from the command-line interface (CLI) by using the Admin CLI command-line tool.
 
@@ -15072,4 +18658,4 @@ For example:
 $ kcadm delete "authentication/config/dd91611a-d25c-421a-87e2-227c18421833" -r demorealm
 ```
 
-Last updated 2026-06-04 16:45:26 UTC
+Last updated 2026-09-16 14:21:41 UTC

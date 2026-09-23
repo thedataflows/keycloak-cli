@@ -69,7 +69,7 @@ func TestApplyNestedRealmGroupStripsParentBindingFromBody(t *testing.T) {
 	assert.NotContains(t, createBody, "groupId", "parent binding must be stripped from the body")
 	assert.Equal(t, "platform", createBody["name"])
 
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/groups/{group-id}/children", http.MethodPost,
@@ -124,7 +124,7 @@ func TestApplyNestedRealmGroupUpdateAddressesChildAndStripsParentBinding(t *test
 	require.NotNil(t, updateBody)
 	assert.NotContains(t, updateBody, "groupId", "parent binding must be stripped from the update body")
 
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 	require.NoError(t, spec.ValidateOperationRequest(
 		"/admin/realms/{realm}/groups/{group-id}", http.MethodPut,

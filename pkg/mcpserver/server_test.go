@@ -86,7 +86,7 @@ func newTestClient(t *testing.T) (*kcapi.Client, *fakeKeycloak) {
 	fake := newFakeKeycloak(t)
 	client, err := kcapi.New(kcapi.Config{
 		BaseURL: fake.server.URL,
-		Spec:    kcapi.SpecSource{Path: "../../keycloak-oapi/26.6.2.spec.json"},
+		Spec:    kcapi.SpecSource{Path: "../../keycloak-oapi/26.7.4.spec.json"},
 		Timeout: 5 * time.Second,
 		Auth:    staticTokenProvider("test-token"),
 	})

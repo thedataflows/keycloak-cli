@@ -15,7 +15,7 @@ import (
 // the exact override definitions, and their read/write/delete paths validate
 // against the embedded spec.
 func TestBuiltinOrgGroupKinds(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"))
+	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
 	require.NoError(t, err)
 
 	// method -> set of normalized spec paths

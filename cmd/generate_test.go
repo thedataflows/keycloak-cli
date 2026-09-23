@@ -138,7 +138,7 @@ func TestGenerateCmd_Run(t1 *testing.T) {
 			// Set spec path to test spec
 			cli := &CLI{
 				Globals: Globals{
-					SpecPath: "../keycloak-oapi/26.6.2.spec.json",
+					SpecPath: "../keycloak-oapi/26.7.4.spec.json",
 				},
 			}
 
@@ -225,7 +225,7 @@ func BenchmarkGenerateCmd_Run(b *testing.B) {
 
 	cli := &CLI{
 		Globals: Globals{
-			SpecPath: "../keycloak-oapi/26.6.2.spec.json",
+			SpecPath: "../keycloak-oapi/26.7.4.spec.json",
 		},
 	}
 

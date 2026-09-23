@@ -12,7 +12,7 @@ import (
 func TestServiceGenerate(t *testing.T) {
 	service := realmgen.New()
 
-	result, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"), realmgen.Options{
+	result, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"), realmgen.Options{
 		Realm:       "svc-realm",
 		WithUsers:   2,
 		WithClients: 1,
@@ -46,7 +46,7 @@ func TestServiceGenerate(t *testing.T) {
 func TestServiceGenerateRejectsInvalidOptions(t *testing.T) {
 	service := realmgen.New()
 
-	_, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"), realmgen.Options{
+	_, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"), realmgen.Options{
 		Realm:     "",
 		WithUsers: 1,
 	})

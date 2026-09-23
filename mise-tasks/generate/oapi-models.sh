@@ -3,7 +3,7 @@
 #MISE alias="gom"
 set -euo pipefail
 
-SPEC_FILE="keycloak-oapi/26.6.2.spec.json"
+SPEC_FILE="keycloak-oapi/${KEYCLOAK_VERSION}.spec.json"
 CONFIG_FILE="mise-tasks/generate/oapi-codegen-models.yaml"
 OUTPUT_FILE="pkg/models/models.gen.go"
 

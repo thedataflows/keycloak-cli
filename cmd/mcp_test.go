@@ -41,15 +41,21 @@ type rpcResponse struct {
 	} `json:"result"`
 }
 
-// Scenario 10: the built binary completes an MCP initialize handshake over
-// stdio and lists the five tools.
-func TestMcpStdioHandshake(t *testing.T) {
-	cmd := exec.Command(mcpBinary, "mcp")
-	root, err := filepath.Abs("..") // default --spec path is repo-root-relative
+// mcpSpecFlag is the explicit spec flag: SpecPath no longer has a default, so
+// the stdio smoke test names the vendored spec.
+func mcpSpecFlag(t *testing.T) string {
+	t.Helper()
+	spec, err := filepath.Abs(filepath.Join("..", "keycloak-oapi", "26.7.4.spec.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd.Dir = root
+	return spec
+}
+
+// Scenario 11: the built binary completes an MCP initialize handshake over
+// stdio and lists the five tools.
+func TestMcpStdioHandshake(t *testing.T) {
+	cmd := exec.Command(mcpBinary, "mcp", "--spec-path", mcpSpecFlag(t))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

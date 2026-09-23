@@ -27,7 +27,7 @@ type Globals struct {
 	LogFormat       string        `help:"Log format (console,json)" default:"console"`
 	KeycloakBaseURL string        `short:"u" help:"Keycloak base URL" default:"http://localhost:8080"`
 	Timeout         time.Duration `short:"t" help:"Request timeout duration" default:"5s"`
-	SpecPath        string        `help:"Path to the Keycloak OpenAPI specification file" default:"keycloak-oapi/26.6.2.spec.json"`
+	SpecPath        string        `help:"Path to the Keycloak OpenAPI specification file" required:""`
 	// StateDir  string `help:"Directory for state storage. Not yet used." default:".state/"`
 }
 

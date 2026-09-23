@@ -33,7 +33,7 @@ func TestCompareCmdRun(t *testing.T) {
 	require.NoError(t, os.WriteFile(manifestPath, []byte(`[{"type":"user","realm":"demo","data":{"username":"alice","enabled":true}}]`), 0o644))
 
 	cmd := &CompareCmd{InputFiles: []string{manifestPath}, Realm: "demo", Format: "json"}
-	cli := &CLI{Globals: Globals{KeycloakBaseURL: server.URL, SpecPath: "../keycloak-oapi/26.6.2.spec.json", Timeout: time.Second}}
+	cli := &CLI{Globals: Globals{KeycloakBaseURL: server.URL, SpecPath: "../keycloak-oapi/26.7.4.spec.json", Timeout: time.Second}}
 
 	err := cmd.Run(nil, cli)
 	assert.NoError(t, err)
@@ -56,7 +56,7 @@ func TestCompareCmdRunReturnsMismatch(t *testing.T) {
 	require.NoError(t, os.WriteFile(manifestPath, []byte(`[{"type":"user","realm":"demo","data":{"username":"alice","enabled":true}}]`), 0o644))
 
 	cmd := &CompareCmd{InputFiles: []string{manifestPath}, Realm: "demo", Format: "json", Output: outputPath, Force: true}
-	cli := &CLI{Globals: Globals{KeycloakBaseURL: server.URL, SpecPath: "../keycloak-oapi/26.6.2.spec.json", Timeout: time.Second}}
+	cli := &CLI{Globals: Globals{KeycloakBaseURL: server.URL, SpecPath: "../keycloak-oapi/26.7.4.spec.json", Timeout: time.Second}}
 
 	err := cmd.Run(nil, cli)
 	require.Error(t, err)

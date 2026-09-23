@@ -7,7 +7,7 @@ import (
 
 func testClient(t *testing.T) *Client {
 	t.Helper()
-	spec, err := os.ReadFile("../../keycloak-oapi/26.6.2.spec.json")
+	spec, err := os.ReadFile("../../keycloak-oapi/26.7.4.spec.json")
 	if err != nil {
 		t.Skipf("repo spec not available: %v", err)
 	}

@@ -36,7 +36,7 @@ func (q *queryRecorder) hit(path string) bool {
 }
 
 // fakeKC is a minimal in-memory Keycloak whose routes mirror the vendored
-// spec's real path shapes (26.6.2.spec.json: {user-id}-style placeholders,
+// spec's real path shapes (26.7.4.spec.json: {user-id}-style placeholders,
 // no operationIds). The client loads that same committed spec, so Resolve
 // searches through the real users collection contract and Neighbors walks the
 // real users->groups and users->consents edges:

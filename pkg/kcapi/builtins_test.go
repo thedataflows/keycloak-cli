@@ -13,7 +13,7 @@ func TestInstallDefaultBuiltInResourcesWiresMatcher(t *testing.T) {
 		IsBuiltInResource = func(Resource) bool { return false }
 	})
 
-	require.NoError(t, InstallDefaultBuiltInResources(filepath.Join(t.TempDir(), "26.6.2.spec.json")))
+	require.NoError(t, InstallDefaultBuiltInResources(filepath.Join(t.TempDir(), "26.7.4.spec.json")))
 
 	assert.True(t, IsBuiltInResource(Resource{
 		Type: "client",

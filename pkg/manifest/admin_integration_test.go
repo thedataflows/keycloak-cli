@@ -34,7 +34,7 @@ func TestIntegrationApplyFetchAndRelationships(t *testing.T) {
 
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.6.2.spec.json"),
+		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
 		Timeout:  30 * time.Second,
 	})
 	require.NoError(t, err)
