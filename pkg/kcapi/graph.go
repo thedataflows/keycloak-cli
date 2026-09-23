@@ -90,11 +90,24 @@ func (c *Client) resolveSingle(ctx context.Context, spec *Spec, ref Ref, identit
 	return wrapNode(ref.Type, ref.Realm, identity, data), nil
 }
 
+// resolveMaxResults is the page size requested on the name-search collection
+// GET. Keycloak collection endpoints default to small server-side pages, and
+// the exact-match filtering here is client-side — without a cap it would only
+// see the first default page and answer false ErrNotFound in large realms.
+// This mirrors the manifest-side conflict-resolution cap semantics (the
+// constant there lives in pkg/manifest, which kcapi must not import, so the
+// value is restated locally).
+const resolveMaxResults = "10000"
+
 // resolveByName searches the type's collection GET and requires exactly one
 // exact identity-field match. The search param is the first identity field
 // the operation contract declares as a query parameter (username for users,
 // clientId for clients); when none is declared, the walk lists the collection
 // and filters client-side, which is always correct, just less efficient.
+// The fetch is capped with max=resolveMaxResults (never first: the search is
+// single-shot with client-side exact filtering), and a param named max that
+// is already present in the call — e.g. the search param itself being "max" —
+// wins over the cap.
 func (c *Client) resolveByName(ctx context.Context, spec *Spec, ref Ref, identity ResourceIdentity) (Node, error) {
 	call := Call{Resource: ref.Type, Verb: Get, Realm: ref.Realm}
 	op, _, err := resolveCall(spec, call)
@@ -108,6 +121,12 @@ func (c *Client) resolveByName(ctx context.Context, spec *Spec, ref Ref, identit
 		if param := searchQueryParam(op.contract, identity); param != "" {
 			call.Params = P{param: ref.Name}
 		}
+	}
+	if _, exists := call.Params["max"]; !exists {
+		if call.Params == nil {
+			call.Params = P{}
+		}
+		call.Params["max"] = resolveMaxResults
 	}
 
 	raw, err := c.Invoke(ctx, call)

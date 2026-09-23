@@ -28,8 +28,10 @@ type SpecSource struct {
 	Raw  []byte // inline bytes
 }
 
-// Credentials select which grant the auth service uses: password grant when
-// Username/Password are set, client-credentials when ClientSecret is set.
+// Credentials declare which grant shape you intend: a username/password pair
+// or a client secret. They are validated for shape only — contradictory or
+// partial input is rejected at New — and their values are not consumed:
+// tokens resolve from the environment, or from Config.Auth when it is set.
 type Credentials struct {
 	ClientID     string
 	ClientSecret string
@@ -202,12 +204,12 @@ func fetchSpec(ctx context.Context, specURL string, httpClient *http.Client) (*S
 	return NewSpecFromBytes(body)
 }
 
-// authFromCredentials returns the token provider for the given credentials,
-// reusing the production pkg/auth service. Password credentials select the
-// password grant, a client secret selects the client-credentials grant; the
-// grants themselves stay in the auth package's existing methods. With no
-// credentials the service resolves tokens from the environment, matching the
-// CLI's behavior.
+// authFromCredentials validates the shape of the given credentials —
+// username/password and a client secret are mutually exclusive, and a
+// password pair must be complete — and returns the production pkg/auth
+// service. No grant is selected here and the credential values are not
+// consumed: auth.New() resolves tokens from the environment, matching the
+// CLI's behavior; Config.Auth overrides it wholesale.
 func authFromCredentials(creds Credentials) (TokenProvider, error) {
 	hasPassword := creds.Username != "" || creds.Password != ""
 	hasClient := creds.ClientSecret != ""

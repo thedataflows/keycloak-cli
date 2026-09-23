@@ -97,8 +97,10 @@ func TestResolveByName(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "u-1", node.Resource.Data["id"])
 	// The search goes over the wire with the identity field the real spec
-	// declares as a query param (username), not a client-side-only filter.
-	assert.Equal(t, "username=alice", rec.queryFor("/users"))
+	// declares as a query param (username), not a client-side-only filter,
+	// and carries the page-size cap so the client-side exact match sees the
+	// whole collection, not just the first default page.
+	assert.Equal(t, "max=10000&username=alice", rec.queryFor("/users"))
 	assert.Equal(t, "users", node.Ref.Type)
 	assert.Equal(t, "alice", node.Ref.Name)
 	assert.Equal(t, "u-1", node.Ref.ID)
@@ -122,6 +124,40 @@ func TestResolveNotFoundAndAmbiguous(t *testing.T) {
 	require.ErrorIs(t, err, ErrValidation)                                      // ambiguous
 	assert.Contains(t, err.Error(), "alice")
 	assert.Contains(t, err.Error(), "bob")
+}
+
+// TestResolveByNameCapsCollectionSearch pins the page-size cap on the
+// name-search collection GET. Keycloak collection endpoints default to small
+// server-side pages, so a server that hides the target beyond the first page
+// stands in for a large realm: without the cap the client-side exact-match
+// filter sees only the default page and answers ErrNotFound. The server
+// answers the target user ONLY when max=10000 is on the wire.
+func TestResolveByNameCapsCollectionSearch(t *testing.T) {
+	rec := &queryRecorder{byPath: map[string]string{}}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /admin/realms/demo/users", func(w http.ResponseWriter, r *http.Request) {
+		rec.record("/users", r.URL.RawQuery)
+		if r.URL.Query().Get("max") == "10000" {
+			_, _ = w.Write([]byte(`[{"id":"u-9","username":"target"}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`[]`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	c, err := New(Config{
+		BaseURL: srv.URL,
+		Spec:    SpecSource{Raw: realSpecBytes(t)},
+		Auth:    staticTokenProvider("test-token"),
+	})
+	require.NoError(t, err)
+
+	node, err := c.Resolve(context.Background(), Ref{Type: "users", Name: "target", Realm: "demo"})
+	require.NoError(t, err)
+	assert.Equal(t, "u-9", node.Resource.Data["id"])
+	// The cap rides alongside the declared search param, and only max is set
+	// (no first): the search is single-shot with client-side exact filtering.
+	assert.Equal(t, "max=10000&username=target", rec.queryFor("/users"))
 }
 
 func TestNeighborsFetchesChildCollection(t *testing.T) {
