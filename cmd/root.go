@@ -41,6 +41,7 @@ type CLI struct {
 	Generate   GenerateCmd   `cmd:"" help:"Generate test data"`
 	AdminToken AdminTokenCmd `cmd:"" help:"Get administrative access token from current instance"`
 	Invoke     InvokeCmd     `cmd:"" help:"Invoke any Keycloak API operation from the loaded spec"`
+	Graph      GraphCmd      `cmd:"" help:"Inspect the resource graph implied by the spec (edges, resolve, neighbors)"`
 }
 
 // AfterApply is called after Kong parses the CLI but before the command runs
