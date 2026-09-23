@@ -1,18 +1,18 @@
 package realmgen_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/realmgen"
 )
 
 func TestServiceGenerate(t *testing.T) {
 	service := realmgen.New()
 
-	result, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"), realmgen.Options{
+	result, err := service.Generate(testutil.KeycloakSpecPath(t), realmgen.Options{
 		Realm:       "svc-realm",
 		WithUsers:   2,
 		WithClients: 1,
@@ -46,7 +46,7 @@ func TestServiceGenerate(t *testing.T) {
 func TestServiceGenerateRejectsInvalidOptions(t *testing.T) {
 	service := realmgen.New()
 
-	_, err := service.Generate(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"), realmgen.Options{
+	_, err := service.Generate(testutil.KeycloakSpecPath(t), realmgen.Options{
 		Realm:     "",
 		WithUsers: 1,
 	})

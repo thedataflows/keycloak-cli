@@ -2,12 +2,12 @@ package kcapi
 
 import (
 	"net/http"
-	"path/filepath"
 	"testing"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 // TestBuiltinOrgGroupKinds pins ISSUE 0008: the organization-group membership and
@@ -15,7 +15,7 @@ import (
 // the exact override definitions, and their read/write/delete paths validate
 // against the embedded spec.
 func TestBuiltinOrgGroupKinds(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	// method -> set of normalized spec paths

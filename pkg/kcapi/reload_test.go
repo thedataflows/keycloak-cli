@@ -23,7 +23,7 @@ func TestReloadSwapsCatalog(t *testing.T) {
 	c, err := New(Config{BaseURL: "http://test", Spec: SpecSource{URL: srv.URL}})
 	require.NoError(t, err)
 
-	// The vendored 26.6.2 spec carries no operationId fields, so the brief's
+	// The vendored ${KEYCLOAK_VERSION} spec carries no operationId fields, so the brief's
 	// "getUser" search matches nothing there; "users/{user-id}" pins real
 	// operations by path substring (same pattern as discovery_test.go).
 	before, err := c.Operations(OpFilter{Search: "users/{user-id}"})

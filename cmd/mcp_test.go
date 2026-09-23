@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -50,11 +52,7 @@ type rpcResponse struct {
 // every smoke test names the vendored spec.
 func mcpSpecFlag(t *testing.T) string {
 	t.Helper()
-	spec, err := filepath.Abs(filepath.Join("..", "keycloak-oapi", "26.7.4.spec.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return spec
+	return testutil.KeycloakSpecPath(t)
 }
 
 // Scenario 11: the built binary completes an MCP initialize handshake over

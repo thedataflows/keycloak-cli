@@ -2,12 +2,12 @@ package kcapi
 
 import (
 	"net/http"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 // TestSameTypeParentNestingsAreRecorded enumerates every POST collection path in
@@ -18,7 +18,7 @@ import (
 // only the realm-group children path is reachable through the resource channel;
 // the others are documented here with why they are unaffected.
 func TestSameTypeParentNestingsAreRecorded(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 	contracts, err := spec.ResourceContracts()
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestSameTypeParentNestingsAreRecorded(t *testing.T) {
 		}
 	}
 
-	// The recorded set as of the 26.7.4 spec. A new entry here means the guard
+	// The recorded set as of the ${KEYCLOAK_VERSION} spec. A new entry here means the guard
 	// narrowing now strips a body field on another endpoint — review it before
 	// updating this expectation.
 	expected := map[nesting]struct{}{

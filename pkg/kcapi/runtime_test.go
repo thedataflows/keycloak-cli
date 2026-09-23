@@ -2,15 +2,15 @@ package kcapi
 
 import (
 	"net/http"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 func TestSanitizeResourcePayloadStripsRealmAndParentReferences(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 	client := &RuntimeClient{spec: spec}
 

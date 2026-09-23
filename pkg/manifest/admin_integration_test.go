@@ -13,6 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/auth"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
@@ -34,7 +35,7 @@ func TestIntegrationApplyFetchAndRelationships(t *testing.T) {
 
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 		Timeout:  30 * time.Second,
 	})
 	require.NoError(t, err)

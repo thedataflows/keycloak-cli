@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"golang.org/x/oauth2"
 
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
@@ -61,7 +61,7 @@ func TestNewWithCustomAuth(t *testing.T) {
 	recorder := &recordingAuth{}
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 		Auth:     recorder,
 	})
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestNewWithoutAuthKeepsBackwardCompat(t *testing.T) {
 
 	svc, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, svc)

@@ -1,15 +1,15 @@
 package kcapi
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 func TestPathParamsResolvesPathPlaceholders(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -126,7 +126,7 @@ func TestKebabToCamelCase(t *testing.T) {
 }
 
 func TestPathParamsFallsBackToIdentifier(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -141,7 +141,7 @@ func TestPathParamsFallsBackToIdentifier(t *testing.T) {
 }
 
 func TestParentReferenceFieldsMapsPlaceholderToParentID(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -179,7 +179,7 @@ func TestParentReferenceFieldsMapsPlaceholderToParentID(t *testing.T) {
 }
 
 func TestPathParamsUsesCamelCaseField(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -194,7 +194,7 @@ func TestPathParamsUsesCamelCaseField(t *testing.T) {
 }
 
 func TestPathParamsUsesExactFieldName(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -209,7 +209,7 @@ func TestPathParamsUsesExactFieldName(t *testing.T) {
 }
 
 func TestPathParamsAlwaysAddsPrimaryIdentifier(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -224,7 +224,7 @@ func TestPathParamsAlwaysAddsPrimaryIdentifier(t *testing.T) {
 }
 
 func TestPathParamsPrimaryIdentifierEmptyWhenNoData(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -239,7 +239,7 @@ func TestPathParamsPrimaryIdentifierEmptyWhenNoData(t *testing.T) {
 }
 
 func TestResolveResourceOperationWithParentType(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resolver := spec.Resolver()
@@ -263,7 +263,7 @@ func TestResolveResourceOperationWithParentType(t *testing.T) {
 }
 
 func TestResolveResourceOperationIdentityProviderMapper(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	contract, err := spec.Resolver().ResolveResourceOperation("identityprovidermapper", "identityprovider", "POST", OperationAny)
@@ -273,7 +273,7 @@ func TestResolveResourceOperationIdentityProviderMapper(t *testing.T) {
 }
 
 func TestResolveResourceOperationUnknownParent(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	// Should fall back to best endpoint when parent type doesn't match any endpoint
@@ -283,7 +283,7 @@ func TestResolveResourceOperationUnknownParent(t *testing.T) {
 }
 
 func TestResolveResourceOperationClientRole(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	contract, err := spec.Resolver().ResolveResourceOperation("role", "client", "POST", OperationAny)
@@ -293,7 +293,7 @@ func TestResolveResourceOperationClientRole(t *testing.T) {
 }
 
 func TestResolveResourceOperationBackwardCompatibility(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	// Should still work for single-location types
@@ -307,7 +307,7 @@ func TestResolveResourceOperationBackwardCompatibility(t *testing.T) {
 }
 
 func TestResolveResourcePathWithParentType(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -324,7 +324,7 @@ func TestResolveResourcePathWithParentType(t *testing.T) {
 }
 
 func TestResolveResourcePathWithoutParentType(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{
@@ -340,7 +340,7 @@ func TestResolveResourcePathWithoutParentType(t *testing.T) {
 }
 
 func TestResolveResourcePathParamsWithClientScopeParent(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	resource := Resource{

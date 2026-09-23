@@ -2,11 +2,11 @@ package kcapi_test
 
 import (
 	"net/http"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
@@ -95,7 +95,7 @@ func TestDownwardGraphExposesOrgScopedGroups(t *testing.T) {
 
 func loadOrgGroupSpec(t *testing.T) *kcapi.Spec {
 	t.Helper()
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 	return spec
 }

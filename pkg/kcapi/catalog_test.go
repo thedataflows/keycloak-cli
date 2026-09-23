@@ -2,16 +2,16 @@ package kcapi_test
 
 import (
 	"net/http"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 )
 
 func TestNewSpecLoadsDocument(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 	require.NotNil(t, spec)
 
@@ -21,7 +21,7 @@ func TestNewSpecLoadsDocument(t *testing.T) {
 }
 
 func TestValidateRelationshipOperations(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	rels := []kcapi.RelationshipOperation{{Path: "test-realm/users/test-user/groups/test-group"}}
@@ -31,7 +31,7 @@ func TestValidateRelationshipOperations(t *testing.T) {
 }
 
 func TestCollectRelationshipTemplates(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	templates, err := kcapi.CollectRelationshipTemplates(spec)
@@ -49,7 +49,7 @@ func TestCollectRelationshipTemplates(t *testing.T) {
 }
 
 func TestValidateRelationshipOperationsDelete(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	rels := []kcapi.RelationshipOperation{{
@@ -68,7 +68,7 @@ func TestValidateRelationshipOperationsDelete(t *testing.T) {
 }
 
 func TestValidateRelationshipOperationsAssignsRealmScopeKinds(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	rels := []kcapi.RelationshipOperation{{Path: "test-realm/default-default-client-scopes/scope-1"}, {Path: "test-realm/default-optional-client-scopes/scope-2"}}
@@ -81,7 +81,7 @@ func TestValidateRelationshipOperationsAssignsRealmScopeKinds(t *testing.T) {
 }
 
 func TestOperationContractIncludesQueryParams(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	contract, err := spec.OperationContract("/admin/realms/{realm}/users", http.MethodGet)
@@ -100,7 +100,7 @@ func TestOperationContractIncludesQueryParams(t *testing.T) {
 }
 
 func TestValidateResourceRejectsWrongTypes(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	err = spec.ValidateResource(kcapi.Resource{
@@ -117,7 +117,7 @@ func TestValidateResourceRejectsWrongTypes(t *testing.T) {
 }
 
 func TestValidateOperationRequestRejectsWrongRelationshipBody(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	err = spec.ValidateOperationRequest("/admin/realms/{realm}/users/{user-id}/role-mappings/realm", http.MethodPost, kcapi.RequestValidation{
@@ -133,7 +133,7 @@ func TestValidateOperationRequestRejectsWrongRelationshipBody(t *testing.T) {
 // role-mapping path must both validate against the embedded spec, which they
 // only do once the write template uses the spec's {client-id} placeholder.
 func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	params := map[string]string{"realm": "demo", "user-id": "user-1", "client-id": "client-1"}
@@ -151,7 +151,7 @@ func TestClientRoleMappingApplyRoundTripsAgainstSpec(t *testing.T) {
 }
 
 func TestResourceContractsPreferRoleNameEndpoint(t *testing.T) {
-	spec, err := kcapi.NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := kcapi.NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	contracts, err := spec.ResourceContracts()

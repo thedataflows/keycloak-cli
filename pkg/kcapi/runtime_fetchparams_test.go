@@ -48,7 +48,7 @@ func TestFetchResourcesSendsOnlyDeclaredQueryParams(t *testing.T) {
 }
 
 // GET .../organizations/{org-id}/members declares briefRepresentation, max
-// and search but not q (the 26.7.4 spec): a child collection fetch keeps the
+// and search but not q (the ${KEYCLOAK_VERSION} spec): a child collection fetch keeps the
 // declared parameters and drops q.
 func TestFetchPathCollectionSendsOnlyDeclaredQueryParams(t *testing.T) {
 	var gotQuery map[string][]string

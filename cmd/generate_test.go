@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
@@ -138,7 +139,7 @@ func TestGenerateCmd_Run(t1 *testing.T) {
 			// Set spec path to test spec
 			cli := &CLI{
 				Globals: Globals{
-					SpecPath: "../keycloak-oapi/26.7.4.spec.json",
+					SpecPath: testutil.KeycloakSpecPath(t),
 				},
 			}
 
@@ -225,7 +226,7 @@ func BenchmarkGenerateCmd_Run(b *testing.B) {
 
 	cli := &CLI{
 		Globals: Globals{
-			SpecPath: "../keycloak-oapi/26.7.4.spec.json",
+			SpecPath: testutil.KeycloakSpecPath(b),
 		},
 	}
 

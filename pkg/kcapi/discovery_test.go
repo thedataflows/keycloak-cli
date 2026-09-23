@@ -26,7 +26,7 @@ func TestOperationsFilterByVerbAndSearch(t *testing.T) {
 	}
 	bySearch, err := c.Operations(OpFilter{Search: "users/{user-id}"})
 	require.NoError(t, err)
-	// The vendored 26.6.2 spec has no operationId fields at all, so search
+	// The vendored ${KEYCLOAK_VERSION} spec has no operationId fields at all, so search
 	// runs against Path/Summary; "users/{user-id}" pins the single-user path.
 	found := false
 	for _, o := range bySearch {

@@ -18,6 +18,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/kcapi"
 	"github.com/thedataflows/keycloak-cli/pkg/mcpserver"
 	"golang.org/x/oauth2"
@@ -86,7 +87,7 @@ func newTestClient(t *testing.T) (*kcapi.Client, *fakeKeycloak) {
 	fake := newFakeKeycloak(t)
 	client, err := kcapi.New(kcapi.Config{
 		BaseURL: fake.server.URL,
-		Spec:    kcapi.SpecSource{Path: "../../keycloak-oapi/26.7.4.spec.json"},
+		Spec:    kcapi.SpecSource{Path: testutil.KeycloakSpecPath(t)},
 		Timeout: 5 * time.Second,
 		Auth:    staticTokenProvider("test-token"),
 	})

@@ -319,7 +319,7 @@ The CLI is a thin layer over [`pkg/kcapi`](pkg/kcapi/), a spec-driven Keycloak c
 ```go
 client, err := kcapi.New(kcapi.Config{
     BaseURL: "https://kc.example.com",
-    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/26.7.4.spec.json"}, // Path, URL, or Raw bytes
+    Spec:    kcapi.SpecSource{Path: "keycloak-oapi/${KEYCLOAK_VERSION}.spec.json"}, // Path, URL, or Raw bytes
 })
 ```
 
@@ -355,7 +355,7 @@ Failed calls return `*kcapi.Error{Kind, Op, Status, Body, Err}`; match failures 
 
 ## Supported resources
 
-Resource types are discovered dynamically from the OpenAPI spec. The CLI does not maintain a hard-coded list of endpoints; instead it scans the spec, creates a contract for every resource type with recognizable CRUD operations, and uses the appropriate endpoint for each request. Common types discovered from the bundled Keycloak 26.7.4 spec include:
+Resource types are discovered dynamically from the OpenAPI spec. The CLI does not maintain a hard-coded list of endpoints; instead it scans the spec, creates a contract for every resource type with recognizable CRUD operations, and uses the appropriate endpoint for each request. Common types discovered from the bundled Keycloak ${KEYCLOAK_VERSION} spec include:
 
 | Resource type             | Typical operations     |
 | ------------------------- | ---------------------- |

@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 func TestResolveReferencesIsIdempotent(t *testing.T) {
@@ -128,7 +128,7 @@ func newServiceForReferencesTest(t *testing.T, baseURL string) *service {
 
 	svc, err := NewService(Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 		Timeout:  time.Second,
 	})
 	require.NoError(t, err)

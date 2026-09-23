@@ -1,11 +1,11 @@
 package kcapi
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
 func childTypes(children []DownwardChild) []string {
@@ -17,7 +17,7 @@ func childTypes(children []DownwardChild) []string {
 }
 
 func TestBuildDependencyGraph(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	graph, err := spec.BuildDependencyGraph()
@@ -114,7 +114,7 @@ func TestDownwardLevelsBreaksCycles(t *testing.T) {
 }
 
 func TestBuildDownwardGraphFromSpec(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	downward, err := spec.BuildDownwardGraph()
@@ -136,7 +136,7 @@ func TestTopologicalSortDetectsCycle(t *testing.T) {
 }
 
 func TestDependencyPriorityMapFromSpec(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	priorityMap, err := spec.DependencyPriorityMap()
@@ -154,7 +154,7 @@ func TestDependencyPriorityMapFromSpec(t *testing.T) {
 }
 
 func TestDiscoverRelationshipPatterns(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	patterns, err := spec.DiscoverRelationshipPatterns()
@@ -195,7 +195,7 @@ func TestClassifyRelationshipEndpoint(t *testing.T) {
 }
 
 func TestBuildDependencyGraphFiltersOutSelfReferences(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	graph, err := spec.BuildDependencyGraph()
@@ -209,7 +209,7 @@ func TestBuildDependencyGraphFiltersOutSelfReferences(t *testing.T) {
 }
 
 func TestBuildDependencyGraphRealmIsRoot(t *testing.T) {
-	spec, err := NewSpec(filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"))
+	spec, err := NewSpec(testutil.KeycloakSpecPath(t))
 	require.NoError(t, err)
 
 	graph, err := spec.BuildDependencyGraph()

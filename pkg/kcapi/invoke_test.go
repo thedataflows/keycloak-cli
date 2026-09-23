@@ -13,9 +13,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 )
 
-// syntheticSpec exists because the vendored 26.6.2 spec carries zero
+// syntheticSpec exists because the vendored ${KEYCLOAK_VERSION} spec carries zero
 // operationId fields: Op-mode resolution needs operationIds to be
 // deterministic, so every Op-mode Invoke test runs against this minimal
 // inline spec (one single-user GET, one collection POST) instead.
@@ -113,7 +114,7 @@ func (p staticTokenProvider) SetEnvToken(string, string, string) error { return 
 // realSpecBytes loads the vendored Keycloak spec for resource+verb tests.
 func realSpecBytes(t *testing.T) []byte {
 	t.Helper()
-	raw, err := os.ReadFile("../../keycloak-oapi/26.7.4.spec.json")
+	raw, err := os.ReadFile(testutil.KeycloakSpecPath(t))
 	if err != nil {
 		t.Skipf("repo spec not available: %v", err)
 	}

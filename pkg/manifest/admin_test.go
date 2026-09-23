@@ -8,18 +8,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedataflows/keycloak-cli/internal/testutil"
 	"github.com/thedataflows/keycloak-cli/pkg/manifest"
 )
 
 func TestNewRejectsMissingBaseURL(t *testing.T) {
-	service, err := manifest.NewService(manifest.Config{SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json")})
+	service, err := manifest.NewService(manifest.Config{SpecPath: testutil.KeycloakSpecPath(t)})
 	require.Error(t, err)
 	assert.Nil(t, service)
 }
@@ -30,7 +30,7 @@ func TestNewBuildsClient(t *testing.T) {
 
 	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  server.URL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, service)
@@ -250,7 +250,7 @@ func newServiceForTest(t *testing.T, baseURL string) manifest.Service {
 
 	service, err := manifest.NewService(manifest.Config{
 		BaseURL:  baseURL,
-		SpecPath: filepath.Join("..", "..", "keycloak-oapi", "26.7.4.spec.json"),
+		SpecPath: testutil.KeycloakSpecPath(t),
 		Timeout:  time.Second,
 	})
 	require.NoError(t, err)
