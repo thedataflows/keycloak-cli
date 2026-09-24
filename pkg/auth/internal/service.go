@@ -131,10 +131,25 @@ func (s *Service) AccessToken(ctx context.Context, baseURL, accessToken, refresh
 		log.Logger.Warn().Err(err).Str("pkg", pkgAuth).Msg("access token validation failure")
 	}
 
-	if refreshToken == "" {
-		return "", fmt.Errorf("no refresh token; set KEYCLOAK_REFRESH_TOKEN")
+	if refreshToken != "" {
+		token, err := s.refreshAccessToken(ctx, baseURL, refreshToken)
+		if err != nil {
+			log.Logger.Warn().Err(err).Str("pkg", pkgAuth).Msg("refresh token exchange failed; falling back to password grant")
+		} else {
+			return token, nil
+		}
 	}
 
+	token, err := s.autoPasswordToken(ctx, baseURL)
+	if err != nil {
+		return "", fmt.Errorf("auto-fetch admin token: %w (obtain one manually with `keycloak-cli admin-token`)", err)
+	}
+	return token, nil
+}
+
+// refreshAccessToken exchanges the refresh token for a new access token and
+// persists both tokens to the environment.
+func (s *Service) refreshAccessToken(ctx context.Context, baseURL, refreshToken string) (string, error) {
 	config := &oauth2.Config{
 		ClientID: "admin-cli",
 		Endpoint: oauth2.Endpoint{TokenURL: tokenEndpointURL(baseURL, "master")},
@@ -159,6 +174,58 @@ func (s *Service) AccessToken(ctx context.Context, baseURL, accessToken, refresh
 	}
 
 	return refreshedToken.AccessToken, nil
+}
+
+// autoPasswordToken requests a fresh token with the same password grant the
+// `admin-token` command runs, reading credentials from the environment, and
+// persists both tokens so subsequent invocations reuse them.
+func (s *Service) autoPasswordToken(ctx context.Context, baseURL string) (string, error) {
+	tokenResponse, err := s.PasswordToken(ctx, baseURL, adminRealm(), adminUsername(), adminPassword())
+	if err != nil {
+		return "", err
+	}
+	if err := s.SetEnvToken("KEYCLOAK_ACCESS_TOKEN", tokenResponse.AccessToken, ""); err != nil {
+		return "", fmt.Errorf("set env access token: %w", err)
+	}
+	if err := s.SetEnvToken("KEYCLOAK_REFRESH_TOKEN", tokenResponse.RefreshToken, ""); err != nil {
+		return "", fmt.Errorf("set env refresh token: %w", err)
+	}
+	return tokenResponse.AccessToken, nil
+}
+
+// envFirst returns the trimmed value of the first set environment variable,
+// matching kong's env resolution order on the CLI flags.
+func envFirst(names ...string) string {
+	for _, name := range names {
+		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// adminUsername mirrors AdminTokenCmd.Username: env override, then default.
+func adminUsername() string {
+	if value := envFirst("KEYCLOAK_USERNAME", "KC_BOOTSTRAP_ADMIN_USERNAME"); value != "" {
+		return value
+	}
+	return "admin"
+}
+
+// adminPassword mirrors AdminTokenCmd.Password: env override, then default.
+func adminPassword() string {
+	if value := envFirst("KEYCLOAK_PASSWORD", "KC_BOOTSTRAP_ADMIN_PASSWORD"); value != "" {
+		return value
+	}
+	return "admin"
+}
+
+// adminRealm mirrors AdminTokenCmd.Realm: env override, then default.
+func adminRealm() string {
+	if value := envFirst("KEYCLOAK_REALM"); value != "" {
+		return value
+	}
+	return "master"
 }
 
 func TokenValid(token string) error {

@@ -292,6 +292,10 @@ Flags:
 | `--access-token-env`  | `KEYCLOAK_ACCESS_TOKEN`  | Env var name for access token  |
 | `--refresh-token-env` | `KEYCLOAK_REFRESH_TOKEN` | Env var name for refresh token |
 
+### Token lifetime
+
+Access tokens expire; you normally never need to run `admin-token` by hand. Every command resolves its token through the same path: `KEYCLOAK_ACCESS_TOKEN` is used as long as it parses and is unexpired, then renewed via `KEYCLOAK_REFRESH_TOKEN`. When neither works — missing, expired, or rejected refresh — the CLI automatically requests a fresh token with the same password grant `admin-token` runs, using `KEYCLOAK_USERNAME`/`KEYCLOAK_PASSWORD` (or `KC_BOOTSTRAP_ADMIN_USERNAME`/`KC_BOOTSTRAP_ADMIN_PASSWORD`, default `admin`/`admin`) and `KEYCLOAK_REALM` (default `master`), and writes both tokens back to the environment and `.env` exactly like `admin-token --set-env`. If that grant is also rejected, the command fails with the underlying error and a hint to run `admin-token` manually.
+
 ### `version`
 
 Print the version.
@@ -338,7 +342,7 @@ client, err := kcapi.New(kcapi.Config{
 })
 ```
 
-Tokens resolve exactly as they do for the CLI: `KEYCLOAK_ACCESS_TOKEN` from the environment (refreshed via `KEYCLOAK_REFRESH_TOKEN`), so the same `.env` file works. `Config.Credentials` validates which grant shape you intend (password pair vs client secret), but the secret values themselves come from the environment; set `Config.Auth` to your own `auth.Service` to source tokens programmatically (kcapi only calls its `AccessToken` method).
+Tokens resolve exactly as they do for the CLI: `KEYCLOAK_ACCESS_TOKEN` from the environment (refreshed via `KEYCLOAK_REFRESH_TOKEN`), so the same `.env` file works. When no valid token remains, the default auth service automatically falls back to the password grant (see [Token lifetime](#token-lifetime)). `Config.Credentials` validates which grant shape you intend (password pair vs client secret), but the secret values themselves come from the environment; set `Config.Auth` to your own `auth.Service` to source tokens programmatically (kcapi only calls its `AccessToken` method).
 
 ```go
 // Discovery: list the spec's operations matching a filter (zero fields match everything).
@@ -523,11 +527,11 @@ Useful variables:
 | `KEYCLOAK_BASE_URL`           | Keycloak server URL                          |
 | `KEYCLOAK_ACCESS_TOKEN`       | Bearer token for authenticated requests      |
 | `KEYCLOAK_REFRESH_TOKEN`      | Refresh token for token renewal              |
-| `KEYCLOAK_USERNAME`           | Admin username for token command             |
-| `KEYCLOAK_PASSWORD`           | Admin password for token command             |
+| `KEYCLOAK_USERNAME`           | Admin username for token command and auto-fetch |
+| `KEYCLOAK_PASSWORD`           | Admin password for token command and auto-fetch |
 | `KC_BOOTSTRAP_ADMIN_USERNAME` | Alternative admin username for token command |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | Alternative admin password for token command |
-| `KEYCLOAK_REALM`              | Default realm for token command              |
+| `KEYCLOAK_REALM`              | Default realm for token command and auto-fetch |
 
 Values in `.env` take precedence over inherited environment variables, so an `admin-token` run that updates `.env` is immediately picked up by the next command.
 
